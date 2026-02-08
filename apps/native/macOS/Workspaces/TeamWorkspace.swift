@@ -101,7 +101,7 @@ struct TeamWorkspace: View {
                     Text("Diagnostics")
                         .font(.system(size: 14))
                 }
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
@@ -184,7 +184,7 @@ struct TeamWorkspace: View {
                             Text("Join Team")
                                 .font(.system(size: 14, weight: .medium))
                         }
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -203,7 +203,7 @@ struct TeamWorkspace: View {
                             Text("Create Team")
                                 .font(.system(size: 14, weight: .medium))
                         }
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -307,7 +307,7 @@ struct TeamTabButton: View {
                 Text(title)
                     .font(.system(size: 14, weight: isActive ? .medium : .regular))
             }
-            .foregroundColor(isActive ? tintColor : (isHovered ? .primary : .secondary))
+            .foregroundStyle(isActive ? tintColor : (isHovered ? .primary : .secondary))
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(

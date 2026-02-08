@@ -50,7 +50,7 @@ struct CombinedDataLabView: View {
 
                     Text("AI-powered data analysis and insights")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     // Mode Switcher
                     HStack(spacing: 0) {
@@ -72,7 +72,7 @@ struct CombinedDataLabView: View {
                                     Text(labMode.rawValue)
                                         .font(.system(size: 13, weight: .medium))
                                 }
-                                .foregroundColor(mode == labMode ? .white : .secondary)
+                                .foregroundStyle(mode == labMode ? .white : .secondary)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 10)
                                 .background(
@@ -103,10 +103,10 @@ struct CombinedDataLabView: View {
                 if let error = errorMessage {
                     HStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                     .padding(.horizontal, 32)
                 }
@@ -138,7 +138,7 @@ struct CombinedDataLabView: View {
 
                 Text("Example: \"What are the top 5 customers by revenue?\"")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 32)
 
@@ -170,7 +170,7 @@ struct CombinedDataLabView: View {
                             if let confidence = answer.confidence {
                                 Text("\(Int(confidence * 100))% confident")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(Color.gray.opacity(0.1))
@@ -189,7 +189,7 @@ struct CombinedDataLabView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Sources:")
                                     .font(.caption.weight(.medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                 ForEach(sources, id: \.self) { source in
                                     HStack(spacing: 6) {
                                         Image(systemName: "link")
@@ -197,7 +197,7 @@ struct CombinedDataLabView: View {
                                         Text(source)
                                             .font(.caption)
                                     }
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -237,7 +237,7 @@ struct CombinedDataLabView: View {
 
                     Text("Additional context to help with pattern detection")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 32)
@@ -269,7 +269,7 @@ struct CombinedDataLabView: View {
                                     .font(.system(size: 15, weight: .semibold))
                                 Text(summary)
                                     .font(.system(size: 13))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                     .padding(16)
                                     .background(Color.surfaceSecondary.opacity(0.5))
                                     .cornerRadius(8)
@@ -288,7 +288,7 @@ struct CombinedDataLabView: View {
                         } else {
                             Text("No patterns found")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.horizontal, 32)
@@ -303,7 +303,7 @@ struct CombinedDataLabView: View {
             HStack {
                 Text(pattern.type)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Color.blue))
@@ -312,7 +312,7 @@ struct CombinedDataLabView: View {
 
                 Text("\(Int(pattern.confidence * 100))%")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Text(pattern.description)
@@ -326,7 +326,7 @@ struct CombinedDataLabView: View {
                             Text(example)
                         }
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     }
                 }
             }

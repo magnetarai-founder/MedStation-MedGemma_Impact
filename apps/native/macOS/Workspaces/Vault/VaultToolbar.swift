@@ -27,7 +27,7 @@ struct VaultToolbar: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
@@ -61,7 +61,7 @@ struct VaultToolbar: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("Search vault...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -90,7 +90,7 @@ struct VaultToolbar: View {
                     Text("New Folder")
                         .font(.system(size: 14, weight: .medium))
                 }
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
@@ -116,7 +116,7 @@ struct VaultToolbar: View {
                     Text("Upload")
                         .font(.system(size: 14, weight: .medium))
                 }
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
@@ -135,7 +135,7 @@ struct VaultToolbar: View {
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 16))
-                .foregroundColor(viewMode == mode ? Color.magnetarPrimary : .secondary)
+                .foregroundStyle(viewMode == mode ? Color.magnetarPrimary : .secondary)
                 .frame(width: 32, height: 32)
         }
         .buttonStyle(.plain)
@@ -158,7 +158,7 @@ struct BreadcrumbView: View {
                 if index > 0 {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(.secondary.opacity(0.5))
+                        .foregroundStyle(.secondary.opacity(0.5))
                         .padding(.horizontal, 6)
                 }
 
@@ -207,12 +207,12 @@ struct BreadcrumbItem: View {
                 if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 12))
-                        .foregroundColor(isLast ? .primary : .secondary)
+                        .foregroundStyle(isLast ? .primary : .secondary)
                 }
 
                 Text(name)
                     .font(.system(size: 13, weight: isLast ? .semibold : .regular))
-                    .foregroundColor(isLast ? .primary : .secondary)
+                    .foregroundStyle(isLast ? .primary : .secondary)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)

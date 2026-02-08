@@ -36,12 +36,12 @@ struct LibraryModelRow: View {
                 HStack(spacing: 6) {
                     Text(model.modelName)
                         .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
-                        .foregroundColor(isSelected ? .primary : .textPrimary)
+                        .foregroundStyle(isSelected ? .primary : Color.textPrimary)
 
                     if model.isOfficial {
                         Text("Official")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(Color.blue.opacity(0.1))

@@ -61,7 +61,7 @@ struct TeamWorkspaceToolbar: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(selectedView == .chat ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
-                .foregroundColor(selectedView == .chat ? .magnetarPrimary : .textSecondary)
+                .foregroundStyle(selectedView == .chat ? Color.magnetarPrimary : Color.textSecondary)
                 .cornerRadius(6)
             }
             .buttonStyle(.plain)
@@ -76,7 +76,7 @@ struct TeamWorkspaceToolbar: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(selectedView == .docs ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
-                .foregroundColor(selectedView == .docs ? .magnetarPrimary : .textSecondary)
+                .foregroundStyle(selectedView == .docs ? Color.magnetarPrimary : Color.textSecondary)
                 .cornerRadius(6)
             }
             .buttonStyle(.plain)

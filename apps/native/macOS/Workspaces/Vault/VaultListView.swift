@@ -25,17 +25,17 @@ struct VaultListView: View {
                 HStack(spacing: 16) {
                     Text("Name")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text("Size")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 100, alignment: .trailing)
 
                     Text("Modified")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 120, alignment: .trailing)
                 }
                 .padding(.horizontal, 16)
@@ -138,7 +138,7 @@ struct VaultFileRow: View {
 
                     Image(systemName: file.mimeIcon)
                         .font(.system(size: 14))
-                        .foregroundColor(Color(file.mimeColor))
+                        .foregroundStyle(Color(file.mimeColor))
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -154,7 +154,7 @@ struct VaultFileRow: View {
                             Text("Encrypted")
                                 .font(.system(size: 9))
                         }
-                        .foregroundColor(.green)
+                        .foregroundStyle(.green)
                         .transition(.opacity)
                     }
                 }
@@ -163,12 +163,12 @@ struct VaultFileRow: View {
 
             Text(file.sizeFormatted)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 100, alignment: .trailing)
 
             Text(file.modifiedFormatted)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 120, alignment: .trailing)
 
             // Hover actions

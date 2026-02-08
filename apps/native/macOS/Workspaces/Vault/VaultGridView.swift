@@ -110,15 +110,15 @@ struct DropOverlayView: View {
             VStack(spacing: 16) {
                 Image(systemName: "arrow.down.doc.fill")
                     .font(.system(size: 48))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
 
                 Text("Drop files to upload")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
 
                 Text("Files will be encrypted and stored securely")
                     .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.8))
             }
             .padding(40)
             .background(
@@ -146,7 +146,7 @@ struct VaultFileCard: View {
 
                     Image(systemName: file.mimeIcon)
                         .font(.system(size: 32))
-                        .foregroundColor(Color(file.mimeColor))
+                        .foregroundStyle(Color(file.mimeColor))
                 }
 
                 // Encrypted badge (all vault files are encrypted)
@@ -155,7 +155,7 @@ struct VaultFileCard: View {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 8))
                     }
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 3)
                     .background(Color.green.opacity(0.15))
@@ -178,7 +178,7 @@ struct VaultFileCard: View {
                         Text(file.sizeFormatted)
                             .font(.system(size: 10))
                     }
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                     // Modified date
                     HStack(spacing: 3) {
@@ -187,7 +187,7 @@ struct VaultFileCard: View {
                         Text(file.modifiedFormatted)
                             .font(.system(size: 10))
                     }
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 }
             }
 

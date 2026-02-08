@@ -77,13 +77,13 @@ struct SafetyNumberVerificationModal: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.shield")
                         .font(.system(size: 20))
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                     Text("Verify Safety Number")
                         .font(.system(size: 20, weight: .bold))
                 }
                 Text("Compare with \(node.publicName) to verify identity")
                     .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             Spacer()
             Button {
@@ -91,7 +91,7 @@ struct SafetyNumberVerificationModal: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 20))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
         }
@@ -103,7 +103,7 @@ struct SafetyNumberVerificationModal: View {
         HStack(spacing: 12) {
             Image(systemName: nodeTypeIcon(node.type))
                 .font(.system(size: 24))
-                .foregroundColor(.magnetarPrimary)
+                .foregroundStyle(Color.magnetarPrimary)
                 .frame(width: 48, height: 48)
                 .background(
                     Circle()
@@ -116,13 +116,13 @@ struct SafetyNumberVerificationModal: View {
                 HStack(spacing: 8) {
                     Text(node.type.rawValue.capitalized)
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     if let location = node.location {
                         Text("•")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(location)
                             .font(.system(size: 13))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -133,7 +133,7 @@ struct SafetyNumberVerificationModal: View {
             if node.displayMode == .underground {
                 Text("UNDERGROUND")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
@@ -155,7 +155,7 @@ struct SafetyNumberVerificationModal: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "number.square")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text("Safety Number")
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
@@ -167,7 +167,7 @@ struct SafetyNumberVerificationModal: View {
                         Text("Copy")
                     }
                     .font(.system(size: 12))
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
                 }
                 .buttonStyle(.plain)
             }
@@ -179,7 +179,7 @@ struct SafetyNumberVerificationModal: View {
                         ForEach(safetyNumberGrid[rowIndex].indices, id: \.self) { colIndex in
                             Text(safetyNumberGrid[rowIndex][colIndex])
                                 .font(.system(size: 18, weight: .medium, design: .monospaced))
-                                .foregroundColor(.primary)
+                                .foregroundStyle(.primary)
                         }
                     }
                 }
@@ -197,7 +197,7 @@ struct SafetyNumberVerificationModal: View {
 
             Text("If you and \(node.publicName) see the same number, your connection is secure.")
                 .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -207,7 +207,7 @@ struct SafetyNumberVerificationModal: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "key")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text("Key Fingerprint")
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
@@ -219,14 +219,14 @@ struct SafetyNumberVerificationModal: View {
                         Text("Copy")
                     }
                     .font(.system(size: 12))
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
                 }
                 .buttonStyle(.plain)
             }
 
             Text(fingerprint)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
@@ -242,7 +242,7 @@ struct SafetyNumberVerificationModal: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "info.circle")
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                 Text("How to Verify")
                     .font(.system(size: 14, weight: .semibold))
             }
@@ -262,10 +262,10 @@ struct SafetyNumberVerificationModal: View {
             // Warning
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle")
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
                 Text("If the numbers don't match, do not proceed. This could indicate a security issue or man-in-the-middle attack.")
                     .font(.system(size: 12))
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
             }
             .padding(12)
             .background(
@@ -279,13 +279,13 @@ struct SafetyNumberVerificationModal: View {
         HStack(alignment: .top, spacing: 10) {
             Text(number)
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
                 .background(Circle().fill(Color.blue))
 
             Text(text)
                 .font(.system(size: 13))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
         }
     }
 

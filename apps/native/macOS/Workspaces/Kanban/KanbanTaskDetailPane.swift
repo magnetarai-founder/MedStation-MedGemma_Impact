@@ -116,7 +116,7 @@ struct KanbanTaskDetailPane: View {
                 } label: {
                     Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                         .font(.system(size: 14))
-                        .foregroundColor(showCopied ? .green : .secondary)
+                        .foregroundStyle(showCopied ? .green : .secondary)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
@@ -132,7 +132,7 @@ struct KanbanTaskDetailPane: View {
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
@@ -165,7 +165,7 @@ struct KanbanTaskDetailPane: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(task.status == status ? status.color.opacity(0.2) : Color.gray.opacity(0.1))
-                    .foregroundColor(task.status == status ? status.color : .secondary)
+                    .foregroundStyle(task.status == status ? status.color : .secondary)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -187,7 +187,7 @@ struct KanbanTaskDetailPane: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(task.priority == priority ? priority.color.opacity(0.2) : Color.gray.opacity(0.1))
-                    .foregroundColor(task.priority == priority ? priority.color : .secondary)
+                    .foregroundStyle(task.priority == priority ? priority.color : .secondary)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -205,18 +205,18 @@ struct KanbanTaskDetailPane: View {
             HStack(spacing: 12) {
                 Image(systemName: task.dueDateUrgency.icon)
                     .font(.title2)
-                    .foregroundColor(task.dueDateUrgency.color)
+                    .foregroundStyle(task.dueDateUrgency.color)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(task.relativeDueDate)
                         .font(.body)
                         .fontWeight(.medium)
-                        .foregroundColor(task.dueDateUrgency.color)
+                        .foregroundStyle(task.dueDateUrgency.color)
 
                     if task.dueDateParsed != nil && task.dueDateUrgency != .noDueDate {
                         Text(task.dueDate)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -230,7 +230,7 @@ struct KanbanTaskDetailPane: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.red.opacity(0.2))
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                         .clipShape(Capsule())
                 } else if task.dueDateUrgency == .dueToday {
                     Text("TODAY")
@@ -239,7 +239,7 @@ struct KanbanTaskDetailPane: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.orange.opacity(0.2))
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                         .clipShape(Capsule())
                 }
             }
@@ -258,7 +258,7 @@ struct KanbanTaskDetailPane: View {
 
             Text(task.description)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .textSelection(.enabled)
         }
     }
@@ -272,18 +272,18 @@ struct KanbanTaskDetailPane: View {
             // Labels with colored chips
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "tag")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 20)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Labels")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     if task.labels.isEmpty {
                         Text("No labels")
                             .font(.body)
-                            .foregroundColor(.textTertiary)
+                            .foregroundStyle(Color.textTertiary)
                     } else {
                         FlowLayout(spacing: 6) {
                             ForEach(task.labels, id: \.self) { label in
@@ -292,7 +292,7 @@ struct KanbanTaskDetailPane: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(labelColor(for: label).opacity(0.15))
-                                    .foregroundColor(labelColor(for: label))
+                                    .foregroundStyle(labelColor(for: label))
                                     .clipShape(Capsule())
                             }
                         }
@@ -335,7 +335,7 @@ struct InteractiveStatusBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(status.color.opacity(isHovered ? 0.3 : 0.2))
-            .foregroundColor(status.color)
+            .foregroundStyle(status.color)
             .cornerRadius(6)
         }
         .buttonStyle(.plain)
@@ -371,7 +371,7 @@ struct InteractivePriorityBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(priority.color.opacity(isHovered ? 0.3 : 0.2))
-            .foregroundColor(priority.color)
+            .foregroundStyle(priority.color)
             .cornerRadius(6)
         }
         .buttonStyle(.plain)

@@ -45,7 +45,7 @@ struct HubCloudStatus: View {
 
                     Text("\(username ?? "User") Connected")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -101,7 +101,7 @@ struct HubCloudStatus: View {
                             Text("\(pendingChanges) pending")
                                 .font(.caption2)
                         }
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                     }
 
                     if activeConflicts > 0 {
@@ -111,7 +111,7 @@ struct HubCloudStatus: View {
                             Text("\(activeConflicts) conflict\(activeConflicts == 1 ? "" : "s")")
                                 .font(.caption2)
                         }
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                     }
 
                     Spacer()
@@ -162,7 +162,7 @@ struct HubCloudStatus: View {
 
                 Text("Not Connected")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()

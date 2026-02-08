@@ -21,7 +21,7 @@ struct DocsSidebarView: View {
             HStack(spacing: 12) {
                 Image(systemName: "doc.text.fill")
                     .font(.system(size: 18))
-                    .foregroundColor(Color.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Documents")
@@ -29,7 +29,7 @@ struct DocsSidebarView: View {
 
                     Text("\(documents.count) document\(documents.count == 1 ? "" : "s")")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -37,7 +37,7 @@ struct DocsSidebarView: View {
                 Button(action: onNewDocument) {
                     Image(systemName: "plus")
                         .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -58,7 +58,7 @@ struct DocsSidebarView: View {
                     HStack {
                         Text("DOCUMENTS")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .textCase(.uppercase)
 
                         Spacer()

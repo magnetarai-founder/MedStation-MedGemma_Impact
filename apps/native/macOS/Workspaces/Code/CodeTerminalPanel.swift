@@ -128,7 +128,7 @@ struct CodeTerminalPanel: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Terminal App")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.top, 8)
 
@@ -174,7 +174,7 @@ struct CodeTerminalPanel: View {
 
                         Text("Click 'New' to spawn a terminal window")
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.bottom, 8)
@@ -246,7 +246,7 @@ struct CodeTerminalPanel: View {
                         .frame(width: 6, height: 6)
                     Text(session.isActive ? "Active" : "Inactive")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -285,10 +285,10 @@ struct CodeTerminalPanel: View {
             HStack(spacing: 4) {
                 Image(systemName: "folder")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(session.workingDirectory)
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -298,11 +298,11 @@ struct CodeTerminalPanel: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Last Command")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     HStack {
                         Text("$")
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                         Text(lastCommand)
                             .lineLimit(2)
                     }
@@ -320,7 +320,7 @@ struct CodeTerminalPanel: View {
                     HStack {
                         Text("Captured Output")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Spacer()
 
@@ -329,7 +329,7 @@ struct CodeTerminalPanel: View {
                         } label: {
                             Label("Send to AI", systemImage: "sparkles")
                                 .font(.system(size: 10))
-                                .foregroundColor(.purple)
+                                .foregroundStyle(.purple)
                         }
                         .buttonStyle(.plain)
 
@@ -338,7 +338,7 @@ struct CodeTerminalPanel: View {
                         } label: {
                             Image(systemName: "xmark.circle")
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -449,7 +449,7 @@ struct TerminalSessionTab: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -494,12 +494,12 @@ struct CodeTerminalInfoRow: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: 16)
 
             Text(text)
                 .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

@@ -15,7 +15,7 @@ struct VaultLoadingView: View {
 
             Text("Loading vault...")
                 .font(.system(size: 16))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -29,14 +29,14 @@ struct VaultErrorView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             Text("Error Loading Vault")
                 .font(.system(size: 18, weight: .semibold))
 
             Text(error)
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
@@ -54,14 +54,14 @@ struct VaultEmptyStateView: View {
         VStack(spacing: 16) {
             Image(systemName: "folder.badge.questionmark")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text("No files in this folder")
                 .font(.system(size: 18, weight: .semibold))
 
             Text("Upload files to get started")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

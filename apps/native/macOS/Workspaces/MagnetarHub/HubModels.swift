@@ -321,10 +321,10 @@ enum AnyModelItem: Identifiable {
                     if !model.sizeFormatted.isEmpty {
                         HStack {
                             Image(systemName: "internaldrive")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("Size: \(model.sizeFormatted)")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -340,12 +340,12 @@ enum AnyModelItem: Identifiable {
                             HStack {
                                 Text(progress.status)
                                     .font(.caption)
-                                    .foregroundColor(progress.error != nil ? .red : .secondary)
+                                    .foregroundStyle(progress.error != nil ? .red : .secondary)
                                 Spacer()
                                 if progress.error == nil {
                                     Text("\(Int(progress.progress * 100))%")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                             ProgressView(value: progress.progress)
@@ -403,12 +403,12 @@ enum AnyModelItem: Identifiable {
                                 HStack {
                                     Text(progress.status)
                                         .font(.caption)
-                                        .foregroundColor(progress.error != nil ? .red : .secondary)
+                                        .foregroundStyle(progress.error != nil ? .red : .secondary)
                                     Spacer()
                                     if progress.error == nil {
                                         Text("\(Int(progress.progress * 100))%")
                                             .font(.caption)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
                                 ProgressView(value: progress.progress)
@@ -432,17 +432,17 @@ enum AnyModelItem: Identifiable {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Image(systemName: "memorychip")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("Min VRAM: \(String(format: "%.1f", model.minVramGb)) GB")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         HStack {
                             Image(systemName: "cpu")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("Quantization: \(model.quantization)")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -483,19 +483,19 @@ enum AnyModelItem: Identifiable {
                         HStack(spacing: 6) {
                             Image(systemName: "star.circle")
                                 .font(.caption)
-                                .foregroundColor(.magnetarPrimary)
+                                .foregroundStyle(Color.magnetarPrimary)
                             Text("Multi-Purpose: \(metadata.primaryUseCases.joined(separator: ", "))")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     } else {
                         HStack(spacing: 6) {
                             Image(systemName: "sparkles")
                                 .font(.caption)
-                                .foregroundColor(.magnetarPrimary)
+                                .foregroundStyle(Color.magnetarPrimary)
                             Text("Capability: \(metadata.capability.capitalized)")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -504,10 +504,10 @@ enum AnyModelItem: Identifiable {
                         HStack(spacing: 6) {
                             Image(systemName: "tag")
                                 .font(.caption)
-                                .foregroundColor(.magnetarPrimary)
+                                .foregroundStyle(Color.magnetarPrimary)
                             Text("Size: \(paramSize)")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -517,15 +517,15 @@ enum AnyModelItem: Identifiable {
                             Text("Strengths:")
                                 .font(.caption)
                                 .fontWeight(.medium)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             ForEach(metadata.strengths, id: \.self) { strength in
                                 HStack(spacing: 4) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.caption2)
-                                        .foregroundColor(.green)
+                                        .foregroundStyle(.green)
                                     Text(strength)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -538,10 +538,10 @@ enum AnyModelItem: Identifiable {
                             Text("Ideal For:")
                                 .font(.caption)
                                 .fontWeight(.medium)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text(metadata.idealFor)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .padding(.top, 4)
                     }
@@ -551,7 +551,7 @@ enum AnyModelItem: Identifiable {
                         HStack {
                             Text("Family:")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text(family)
                                 .font(.caption)
                         }
@@ -561,10 +561,10 @@ enum AnyModelItem: Identifiable {
                         HStack {
                             Text("Digest:")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text(digest.prefix(12))
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -579,29 +579,29 @@ enum AnyModelItem: Identifiable {
                     HStack(spacing: 6) {
                         Image(systemName: "star.circle")
                             .font(.caption)
-                            .foregroundColor(.magnetarPrimary)
+                            .foregroundStyle(Color.magnetarPrimary)
                         Text("Multi-Purpose: \(model.primaryUseCases.joined(separator: ", "))")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 } else {
                     HStack(spacing: 6) {
                         Image(systemName: "sparkles")
                             .font(.caption)
-                            .foregroundColor(.magnetarPrimary)
+                            .foregroundStyle(Color.magnetarPrimary)
                         Text("Capability: \(model.capability.capitalized)")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 HStack(spacing: 6) {
                     Image(systemName: "tag")
                         .font(.caption)
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                     Text("Size: \(model.parameterSize)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -614,40 +614,40 @@ enum AnyModelItem: Identifiable {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
                         .font(.caption)
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                     Text("Capabilities: \(model.capabilities.joined(separator: ", "))")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Parameter size
                 HStack(spacing: 6) {
                     Image(systemName: "tag")
                         .font(.caption)
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                     Text("Parameters: \(model.parameterCount)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Quantization
                 HStack(spacing: 6) {
                     Image(systemName: "square.stack.3d.up")
                         .font(.caption)
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                     Text("Quantization: \(model.quantization)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Context length
                 HStack(spacing: 6) {
                     Image(systemName: "text.alignleft")
                         .font(.caption)
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                     Text("Context: \(model.contextLength) tokens")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Hardware requirements
@@ -655,22 +655,22 @@ enum AnyModelItem: Identifiable {
                     Text("Hardware Requirements:")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     HStack(spacing: 4) {
                         Image(systemName: "memorychip")
                             .font(.caption2)
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         Text("Min VRAM: \(String(format: "%.1f", model.minVramGb)) GB")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
                         Image(systemName: "memorychip.fill")
                             .font(.caption2)
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                         Text("Recommended: \(String(format: "%.1f", model.recommendedVramGb)) GB")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.top, 4)

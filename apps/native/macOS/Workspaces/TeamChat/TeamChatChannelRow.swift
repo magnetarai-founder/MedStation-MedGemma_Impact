@@ -28,7 +28,7 @@ struct TeamChatChannelRow: View {
 
                 Image(systemName: channelIcon)
                     .font(.system(size: 12))
-                    .foregroundColor(isActive ? Color.magnetarPrimary : .secondary)
+                    .foregroundStyle(isActive ? Color.magnetarPrimary : .secondary)
             }
 
             // Channel name
@@ -36,7 +36,7 @@ struct TeamChatChannelRow: View {
                 HStack(spacing: 4) {
                     Text(channel.name)
                         .font(.system(size: 14, weight: isActive || unreadCount > 0 ? .semibold : .regular))
-                        .foregroundColor(isActive ? .primary : (unreadCount > 0 ? .primary : .secondary))
+                        .foregroundStyle(isActive ? .primary : (unreadCount > 0 ? .primary : .secondary))
 
                     if isMuted {
                         Image(systemName: "speaker.slash.fill")
@@ -60,7 +60,7 @@ struct TeamChatChannelRow: View {
             if unreadCount > 0 {
                 Text(unreadCount > 99 ? "99+" : "\(unreadCount)")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(

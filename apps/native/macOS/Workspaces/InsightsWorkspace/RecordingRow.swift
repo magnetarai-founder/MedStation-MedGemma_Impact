@@ -146,7 +146,7 @@ private struct HoverActionButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 12))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: 26, height: 26)
                 .background(
                     Circle()

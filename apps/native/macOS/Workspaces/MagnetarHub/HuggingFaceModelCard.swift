@@ -50,7 +50,7 @@ struct HuggingFaceModelCard: View {
             // Description
             Text(model.description)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .lineLimit(2)
                 .frame(height: 32, alignment: .top)
 
@@ -66,7 +66,7 @@ struct HuggingFaceModelCard: View {
                     Text(model.sizeFormatted)
                         .font(.caption2)
                 }
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
                 Spacer()
             }
@@ -100,13 +100,13 @@ struct HuggingFaceModelCard: View {
                 HStack {
                     Text(progress.message)
                         .font(.caption2)
-                        .foregroundColor(progress.error != nil ? .red : .secondary)
+                        .foregroundStyle(progress.error != nil ? .red : .secondary)
                         .lineLimit(1)
                     Spacer()
                     if progress.error == nil {
                         Text("\(Int(progress.progress))%")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 ProgressView(value: progress.progress / 100)
@@ -117,11 +117,11 @@ struct HuggingFaceModelCard: View {
                     HStack {
                         Text(progress.speedFormatted)
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Spacer()
                         Text(progress.etaFormatted)
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -203,7 +203,7 @@ struct VRAMBadge: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
         .background(badgeColor.opacity(0.2))
-        .foregroundColor(badgeColor)
+        .foregroundStyle(badgeColor)
         .cornerRadius(4)
     }
 
@@ -232,7 +232,7 @@ struct QuantizationBadge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(badgeColor.opacity(0.2))
-            .foregroundColor(badgeColor)
+            .foregroundStyle(badgeColor)
             .cornerRadius(4)
     }
 
@@ -264,7 +264,7 @@ struct CapabilityBadge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(badgeColor.opacity(0.2))
-            .foregroundColor(badgeColor)
+            .foregroundStyle(badgeColor)
             .cornerRadius(4)
     }
 

@@ -29,7 +29,7 @@ struct TeamChatMessageInput: View {
                     } label: {
                         Image(systemName: "paperclip")
                             .font(.system(size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
 
@@ -38,7 +38,7 @@ struct TeamChatMessageInput: View {
                     } label: {
                         Image(systemName: "face.smiling")
                             .font(.system(size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
 
@@ -47,7 +47,7 @@ struct TeamChatMessageInput: View {
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 24))
-                            .foregroundColor(messageInput.isEmpty ? .gray : Color.magnetarPrimary)
+                            .foregroundStyle(messageInput.isEmpty ? .gray : Color.magnetarPrimary)
                     }
                     .buttonStyle(.plain)
                     .disabled(messageInput.isEmpty)

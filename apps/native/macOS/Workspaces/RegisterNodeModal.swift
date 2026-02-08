@@ -35,7 +35,7 @@ struct RegisterNodeModal: View {
                         .font(.system(size: 20, weight: .bold))
                     Text("Join the MagnetarTrust network")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button {
@@ -43,7 +43,7 @@ struct RegisterNodeModal: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -106,7 +106,7 @@ struct RegisterNodeModal: View {
                         HStack {
                             Text(generatedPublicKey.isEmpty ? "Will be generated on save" : generatedPublicKey)
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .lineLimit(1)
                             Spacer()
                             if !generatedPublicKey.isEmpty {
@@ -127,7 +127,7 @@ struct RegisterNodeModal: View {
                     if let error = errorMessage {
                         Text(error)
                             .font(.system(size: 13))
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .padding(12)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
@@ -231,7 +231,7 @@ private struct FormField<Content: View>: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.medium)

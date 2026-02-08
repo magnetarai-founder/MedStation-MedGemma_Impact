@@ -44,7 +44,7 @@ struct ModelComparisonView: View {
                     } label: {
                         Image(systemName: "arrow.left.arrow.right")
                             .font(.title2)
-                            .foregroundColor(.magnetarPrimary)
+                            .foregroundStyle(Color.magnetarPrimary)
                             .frame(width: 44, height: 44)
                             .background(Circle().fill(Color.surfaceTertiary))
                     }
@@ -85,7 +85,7 @@ struct ModelComparisonView: View {
                     .font(.headline)
                 Text("Compare specifications across model sources")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -95,7 +95,7 @@ struct ModelComparisonView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
         }
@@ -355,7 +355,7 @@ struct ModelComparisonColumn: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: model.source.icon)
-                    .foregroundColor(model.source.color)
+                    .foregroundStyle(model.source.color)
                 Text(model.name)
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -365,7 +365,7 @@ struct ModelComparisonColumn: View {
                 if let desc = model.description {
                     Text(desc)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
 
@@ -378,7 +378,7 @@ struct ModelComparisonColumn: View {
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Color.magnetarPrimary.opacity(0.2))
-                                .foregroundColor(.magnetarPrimary)
+                                .foregroundStyle(Color.magnetarPrimary)
                                 .cornerRadius(4)
                         }
                     }
@@ -407,7 +407,7 @@ struct ModelSelectionRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .foregroundColor(color)
+                    .foregroundStyle(color)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
@@ -416,14 +416,14 @@ struct ModelSelectionRow: View {
                         .lineLimit(1)
                     Text(subtitle)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(color)
+                        .foregroundStyle(color)
                 }
             }
             .padding(.horizontal, 12)
@@ -458,22 +458,22 @@ struct ComparisonMetric: View {
         VStack(spacing: 8) {
             Text(label)
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: 16) {
                 Text(leftValue)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(indicatorColor(isLeft: true))
+                    .foregroundStyle(indicatorColor(isLeft: true))
 
                 Text("vs")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(rightValue)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(indicatorColor(isLeft: false))
+                    .foregroundStyle(indicatorColor(isLeft: false))
             }
         }
     }

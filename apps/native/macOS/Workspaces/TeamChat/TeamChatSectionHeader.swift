@@ -15,7 +15,7 @@ struct TeamChatSectionHeader: View {
         HStack {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .textCase(.uppercase)
 
             Spacer()
@@ -24,7 +24,7 @@ struct TeamChatSectionHeader: View {
                 Button(action: onAdd) {
                     Image(systemName: "plus")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 20, height: 20)
                 }
                 .buttonStyle(.plain)

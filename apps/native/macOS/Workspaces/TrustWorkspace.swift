@@ -150,10 +150,10 @@ struct TrustWorkspace: View {
             HStack(spacing: 8) {
                 Image(systemName: "network")
                     .font(.system(size: 18))
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
                 Text("MagnetarTrust")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 // Node count badge
                 if !nodes.isEmpty {
@@ -190,7 +190,7 @@ struct TrustWorkspace: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.magnetarPrimary)
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .cornerRadius(8)
             }
             .buttonStyle(.plain)
@@ -214,7 +214,7 @@ struct TrustWorkspace: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(currentView == view ? Color.magnetarPrimary.opacity(0.15) : Color.clear)
             )
-            .foregroundColor(currentView == view ? .magnetarPrimary : .secondary)
+            .foregroundStyle(currentView == view ? Color.magnetarPrimary : .secondary)
         }
         .buttonStyle(.plain)
     }
@@ -247,14 +247,14 @@ struct TrustWorkspace: View {
         VStack(spacing: 24) {
             Image(systemName: "network.badge.shield.half.filled")
                 .font(.system(size: 72))
-                .foregroundColor(.magnetarPrimary)
+                .foregroundStyle(Color.magnetarPrimary)
 
             Text("Welcome to MagnetarTrust")
                 .font(.system(size: 28, weight: .bold))
 
             Text("Join the decentralized trust network for churches, missions, families, and humanitarian teams.")
                 .font(.system(size: 16))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 500)
 
@@ -277,7 +277,7 @@ struct TrustWorkspace: View {
                 .padding(.horizontal, 32)
                 .padding(.vertical, 14)
                 .background(Color.magnetarPrimary)
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .cornerRadius(12)
             }
             .buttonStyle(.plain)
@@ -290,11 +290,11 @@ struct TrustWorkspace: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundColor(.magnetarPrimary)
+                .foregroundStyle(Color.magnetarPrimary)
                 .frame(width: 28)
             Text(text)
                 .font(.system(size: 14))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
         }
     }
 
@@ -304,7 +304,7 @@ struct TrustWorkspace: View {
                 .scaleEffect(1.2)
             Text("Loading trust network...")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -313,10 +313,10 @@ struct TrustWorkspace: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
             Text(message)
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("Retry") {
                 Task {
@@ -388,7 +388,7 @@ struct TrustWorkspace: View {
                         .foregroundStyle(.tertiary)
                     Text("No \(title.lowercased()) yet")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 12)
                 .padding(.horizontal, 8)
@@ -522,14 +522,14 @@ struct TrustWorkspace: View {
             VStack(spacing: 20) {
                 Image(systemName: "person.badge.plus")
                     .font(.system(size: 64))
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
 
                 Text("Register Trust Node")
                     .font(.system(size: 24, weight: .bold))
 
                 Text("Create a new node in the MagnetarTrust network. Nodes can be individuals, churches, missions, families, or organizations.")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 500)
 
@@ -541,7 +541,7 @@ struct TrustWorkspace: View {
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                         .background(Color.magnetarPrimary)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .cornerRadius(10)
                 }
                 .buttonStyle(.plain)
@@ -558,12 +558,12 @@ struct TrustWorkspace: View {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 64))
-                .foregroundColor(.secondary.opacity(0.5))
+                .foregroundStyle(.secondary.opacity(0.5))
             Text(title)
                 .font(.system(size: 20, weight: .semibold))
             Text(message)
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .padding(48)

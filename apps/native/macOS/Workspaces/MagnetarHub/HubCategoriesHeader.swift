@@ -36,7 +36,7 @@ struct HubCategoriesHeader: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(systemBadgeColor.opacity(0.2))
-            .foregroundColor(systemBadgeColor)
+            .foregroundStyle(systemBadgeColor)
             .cornerRadius(8)
         }
         .padding()

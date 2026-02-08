@@ -40,7 +40,7 @@ struct ModelDiscoveryDetailPane: View {
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(Color.blue.opacity(0.2))
-                                        .foregroundColor(.blue)
+                                        .foregroundStyle(.blue)
                                         .cornerRadius(4)
                                 }
                             }
@@ -49,19 +49,19 @@ struct ModelDiscoveryDetailPane: View {
                                 HStack(spacing: 4) {
                                     Image(systemName: "arrow.down.circle.fill")
                                         .font(.caption2)
-                                        .foregroundColor(.green)
+                                        .foregroundStyle(.green)
                                     Text("\(model.pullsFormatted) pulls")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
 
                                 if !model.labelsText.isEmpty {
                                     Text("•")
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
 
                                     Text(model.labelsText)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
 
@@ -71,7 +71,7 @@ struct ModelDiscoveryDetailPane: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(Color.purple.opacity(0.2))
-                                    .foregroundColor(.purple)
+                                    .foregroundStyle(.purple)
                                     .cornerRadius(4)
                             }
                         }
@@ -96,7 +96,7 @@ struct ModelDiscoveryDetailPane: View {
                                                 .scaleEffect(0.8)
                                             Text(downloadProgress ?? "Downloading...")
                                                 .font(.caption)
-                                                .foregroundColor(.secondary)
+                                                .foregroundStyle(.secondary)
                                         }
                                         .padding(12)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -125,7 +125,7 @@ struct ModelDiscoveryDetailPane: View {
 
                                     Text(description)
                                         .font(.body)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
 
@@ -142,7 +142,7 @@ struct ModelDiscoveryDetailPane: View {
                                                 .padding(.horizontal, 8)
                                                 .padding(.vertical, 4)
                                                 .background(Color.secondary.opacity(0.2))
-                                                .foregroundColor(.secondary)
+                                                .foregroundStyle(.secondary)
                                                 .cornerRadius(4)
                                         }
                                     }

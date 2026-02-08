@@ -40,7 +40,7 @@ struct ModelDetailModal: View {
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
                                 .background(model.badgeColor(for: badge).opacity(0.2))
-                                .foregroundColor(model.badgeColor(for: badge))
+                                .foregroundStyle(model.badgeColor(for: badge))
                                 .cornerRadius(6)
                         }
                     }
@@ -53,7 +53,7 @@ struct ModelDetailModal: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -75,7 +75,7 @@ struct ModelDetailModal: View {
                             Text("Description")
                                 .font(.headline)
                             Text(description)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -118,7 +118,7 @@ struct ModelDetailModal: View {
             // System info
             Text(capabilityService.getSystemSummary())
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.vertical, 4)
 
             // Use backend-provided compatibility info
@@ -129,7 +129,7 @@ struct ModelDetailModal: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 12) {
                     Image(systemName: icon)
-                        .foregroundColor(color)
+                        .foregroundStyle(color)
                         .frame(width: 20)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -140,12 +140,12 @@ struct ModelDetailModal: View {
 
                             Text("(\(backendModel.parameterSize))")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         Text(backendModel.compatibility.reason)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
@@ -153,7 +153,7 @@ struct ModelDetailModal: View {
                     if let memUsage = backendModel.compatibility.estimatedMemoryUsage {
                         Text(String(format: "~%.1fGB", memUsage))
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

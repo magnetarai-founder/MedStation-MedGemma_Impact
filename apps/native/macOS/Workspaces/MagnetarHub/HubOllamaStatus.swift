@@ -37,7 +37,7 @@ struct HubOllamaStatus: View {
 
                 Text(isRunning ? "Running" : "Stopped")
                     .font(.caption2)
-                    .foregroundColor(isRunning ? .green : .secondary)
+                    .foregroundStyle(isRunning ? .green : .secondary)
             }
 
             Spacer()
@@ -98,7 +98,7 @@ struct StatusActionButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundColor(disabled ? .gray : (isHovered ? color : color.opacity(0.7)))
+                .foregroundStyle(disabled ? .gray : (isHovered ? color : color.opacity(0.7)))
                 .frame(width: 22, height: 22)
                 .background(
                     RoundedRectangle(cornerRadius: 4)

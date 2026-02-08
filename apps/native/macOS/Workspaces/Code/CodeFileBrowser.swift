@@ -248,7 +248,7 @@ private struct FileTreeRow: View {
                 // File icon
                 Image(systemName: file.iconName)
                     .font(.system(size: 11))
-                    .foregroundColor(selectedFile?.id == file.id ? .white : file.iconColor)
+                    .foregroundStyle(selectedFile?.id == file.id ? .white : file.iconColor)
                     .frame(width: 14)
 
                 // File name

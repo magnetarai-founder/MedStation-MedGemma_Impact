@@ -40,7 +40,7 @@ struct DiagnosticsPanel: View {
                     ProgressView()
                     Text("Loading diagnostics...")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let diag = diagnostics {
@@ -50,7 +50,7 @@ struct DiagnosticsPanel: View {
                         HStack {
                             let isHealthy = diag.database.status == "healthy" && diag.metal.available
                             Image(systemName: isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .foregroundColor(isHealthy ? .green : .orange)
+                                .foregroundStyle(isHealthy ? .green : .orange)
                             Text(diag.partial == true ? "PARTIAL" : "OK")
                                 .font(.system(size: 14, weight: .medium))
                         }
@@ -162,11 +162,11 @@ struct DiagnosticsPanel: View {
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.largeTitle)
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
 
                     Text(error)
                         .font(.caption)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
 
                     Button("Retry") {
@@ -194,7 +194,7 @@ struct DiagnosticsPanel: View {
     private func statusRow(_ label: String, value: String, status: Bool) -> some View {
         HStack {
             Image(systemName: status ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundColor(status ? .green : .red)
+                .foregroundStyle(status ? .green : .red)
                 .font(.system(size: 12))
 
             Text(label)
@@ -204,7 +204,7 @@ struct DiagnosticsPanel: View {
 
             Text(value)
                 .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
@@ -264,7 +264,7 @@ struct CreateTeamModal: View {
             if let error = errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -328,7 +328,7 @@ struct JoinTeamModal: View {
 
             Text("Enter the team invitation code to join")
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             // Form
             VStack(alignment: .leading, spacing: 6) {
@@ -344,7 +344,7 @@ struct JoinTeamModal: View {
             if let error = errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -407,7 +407,7 @@ struct VaultSetupModal: View {
 
             Text("Set up encrypted vault for secure file storage")
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             // Form
             VStack(alignment: .leading, spacing: 16) {
@@ -429,21 +429,21 @@ struct VaultSetupModal: View {
 
                 Text("⚠️ Store this password securely. It cannot be recovered.")
                     .font(.caption)
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
             }
 
             // Status/Error message
             if let status = setupStatus {
                 Text(status)
                     .font(.caption)
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let error = errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 

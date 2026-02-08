@@ -37,7 +37,7 @@ struct ModelDiscoveryListPane: View {
                         .scaleEffect(1.5)
                     Text("Loading models...")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = error {
@@ -45,14 +45,14 @@ struct ModelDiscoveryListPane: View {
                 VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 48))
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
 
                     Text("Failed to load models")
                         .font(.system(size: 18, weight: .semibold))
 
                     Text(error)
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
                     Button("Try Again") {
@@ -98,7 +98,7 @@ struct ModelDiscoveryListPane: View {
 
                         Text("Page \(currentPage + 1)")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Button {
                             onNextPage()

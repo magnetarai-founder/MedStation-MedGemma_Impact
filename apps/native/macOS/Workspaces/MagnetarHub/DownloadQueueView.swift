@@ -55,7 +55,7 @@ struct DownloadQueueView: View {
     private var header: some View {
         HStack {
             Image(systemName: "arrow.down.circle")
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
             Text("Downloads")
                 .font(.headline)
 
@@ -63,7 +63,7 @@ struct DownloadQueueView: View {
 
             Text("\(activeCount) active")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -75,10 +75,10 @@ struct DownloadQueueView: View {
         VStack(spacing: 8) {
             Image(systemName: "arrow.down.circle.dotted")
                 .font(.system(size: 32))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text("No active downloads")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(24)
@@ -138,19 +138,19 @@ struct DownloadQueueItem: View {
                 HStack(spacing: 8) {
                     Text(statusText)
                         .font(.caption2)
-                        .foregroundColor(statusColor)
+                        .foregroundStyle(statusColor)
 
                     if download.status == "downloading" {
                         Text("•")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(download.speedFormatted)
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text("•")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(download.etaFormatted)
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
@@ -163,7 +163,7 @@ struct DownloadQueueItem: View {
                     Button(action: onPause) {
                         Image(systemName: "pause.fill")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                     .help("Pause download")
@@ -171,7 +171,7 @@ struct DownloadQueueItem: View {
                     Button(action: onResume) {
                         Image(systemName: "play.fill")
                             .font(.caption)
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                     }
                     .buttonStyle(.plain)
                     .help("Resume download")
@@ -180,7 +180,7 @@ struct DownloadQueueItem: View {
                 Button(action: onCancel) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.caption)
-                        .foregroundColor(.red.opacity(0.7))
+                        .foregroundStyle(.red.opacity(0.7))
                 }
                 .buttonStyle(.plain)
                 .help("Cancel download")
@@ -282,13 +282,13 @@ struct DownloadQueueButton: View {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: "arrow.down.circle")
                     .font(.body)
-                    .foregroundColor(hasActiveDownloads ? .orange : .secondary)
+                    .foregroundStyle(hasActiveDownloads ? .orange : .secondary)
 
                 // Badge for active count
                 if activeCount > 0 {
                     Text("\(activeCount)")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(3)
                         .background(Circle().fill(Color.orange))
                         .offset(x: 6, y: -6)

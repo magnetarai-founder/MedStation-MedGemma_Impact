@@ -34,7 +34,7 @@ struct ModelDiscoveryFiltersPane: View {
                         Text("Search")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         TextField("Search models...", text: $searchText)
                             .textFieldStyle(.roundedBorder)
@@ -56,7 +56,7 @@ struct ModelDiscoveryFiltersPane: View {
                         Text("Type")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Picker("", selection: $selectedModelType) {
                             ForEach(ModelTypeFilter.allCases, id: \.self) { type in
@@ -77,7 +77,7 @@ struct ModelDiscoveryFiltersPane: View {
                         Text("Capability")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Picker("", selection: $selectedCapability) {
                             ForEach(CapabilityFilter.allCases, id: \.self) { cap in
@@ -98,7 +98,7 @@ struct ModelDiscoveryFiltersPane: View {
                         Text("Sort By")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Picker("", selection: $sortBy) {
                             ForEach(SortOption.allCases, id: \.self) { option in
@@ -119,11 +119,11 @@ struct ModelDiscoveryFiltersPane: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(totalCount) models found")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
 
                             Text("Page \(currentPage + 1) of \((totalCount + pageSize - 1) / pageSize)")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

@@ -50,10 +50,10 @@ struct DatabaseWorkspace: View {
             if let error = databaseStore.error {
                 HStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                     Text(error)
                         .font(.system(size: 13))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                     Spacer()
                     Button {
                         databaseStore.error = nil
@@ -179,7 +179,7 @@ struct DatabaseWorkspace: View {
                         Text(tab.rawValue)
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .foregroundColor(activeTab == tab ? .magnetarPrimary : .secondary)
+                    .foregroundStyle(activeTab == tab ? Color.magnetarPrimary : .secondary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(

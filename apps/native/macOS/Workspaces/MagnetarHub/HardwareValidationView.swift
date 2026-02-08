@@ -49,7 +49,7 @@ struct HardwareValidationView: View {
                     .font(.headline)
                 Text("Check if your system can run this model")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -59,7 +59,7 @@ struct HardwareValidationView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
         }
@@ -184,15 +184,15 @@ struct HardwareValidationView: View {
         HStack(spacing: 16) {
             Image(systemName: status.icon)
                 .font(.system(size: 36))
-                .foregroundColor(status.color)
+                .foregroundStyle(status.color)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(status.title)
                     .font(.headline)
-                    .foregroundColor(status.color)
+                    .foregroundStyle(status.color)
                 Text(status.message)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -287,7 +287,7 @@ struct SectionHeader: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .foregroundColor(.magnetarPrimary)
+                .foregroundStyle(Color.magnetarPrimary)
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.semibold)
@@ -306,11 +306,11 @@ private struct InfoRow: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 16)
                 Text(label)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -318,7 +318,7 @@ private struct InfoRow: View {
             Text(value)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(valueColor)
+                .foregroundStyle(valueColor)
         }
     }
 }
@@ -338,7 +338,7 @@ struct AcceleratorBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(isAvailable ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
-        .foregroundColor(isAvailable ? .green : .gray)
+        .foregroundStyle(isAvailable ? .green : .gray)
         .cornerRadius(4)
     }
 }

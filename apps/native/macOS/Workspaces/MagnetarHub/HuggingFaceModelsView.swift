@@ -101,7 +101,7 @@ struct HuggingFaceModelsView: View {
             // Search field
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.caption)
                 TextField("Search models...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -111,7 +111,7 @@ struct HuggingFaceModelsView: View {
                         searchText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
@@ -165,7 +165,7 @@ struct HuggingFaceModelsView: View {
                 .scaleEffect(1.5)
             Text("Loading models...")
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -174,12 +174,12 @@ struct HuggingFaceModelsView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
             Text("Failed to load models")
                 .font(.headline)
             Text(message)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("Retry") {
                 Task { await loadData() }
@@ -201,7 +201,7 @@ struct HuggingFaceModelsView: View {
                 .font(.headline)
             Text(selectedCategory != nil ? "No models match this category" : "Download GGUF models for llama.cpp")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -348,7 +348,7 @@ struct CategoryPill: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(isSelected ? Color.orange.opacity(0.2) : (isHovered ? Color.surfaceTertiary : Color.clear))
             )
-            .foregroundColor(isSelected ? .orange : (isHovered ? .primary : .secondary))
+            .foregroundStyle(isSelected ? .orange : (isHovered ? .primary : .secondary))
         }
         .buttonStyle(.plain)
         .onHover { hovering in
@@ -367,7 +367,7 @@ struct HardwareWarningBanner: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Limited Memory Available")
@@ -375,7 +375,7 @@ struct HardwareWarningBanner: View {
                     .fontWeight(.medium)
                 Text("Only \(String(format: "%.1f", hardware.availableMemoryGb))GB available. Some models may not run optimally.")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -385,7 +385,7 @@ struct HardwareWarningBanner: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Color.orange.opacity(0.2))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
                 .cornerRadius(4)
         }
         .padding(12)

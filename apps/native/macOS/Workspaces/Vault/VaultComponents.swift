@@ -76,7 +76,7 @@ struct NewFolderDialog: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
@@ -148,15 +148,15 @@ struct FilePreviewModal: View {
                     HStack(spacing: 8) {
                         Text(file.mimeType?.uppercased() ?? "FILE")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Text("•")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Text(file.sizeFormatted)
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -167,7 +167,7 @@ struct FilePreviewModal: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -185,23 +185,23 @@ struct FilePreviewModal: View {
             VStack(spacing: 16) {
                 Image(systemName: file.mimeIcon)
                     .font(.system(size: 64))
-                    .foregroundColor(Color(file.mimeColor))
+                    .foregroundStyle(Color(file.mimeColor))
 
                 Text("Preview for \(file.mimeType ?? "unknown") files")
                     .font(.title2)
 
                 Text("File preview rendering will appear here")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 // Download status messages
                 if downloadSuccess {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                         Text("File downloaded successfully")
                             .font(.system(size: 14))
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                     }
                     .padding(.top, 8)
                 }
@@ -209,10 +209,10 @@ struct FilePreviewModal: View {
                 if let error = downloadError {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                         Text(error)
                             .font(.system(size: 14))
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                     .padding(.top, 8)
                 }
@@ -232,7 +232,7 @@ struct FilePreviewModal: View {
                         Text("Delete")
                             .font(.system(size: 14, weight: .medium))
                     }
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(
@@ -262,7 +262,7 @@ struct FilePreviewModal: View {
                         Text(isDownloading ? "Downloading..." : (downloadSuccess ? "Downloaded" : "Download"))
                             .font(.system(size: 14, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(

@@ -416,7 +416,7 @@ struct BlockView: View {
         case .numberedList:
             Text("\(index + 1).")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 20, alignment: .trailing)
 
         case .checkbox:
@@ -425,7 +425,7 @@ struct BlockView: View {
             } label: {
                 Image(systemName: block.isChecked ? "checkmark.square.fill" : "square")
                     .font(.system(size: 16))
-                    .foregroundColor(block.isChecked ? .accentColor : .secondary)
+                    .foregroundStyle(block.isChecked ? Color.accentColor : .secondary)
             }
             .buttonStyle(.plain)
             .frame(width: 20)
@@ -439,37 +439,37 @@ struct BlockView: View {
         case .calloutInfo:
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 14))
-                .foregroundColor(.blue)
+                .foregroundStyle(.blue)
                 .frame(width: 20)
 
         case .calloutWarning:
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 14))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
                 .frame(width: 20)
 
         case .calloutSuccess:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 14))
-                .foregroundColor(.green)
+                .foregroundStyle(.green)
                 .frame(width: 20)
 
         case .calloutError:
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 14))
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
                 .frame(width: 20)
 
         case .image:
             Image(systemName: "photo")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 20)
 
         case .chart:
             Image(systemName: "chart.bar")
                 .font(.system(size: 14))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
                 .frame(width: 20)
 
         default:
@@ -972,7 +972,7 @@ struct ImageBlockView: View {
                 TextField("Add a caption...", text: $block.content)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.top, 8)
             }
@@ -1013,15 +1013,15 @@ struct ImageBlockView: View {
         VStack(spacing: 12) {
             Image(systemName: isDragging ? "arrow.down.doc.fill" : "photo.badge.plus")
                 .font(.system(size: 32))
-                .foregroundColor(isDragging ? .accentColor : .secondary)
+                .foregroundStyle(isDragging ? Color.accentColor : .secondary)
 
             Text(isDragging ? "Drop image here" : "Click to upload or drag image")
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text("PNG, JPG, GIF up to 10MB")
                 .font(.system(size: 11))
-                .foregroundColor(.secondary.opacity(0.7))
+                .foregroundStyle(.secondary.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
         .frame(height: 150)
@@ -1134,7 +1134,7 @@ struct SlashCommandMenu: View {
                     .foregroundStyle(Color.accentColor)
                 Text(query.isEmpty ? "Type to filter..." : query)
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Spacer()
 
                 // Keyboard hints
@@ -1148,7 +1148,7 @@ struct SlashCommandMenu: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -1164,14 +1164,14 @@ struct SlashCommandMenu: View {
                         if filteredTypes.isEmpty {
                             Text("No commands found")
                                 .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .padding(12)
                         } else {
                             ForEach(groupedTypes, id: \.category) { group in
                                 // Category header
                                 Text(group.category.rawValue.uppercased())
                                     .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                     .padding(.horizontal, 12)
                                     .padding(.top, 10)
                                     .padding(.bottom, 4)
@@ -1224,7 +1224,7 @@ struct KeyboardHint: View {
             ForEach(keys, id: \.self) { key in
                 Text(key)
                     .font(.system(size: 9, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)
                     .background(
@@ -1256,17 +1256,17 @@ struct SlashCommandRow: View {
 
                     Image(systemName: type.icon)
                         .font(.system(size: 12))
-                        .foregroundColor(isSelected ? .white : iconColor)
+                        .foregroundStyle(isSelected ? .white : iconColor)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(type.title)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? .white : .primary)
 
                     Text(type.description)
                         .font(.system(size: 10))
-                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
                         .lineLimit(1)
                 }
 
@@ -1276,7 +1276,7 @@ struct SlashCommandRow: View {
                 if let shortcut = type.shortcut {
                     Text(shortcut)
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
+                        .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(

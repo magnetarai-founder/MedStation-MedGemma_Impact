@@ -31,7 +31,7 @@ struct HubEmptyState: View {
 
                 Text(category.emptySubtitle)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Action hint based on category

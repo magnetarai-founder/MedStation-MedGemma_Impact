@@ -101,7 +101,7 @@ struct OutputCard: View {
                             .font(.caption)
                     }
                 }
-                .foregroundColor(showCopied ? .green : .secondary)
+                .foregroundStyle(showCopied ? .green : .secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(
@@ -125,7 +125,7 @@ struct OutputCard: View {
                         .controlSize(.small)
                 } else {
                     Image(systemName: "arrow.clockwise")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .buttonStyle(.plain)
@@ -139,7 +139,7 @@ struct OutputCard: View {
                 }
             }) {
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
 
@@ -167,7 +167,7 @@ struct OutputCard: View {
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)
         }

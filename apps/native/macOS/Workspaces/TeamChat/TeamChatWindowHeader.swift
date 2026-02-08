@@ -14,7 +14,7 @@ struct TeamChatWindowHeader: View {
         HStack(spacing: 12) {
             Image(systemName: "number")
                 .font(.system(size: 18))
-                .foregroundColor(Color.magnetarPrimary)
+                .foregroundStyle(Color.magnetarPrimary)
 
             Text(channel.name)
                 .font(.system(size: 18, weight: .bold))
@@ -26,7 +26,7 @@ struct TeamChatWindowHeader: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)

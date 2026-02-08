@@ -22,7 +22,7 @@ struct TeamChatP2PBanner: View {
 
                 Text(statusText)
                     .font(.system(size: 14))
-                    .foregroundColor(statusColor)
+                    .foregroundStyle(statusColor)
             }
 
             Spacer()
@@ -32,7 +32,7 @@ struct TeamChatP2PBanner: View {
                 if let networkStatus = p2pNetworkStatus, p2pStatus == .connected {
                     Text(String(networkStatus.peerId.prefix(12)) + "...")
                         .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                 }
 
                 Button {
@@ -44,7 +44,7 @@ struct TeamChatP2PBanner: View {
                         Text("Peers")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
@@ -63,7 +63,7 @@ struct TeamChatP2PBanner: View {
                         Text("Files")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
@@ -94,10 +94,10 @@ struct TeamChatP2PBanner: View {
                     .tint(.blue)
             case .disconnected:
                 Image(systemName: "wifi.slash")
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
             case .connected:
                 Image(systemName: "wifi")
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
             }
         }
     }

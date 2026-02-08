@@ -49,7 +49,7 @@ struct WorkspaceSettingsWindow: View {
                     .font(.headline)
                 Text("Configure team and connection options")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             Spacer()
         }
@@ -63,7 +63,7 @@ struct WorkspaceSettingsWindow: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("TEAM MODE")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -71,7 +71,7 @@ struct WorkspaceSettingsWindow: View {
                         .font(.system(size: 13, weight: .medium))
                     Text("Access channels, direct messages, and collaborative documents")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Toggle("", isOn: $teamEnabled)
@@ -91,7 +91,7 @@ struct WorkspaceSettingsWindow: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("CONNECTION")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             VStack(spacing: 8) {
                 connectionOption(
@@ -135,7 +135,7 @@ struct WorkspaceSettingsWindow: View {
                     .frame(width: 8, height: 8)
                 Text(teamEnabled ? "Connected via \(connectionMode.capitalized)" : "Not connected")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 if teamEnabled {
                     Button("Reconnect") {
@@ -155,16 +155,16 @@ struct WorkspaceSettingsWindow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 16))
-                    .foregroundColor(connectionMode == value ? .accentColor : .secondary)
+                    .foregroundStyle(connectionMode == value ? Color.accentColor : .secondary)
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                     Text(subtitle)
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -186,7 +186,7 @@ struct WorkspaceSettingsWindow: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("TEAM")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             VStack(spacing: 8) {
                 settingsRow(icon: "person.2", title: "Create Team", subtitle: "Start a new team workspace") {
@@ -215,7 +215,7 @@ struct WorkspaceSettingsWindow: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("ADVANCED")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             VStack(spacing: 8) {
                 settingsRow(icon: "waveform.path.ecg", title: "Diagnostics", subtitle: "View connection diagnostics") {
@@ -246,23 +246,23 @@ struct WorkspaceSettingsWindow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                     Text(subtitle)
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.5))
+                    .foregroundStyle(.secondary.opacity(0.5))
             }
             .padding(.vertical, 6)
             .contentShape(Rectangle())
@@ -344,7 +344,7 @@ struct DiagnosticsSheet: View {
             Spacer()
             Text(value)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
     }
 }

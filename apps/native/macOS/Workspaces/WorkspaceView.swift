@@ -59,7 +59,7 @@ struct WorkspaceView: View {
                 if notes.isEmpty {
                     Text("No notes yet")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                 }
@@ -81,7 +81,7 @@ struct WorkspaceView: View {
                 sidebarSection(title: "Direct Messages", showAdd: false, onAdd: {}) {
                     Text("No conversations yet")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                 }
@@ -106,13 +106,13 @@ struct WorkspaceView: View {
             HStack {
                 Text(title.uppercased())
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 if showAdd {
                     Button(action: onAdd) {
                         Image(systemName: "plus")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -148,7 +148,7 @@ struct WorkspaceView: View {
 
             Text(teamEnabled ? connectionLabel : "Personal")
                 .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Spacer()
 
@@ -158,7 +158,7 @@ struct WorkspaceView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
                     .background(
                         RoundedRectangle(cornerRadius: 4)
@@ -206,12 +206,12 @@ struct WorkspaceView: View {
                 Spacer()
                 Text("Type / for commands")
                     .font(.caption)
-                    .foregroundColor(.secondary.opacity(0.6))
+                    .foregroundStyle(.secondary.opacity(0.6))
                 Text("•")
-                    .foregroundColor(.secondary.opacity(0.3))
+                    .foregroundStyle(.secondary.opacity(0.3))
                 Text("Saved")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -233,7 +233,7 @@ struct WorkspaceView: View {
             HStack {
                 Text("#")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(channel)
                     .font(.system(size: 15, weight: .semibold))
                 Spacer()
@@ -270,7 +270,7 @@ struct WorkspaceView: View {
                 } label: {
                     Image(systemName: "paperplane.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(messageText.isEmpty ? .secondary : .accentColor)
+                        .foregroundStyle(messageText.isEmpty ? .secondary : Color.accentColor)
                 }
                 .buttonStyle(.plain)
                 .disabled(messageText.isEmpty)
@@ -285,10 +285,10 @@ struct WorkspaceView: View {
             Spacer()
             Image(systemName: "doc.text")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary.opacity(0.4))
+                .foregroundStyle(.secondary.opacity(0.4))
             Text("Select a note or channel")
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Button("New Note") {
                 createNewNote()
             }
@@ -349,7 +349,7 @@ struct WorkspaceSettingsPopover: View {
                         .font(.system(size: 13, weight: .medium))
                     Text(teamEnabled ? "Channels & DMs enabled" : "Personal only")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Toggle("", isOn: $teamEnabled)
@@ -368,11 +368,11 @@ struct WorkspaceSettingsPopover: View {
                         .frame(width: 8, height: 8)
                     Text("Connected")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Spacer()
                     Text("Cloud")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
                         .background(
@@ -395,7 +395,7 @@ struct WorkspaceSettingsPopover: View {
                     Spacer()
                     Image(systemName: "arrow.up.forward.square")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(12)
                 .contentShape(Rectangle())
@@ -426,16 +426,16 @@ struct NoteRow: View {
                 HStack {
                     Text(note.title)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? .white : .primary)
                         .lineLimit(1)
                     Spacer()
                     Text(formatTimestamp(note.updatedAt))
                         .font(.system(size: 10))
-                        .foregroundColor(isSelected ? .white.opacity(0.6) : .secondary.opacity(0.7))
+                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .secondary.opacity(0.7))
                 }
                 Text(note.content.prefix(60).replacingOccurrences(of: "\n", with: " "))
                     .font(.system(size: 11))
-                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                    .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -469,10 +469,10 @@ struct ChannelRow: View {
             HStack(spacing: 6) {
                 Text("#")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(name)
                     .font(.system(size: 13))
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundStyle(isSelected ? .white : .primary)
                 Spacer()
             }
             .padding(.horizontal, 12)
@@ -500,7 +500,7 @@ struct MessageBubble: View {
                 .overlay(
                     Text(String(author.prefix(1)))
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 )
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
@@ -508,7 +508,7 @@ struct MessageBubble: View {
                         .font(.system(size: 13, weight: .semibold))
                     Text(time)
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Text(message)
                     .font(.system(size: 14))

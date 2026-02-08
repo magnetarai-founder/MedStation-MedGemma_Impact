@@ -22,7 +22,7 @@ struct BoardRow: View {
                         .font(.headline)
                     Text("\(board.taskCount) tasks")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             } icon: {
                 Image(systemName: board.icon)
@@ -37,7 +37,7 @@ struct BoardRow: View {
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Delete Board")
@@ -78,7 +78,7 @@ struct TaskRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.headline)
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 HStack(spacing: 8) {
                     StatusBadge(status: task.status)
@@ -104,7 +104,7 @@ struct TaskRow: View {
                     } label: {
                         Image(systemName: task.status == .done ? "arrow.uturn.backward" : "checkmark")
                             .font(.system(size: 12))
-                            .foregroundColor(task.status == .done ? .orange : .green)
+                            .foregroundStyle(task.status == .done ? .orange : .green)
                             .frame(width: 24, height: 24)
                             .background(
                                 Circle()
@@ -120,7 +120,7 @@ struct TaskRow: View {
                     } label: {
                         Image(systemName: "trash")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .frame(width: 24, height: 24)
                             .background(
                                 Circle()
@@ -160,7 +160,7 @@ struct DueDateIndicator: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
         .background(task.dueDateUrgency.color.opacity(0.15))
-        .foregroundColor(task.dueDateUrgency.color)
+        .foregroundStyle(task.dueDateUrgency.color)
         .clipShape(Capsule())
     }
 
@@ -201,7 +201,7 @@ struct StatusBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(status.color.opacity(0.2))
-            .foregroundColor(status.color)
+            .foregroundStyle(status.color)
             .cornerRadius(6)
     }
 }
@@ -218,7 +218,7 @@ struct PriorityBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(priority.color.opacity(0.2))
-            .foregroundColor(priority.color)
+            .foregroundStyle(priority.color)
             .cornerRadius(6)
     }
 }
@@ -233,13 +233,13 @@ struct DetailRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(value)
                     .font(.body)

@@ -39,19 +39,19 @@ struct LlamaCppStatusView: View {
                     if isRunning, let port = status?.port {
                         Text(":\(port)")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 if let model = status?.modelLoaded {
                     Text(formatModelName(model))
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 } else {
                     Text(isRunning ? "Ready" : "Stopped")
                         .font(.caption2)
-                        .foregroundColor(isRunning ? .green : .secondary)
+                        .foregroundStyle(isRunning ? .green : .secondary)
                 }
             }
 
@@ -181,12 +181,12 @@ struct LlamaCppStatusCompact: View {
             if let model = status?.modelLoaded {
                 Text(formatLlamaCppModelName(model, maxLength: 15))
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             } else {
                 Text("llama.cpp")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
     }

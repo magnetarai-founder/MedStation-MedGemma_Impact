@@ -32,7 +32,7 @@ struct VouchNodeModal: View {
                         .font(.system(size: 20, weight: .bold))
                     Text("Create a trust relationship")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button {
@@ -40,7 +40,7 @@ struct VouchNodeModal: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -55,7 +55,7 @@ struct VouchNodeModal: View {
                     HStack(spacing: 12) {
                         Image(systemName: nodeTypeIcon(node.type))
                             .font(.system(size: 24))
-                            .foregroundColor(.magnetarPrimary)
+                            .foregroundStyle(Color.magnetarPrimary)
                             .frame(width: 48, height: 48)
                             .background(
                                 Circle()
@@ -67,11 +67,11 @@ struct VouchNodeModal: View {
                                 .font(.system(size: 16, weight: .medium))
                             Text(node.type.rawValue.capitalized)
                                 .font(.system(size: 13))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             if let location = node.location {
                                 Text(location)
                                     .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
 
@@ -84,7 +84,7 @@ struct VouchNodeModal: View {
                                 Text("Verified")
                             }
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(
@@ -104,10 +104,10 @@ struct VouchNodeModal: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: "checkmark.shield")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("Identity Verification")
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         Button {
@@ -115,13 +115,13 @@ struct VouchNodeModal: View {
                         } label: {
                             HStack {
                                 Image(systemName: isVerified ? "checkmark.shield.fill" : "shield.lefthalf.filled")
-                                    .foregroundColor(isVerified ? .green : .magnetarPrimary)
+                                    .foregroundStyle(isVerified ? .green : Color.magnetarPrimary)
                                 Text(isVerified ? "View Safety Number" : "Verify Safety Number")
                                     .font(.system(size: 14))
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .padding(12)
                             .background(
@@ -138,7 +138,7 @@ struct VouchNodeModal: View {
                         if !isVerified {
                             Text("Compare safety numbers with \(node.publicName) to verify identity")
                                 .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -173,7 +173,7 @@ struct VouchNodeModal: View {
                     if let error = errorMessage {
                         Text(error)
                             .font(.system(size: 13))
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .padding(12)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
@@ -232,15 +232,15 @@ struct VouchNodeModal: View {
             HStack(spacing: 12) {
                 Image(systemName: trustLevel == level ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20))
-                    .foregroundColor(trustLevel == level ? color : .secondary)
+                    .foregroundStyle(trustLevel == level ? color : .secondary)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                     Text(description)
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -303,7 +303,7 @@ private struct FormField<Content: View>: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.medium)

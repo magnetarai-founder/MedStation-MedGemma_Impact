@@ -374,7 +374,7 @@ struct AIAssistantPanel: View {
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 20))
-                    .foregroundColor(inputText.isEmpty ? .gray : .purple)
+                    .foregroundStyle(inputText.isEmpty ? .gray : .purple)
             }
             .buttonStyle(.plain)
             .disabled(inputText.isEmpty || codingStore.aiAssistant.isStreaming)

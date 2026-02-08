@@ -60,7 +60,7 @@ struct RecordingDetailPane: View {
 
                         Image(systemName: "play.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
                 .buttonStyle(.plain)
@@ -94,7 +94,7 @@ struct RecordingDetailPane: View {
                     Button(action: shareRecording) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .frame(width: 32, height: 32)
                             .background(
                                 Circle()
@@ -125,7 +125,7 @@ struct RecordingDetailPane: View {
                             Text("Apply Template")
                         }
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Color.indigo)
@@ -208,7 +208,7 @@ struct RecordingDetailPane: View {
                         Text(showCopiedTranscript ? "Copied!" : "Copy")
                             .font(.caption)
                     }
-                    .foregroundColor(showCopiedTranscript ? .green : .secondary)
+                    .foregroundStyle(showCopiedTranscript ? .green : .secondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(

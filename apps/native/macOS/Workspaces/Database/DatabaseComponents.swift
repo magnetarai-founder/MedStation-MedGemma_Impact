@@ -22,7 +22,7 @@ struct IconToolbarButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundColor(isHovered ? Color.magnetarPrimary : .secondary)
+                .foregroundStyle(isHovered ? Color.magnetarPrimary : .secondary)
                 .frame(width: 32, height: 32)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
@@ -55,7 +55,7 @@ struct DragHandle: View {
             if isHovered || isDragging {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 12))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                     .background(

@@ -27,7 +27,7 @@ struct ChatMessageRow: View {
                     .overlay(
                         Image(systemName: message.role == .user ? "person.fill" : "sparkles")
                             .font(.system(size: 14))
-                            .foregroundStyle(message.role == .user ? .white : .textSecondary)
+                            .foregroundStyle(message.role == .user ? .white : Color.textSecondary)
                     )
 
                 // Message content
@@ -86,7 +86,7 @@ struct ChatMessageRow: View {
                         } label: {
                             Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                                 .font(.system(size: 12))
-                                .foregroundStyle(showCopied ? .green : .textSecondary)
+                                .foregroundStyle(showCopied ? .green : Color.textSecondary)
                                 .frame(width: 24, height: 24)
                                 .background(Color.surfaceSecondary.opacity(0.8))
                                 .cornerRadius(4)
@@ -277,7 +277,7 @@ struct CodeBlockView: View {
                         Text(showCopied ? "Copied!" : "Copy")
                     }
                     .font(.system(size: 11))
-                    .foregroundStyle(showCopied ? .green : .textSecondary)
+                    .foregroundStyle(showCopied ? .green : Color.textSecondary)
                 }
                 .buttonStyle(.plain)
             }

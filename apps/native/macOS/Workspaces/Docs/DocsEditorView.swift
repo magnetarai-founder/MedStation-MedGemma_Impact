@@ -35,7 +35,7 @@ struct DocsEditorView: View {
 
             Text("Loading documents...")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -46,14 +46,14 @@ struct DocsEditorView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
 
             Text("Error Loading Documents")
                 .font(.system(size: 18, weight: .semibold))
 
             Text(message)
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
             Button("Retry") {
@@ -78,7 +78,7 @@ struct DocsEditorView: View {
                 } label: {
                     Image(systemName: "sidebar.left")
                         .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -89,7 +89,7 @@ struct DocsEditorView: View {
 
                     Text("Last edited: \(doc.updatedAt)")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -123,14 +123,14 @@ struct DocsEditorView: View {
         VStack(spacing: 16) {
             Image(systemName: "plus")
                 .font(.system(size: 64))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text("No document selected")
                 .font(.system(size: 18, weight: .semibold))
 
             Text("Select a document from the sidebar or create a new one")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -374,7 +374,7 @@ struct CodeEditorWelcome: View {
 
             Text("Select a file from the sidebar to start editing\nor drop a file here")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

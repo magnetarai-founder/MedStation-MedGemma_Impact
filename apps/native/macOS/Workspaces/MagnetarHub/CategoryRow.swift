@@ -17,7 +17,7 @@ struct CategoryRow: View {
                     .font(.headline)
                 Text(category.description)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         } icon: {
             Image(systemName: category.icon)

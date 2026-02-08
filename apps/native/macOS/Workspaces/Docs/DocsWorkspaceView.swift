@@ -120,18 +120,18 @@ struct DocumentRowView: View {
         HStack(spacing: 8) {
             Image(systemName: "doc.text")
                 .font(.system(size: 14))
-                .foregroundColor(isActive ? .white : .magnetarPrimary)
+                .foregroundStyle(isActive ? .white : Color.magnetarPrimary)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(doc.title)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(isActive ? .white : .primary)
+                    .foregroundStyle(isActive ? .white : .primary)
                     .lineLimit(1)
 
                 Text(doc.updatedAt)
                     .font(.system(size: 11))
-                    .foregroundColor(isActive ? Color.white.opacity(0.8) : .secondary)
+                    .foregroundStyle(isActive ? Color.white.opacity(0.8) : .secondary)
             }
 
             Spacer()
@@ -142,7 +142,7 @@ struct DocumentRowView: View {
                     Button(action: onEdit) {
                         Image(systemName: "pencil")
                             .font(.system(size: 11))
-                            .foregroundColor(isActive ? .white : .secondary)
+                            .foregroundStyle(isActive ? .white : .secondary)
                             .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
@@ -150,7 +150,7 @@ struct DocumentRowView: View {
                     Button(action: onDelete) {
                         Image(systemName: "trash")
                             .font(.system(size: 11))
-                            .foregroundColor(isActive ? .white : .secondary)
+                            .foregroundStyle(isActive ? .white : .secondary)
                             .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)

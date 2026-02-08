@@ -22,7 +22,7 @@ struct TeamMemberDetail: View {
                             Text(member.initials)
                                 .font(.title2)
                                 .fontWeight(.bold)
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                         )
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -32,7 +32,7 @@ struct TeamMemberDetail: View {
 
                         Text(member.role)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         HStack(spacing: 4) {
                             Circle()
@@ -40,7 +40,7 @@ struct TeamMemberDetail: View {
                                 .frame(width: 8, height: 8)
                             Text(member.isOnline ? "Online" : "Offline")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -57,12 +57,12 @@ struct TeamMemberDetail: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 12) {
                             Image(systemName: "envelope")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .frame(width: 20)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Email")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                 Text(member.email)
                                     .font(.body)
                             }
@@ -70,12 +70,12 @@ struct TeamMemberDetail: View {
 
                         HStack(spacing: 12) {
                             Image(systemName: "phone")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .frame(width: 20)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Phone")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                 Text(member.phone)
                                     .font(.body)
                             }
@@ -92,7 +92,7 @@ struct TeamMemberDetail: View {
 
                     Text("Last active: \(member.lastActive)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()

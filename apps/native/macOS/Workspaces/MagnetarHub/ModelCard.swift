@@ -30,7 +30,7 @@ struct ModelCard: View {
                     let compatibility = capabilityService.canRunModel(parameterSize: paramSize)
                     Image(systemName: compatibility.performance.icon)
                         .font(.caption2)
-                        .foregroundColor(colorForPerformance(compatibility.performance))
+                        .foregroundStyle(colorForPerformance(compatibility.performance))
                 }
 
                 // Multiple badges
@@ -42,7 +42,7 @@ struct ModelCard: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(model.badgeColor(for: badge).opacity(0.2))
-                            .foregroundColor(model.badgeColor(for: badge))
+                            .foregroundStyle(model.badgeColor(for: badge))
                             .cornerRadius(4)
                     }
                 }
@@ -57,7 +57,7 @@ struct ModelCard: View {
             if let description = model.description(enriched: enrichedMetadata) {
                 Text(description)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
                     .frame(height: 32, alignment: .top)
             }
@@ -70,12 +70,12 @@ struct ModelCard: View {
                     HStack {
                         Text(progress.status)
                             .font(.caption2)
-                            .foregroundColor(progress.error != nil ? .red : .secondary)
+                            .foregroundStyle(progress.error != nil ? .red : .secondary)
                         Spacer()
                         if progress.error == nil {
                             Text("\(Int(progress.progress * 100))%")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     ProgressView(value: progress.progress)
@@ -103,7 +103,7 @@ struct ModelCard: View {
                                     .font(.caption2)
                                 Spacer()
                             }
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         }
 
                         if let stat2 = model.stat2 {
@@ -114,7 +114,7 @@ struct ModelCard: View {
                                     .font(.caption2)
                                 Spacer()
                             }
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         }
                     }
 
@@ -123,10 +123,10 @@ struct ModelCard: View {
                         Spacer()
                         Text("View Details")
                             .font(.caption2)
-                            .foregroundColor(.magnetarPrimary.opacity(0.7))
+                            .foregroundStyle(Color.magnetarPrimary.opacity(0.7))
                         Image(systemName: "chevron.right")
                             .font(.caption2)
-                            .foregroundColor(.magnetarPrimary.opacity(0.7))
+                            .foregroundStyle(Color.magnetarPrimary.opacity(0.7))
                     }
                 }
             }

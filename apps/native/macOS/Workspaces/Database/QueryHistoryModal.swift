@@ -61,12 +61,12 @@ struct QueryHistoryModal: View {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 48))
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         Text("Error")
                             .font(.headline)
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                         Button("Retry") {
                             Task { await loadHistory() }
@@ -164,7 +164,7 @@ struct QueryHistoryRow: View {
             // Status indicator
             Image(systemName: item.statusIcon)
                 .font(.system(size: 14))
-                .foregroundColor(item.status == "success" ? .green : .red)
+                .foregroundStyle(item.status == "success" ? .green : .red)
                 .frame(width: 20)
 
             // Query content
@@ -172,7 +172,7 @@ struct QueryHistoryRow: View {
                 Text(item.query)
                     .font(.system(size: 13, design: .monospaced))
                     .lineLimit(2)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 12) {
@@ -211,7 +211,7 @@ struct QueryHistoryRow: View {
                     }) {
                         Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                             .font(.system(size: 12))
-                            .foregroundColor(showCopied ? .green : .secondary)
+                            .foregroundStyle(showCopied ? .green : .secondary)
                             .frame(width: 28, height: 28)
                             .background(
                                 Circle()
@@ -225,7 +225,7 @@ struct QueryHistoryRow: View {
                     Button(action: onSelect) {
                         Image(systemName: "arrow.right.circle")
                             .font(.system(size: 12))
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                             .frame(width: 28, height: 28)
                             .background(
                                 Circle()

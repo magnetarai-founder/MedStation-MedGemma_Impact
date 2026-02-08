@@ -16,7 +16,7 @@ struct HubDiscoverToolbar: View {
             // Title
             Text("Recommended Models")
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
 
@@ -27,7 +27,7 @@ struct HubDiscoverToolbar: View {
                     .frame(width: 6, height: 6)
                 Text(isNetworkConnected ? "Online" : "Offline")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Browse Models button - Opens ollama.com/library

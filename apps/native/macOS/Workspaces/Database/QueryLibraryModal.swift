@@ -29,12 +29,12 @@ struct QueryLibraryModal: View {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 48))
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         Text("Error")
                             .font(.headline)
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Button("Retry") {
                             Task { await loadQueries() }
                         }
@@ -44,12 +44,12 @@ struct QueryLibraryModal: View {
                     VStack(spacing: 16) {
                         Image(systemName: "folder")
                             .font(.system(size: 48))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text("No saved queries yet")
                             .font(.headline)
                         Text("Save your frequently used queries for quick access")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -159,12 +159,12 @@ struct SavedQueryRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(query.name)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Text(query.query)
                     .font(.system(size: 11, design: .monospaced))
                     .lineLimit(2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -177,7 +177,7 @@ struct SavedQueryRow: View {
                     }) {
                         Image(systemName: "pencil")
                             .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .frame(width: 28, height: 28)
                             .background(Color.gray.opacity(0.1))
                             .clipShape(Circle())
@@ -189,7 +189,7 @@ struct SavedQueryRow: View {
                     Button(action: onDelete) {
                         Image(systemName: "trash")
                             .font(.system(size: 14))
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .frame(width: 28, height: 28)
                             .background(Color.red.opacity(0.1))
                             .clipShape(Circle())
@@ -201,7 +201,7 @@ struct SavedQueryRow: View {
                     Button(action: onLoad) {
                         Image(systemName: "arrow.right")
                             .font(.system(size: 14))
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                             .frame(width: 28, height: 28)
                             .background(Color.blue.opacity(0.1))
                             .clipShape(Circle())

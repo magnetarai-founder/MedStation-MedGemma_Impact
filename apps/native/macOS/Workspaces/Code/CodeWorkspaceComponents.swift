@@ -134,7 +134,7 @@ struct CodeFileRow: View {
             // File icon with type-specific color
             Image(systemName: file.iconName)
                 .font(.system(size: 12))
-                .foregroundColor(isSelected ? .white : file.iconColor)
+                .foregroundStyle(isSelected ? .white : file.iconColor)
                 .frame(width: 16)
 
             // File name
@@ -209,7 +209,7 @@ struct CodeFileTab: View {
             // File icon with type color
             Image(systemName: file.iconName)
                 .font(.system(size: 10))
-                .foregroundColor(isSelected ? file.iconColor : .secondary)
+                .foregroundStyle(isSelected ? file.iconColor : .secondary)
 
             // File name
             Text(file.name)
@@ -229,7 +229,7 @@ struct CodeFileTab: View {
                     } else {
                         Image(systemName: "xmark")
                             .font(.system(size: 8, weight: .medium))
-                            .foregroundColor(isCloseHovered ? .primary : Color(nsColor: .tertiaryLabelColor))
+                            .foregroundStyle(isCloseHovered ? .primary : Color(nsColor: .tertiaryLabelColor))
                     }
                 }
                 .frame(width: 14, height: 14)

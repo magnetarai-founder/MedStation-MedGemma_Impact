@@ -23,14 +23,14 @@ struct TrustStatCard: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
-                    .foregroundColor(isHovered ? color : .secondary)
+                    .foregroundStyle(isHovered ? color : .secondary)
                 Text(title)
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             Text(value)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(isHovered ? color : .primary)
+                .foregroundStyle(isHovered ? color : .primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -77,7 +77,7 @@ struct TrustNodeRow: View {
             // Icon
             Image(systemName: nodeTypeIcon(node.type))
                 .font(.system(size: 20))
-                .foregroundColor(accentColor)
+                .foregroundStyle(accentColor)
                 .frame(width: 40, height: 40)
                 .background(
                     Circle()
@@ -106,7 +106,7 @@ struct TrustNodeRow: View {
                             Text(location)
                                 .font(.system(size: 11))
                         }
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -140,7 +140,7 @@ struct TrustNodeRow: View {
             if node.isHub {
                 Text("HUB")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
@@ -216,7 +216,7 @@ struct TrustActionButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundColor(isSuccess ? .green : (isHovered ? color : .secondary))
+                .foregroundStyle(isSuccess ? .green : (isHovered ? color : .secondary))
                 .frame(width: 26, height: 26)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
@@ -243,10 +243,10 @@ struct TrustFormField<Content: View>: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(title)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             content()
         }

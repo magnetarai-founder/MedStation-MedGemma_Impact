@@ -29,7 +29,7 @@ struct NewBoardSheet: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
@@ -103,7 +103,7 @@ struct NewTaskSheet: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()

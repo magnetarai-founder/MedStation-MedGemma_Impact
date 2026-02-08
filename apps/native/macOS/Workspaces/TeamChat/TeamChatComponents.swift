@@ -185,11 +185,11 @@ struct TeamChatSidebar: View {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 16))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text("Add channel")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Spacer()
             }
@@ -202,7 +202,7 @@ struct TeamChatSidebar: View {
     private func emptyState(text: String) -> some View {
         Text(text)
             .font(.system(size: 12))
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
     }
@@ -230,11 +230,11 @@ struct TeamChatWindow: View {
                     if let error = errorMessage {
                         HStack(spacing: 12) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundStyle(.orange)
 
                             Text(error)
                                 .font(.system(size: 13))
-                                .foregroundColor(.primary)
+                                .foregroundStyle(.primary)
 
                             Spacer()
 
@@ -242,7 +242,7 @@ struct TeamChatWindow: View {
                                 errorMessage = nil
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
                         }
@@ -266,13 +266,13 @@ struct TeamChatWindow: View {
                             VStack(spacing: 12) {
                                 Image(systemName: "message")
                                     .font(.system(size: 48))
-                                    .foregroundColor(.secondary.opacity(0.5))
+                                    .foregroundStyle(.secondary.opacity(0.5))
                                 Text("No messages yet")
                                     .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                 Text("Start the conversation!")
                                     .font(.system(size: 13))
-                                    .foregroundColor(.secondary.opacity(0.7))
+                                    .foregroundStyle(.secondary.opacity(0.7))
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
@@ -365,7 +365,7 @@ struct TeamChatWindow: View {
 
                 Image(systemName: "number")
                     .font(.system(size: 40))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Text("No channel selected")
@@ -373,7 +373,7 @@ struct TeamChatWindow: View {
 
             Text("Select a channel from the sidebar to start chatting")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -398,7 +398,7 @@ struct TeamMessageRow: View {
                 .overlay(
                     Text(String(message.senderName.prefix(2)).uppercased())
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -409,7 +409,7 @@ struct TeamMessageRow: View {
 
                     Text(formatTimestamp(message.timestamp))
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     if message.encrypted {
                         HStack(spacing: 2) {
@@ -418,7 +418,7 @@ struct TeamMessageRow: View {
                             Text("E2E")
                                 .font(.system(size: 9, weight: .medium))
                         }
-                        .foregroundColor(.green)
+                        .foregroundStyle(.green)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(Color.green.opacity(0.1))
@@ -447,14 +447,14 @@ struct TeamMessageRow: View {
                 // Message content
                 Text(message.content)
                     .font(.system(size: 14))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .textSelection(.enabled)
 
                 // Edited indicator
                 if message.editedAt != nil {
                     Text("(edited)")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary.opacity(0.7))
+                        .foregroundStyle(.secondary.opacity(0.7))
                         .italic()
                 }
             }
@@ -513,7 +513,7 @@ private struct MessageActionButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 12))
-                .foregroundColor(isSuccess ? .green : (isHovered ? .primary : .secondary))
+                .foregroundStyle(isSuccess ? .green : (isHovered ? .primary : .secondary))
                 .frame(width: 26, height: 26)
                 .background(
                     RoundedRectangle(cornerRadius: 6)

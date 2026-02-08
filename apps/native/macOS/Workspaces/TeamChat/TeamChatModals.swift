@@ -29,7 +29,7 @@ struct NewChannelDialog: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 20))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -53,7 +53,7 @@ struct NewChannelDialog: View {
                     HStack(spacing: 8) {
                         Text("#")
                             .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         TextField("e.g. project-updates", text: $channelName)
                             .textFieldStyle(.plain)
@@ -96,7 +96,7 @@ struct NewChannelDialog: View {
                 } label: {
                     Text("Cancel")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
@@ -112,7 +112,7 @@ struct NewChannelDialog: View {
                 } label: {
                     Text("Create")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
@@ -147,7 +147,7 @@ struct PeerDiscoveryPanel: View {
             Text("P2P Peer Discovery")
                 .font(.title2)
             Text("Peer list will appear here")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(width: 600, height: 400)
         .padding()
@@ -162,7 +162,7 @@ struct FileSharingPanel: View {
             Text("P2P File Sharing")
                 .font(.title2)
             Text("File sharing interface will appear here")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(width: 600, height: 400)
         .padding()

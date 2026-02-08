@@ -43,7 +43,7 @@ struct CodeDiagnosticsPanel: View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 12))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             Text("Problems")
                 .font(.system(size: 12, weight: .semibold))
@@ -77,7 +77,7 @@ struct CodeDiagnosticsPanel: View {
             } label: {
                 Image(systemName: "line.3.horizontal.decrease.circle")
                     .font(.system(size: 12))
-                    .foregroundColor(filterSeverity != nil ? .magnetarPrimary : .secondary)
+                    .foregroundStyle(filterSeverity != nil ? Color.magnetarPrimary : .secondary)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 24)
@@ -112,14 +112,14 @@ struct CodeDiagnosticsPanel: View {
         VStack(spacing: 8) {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 24))
-                .foregroundColor(.green)
+                .foregroundStyle(.green)
 
             Text("No Problems")
                 .font(.system(size: 12, weight: .medium))
 
             Text(showAllFiles ? "All files are clean" : "Current file has no issues")
                 .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
@@ -170,7 +170,7 @@ private struct StatBadge: View {
             Text("\(count)")
                 .font(.system(size: 10, weight: .medium))
         }
-        .foregroundColor(color)
+        .foregroundStyle(color)
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(color.opacity(0.15))
@@ -193,14 +193,14 @@ private struct DiagnosticRow: View {
                 // Severity icon
                 Image(systemName: diagnostic.severityIcon)
                     .font(.system(size: 12))
-                    .foregroundColor(diagnostic.severityColor)
+                    .foregroundStyle(diagnostic.severityColor)
                     .frame(width: 16)
 
                 VStack(alignment: .leading, spacing: 2) {
                     // Message
                     Text(diagnostic.message)
                         .font(.system(size: 11))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
@@ -209,7 +209,7 @@ private struct DiagnosticRow: View {
                         if showFileName {
                             Text(diagnostic.fileName)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         Text("Ln \(diagnostic.line + 1), Col \(diagnostic.character + 1)")
@@ -250,7 +250,7 @@ struct LSPHoverTooltip: View {
             // Parse markdown-style content
             Text(parseContent(content))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .textSelection(.enabled)
         }
         .padding(8)
@@ -323,13 +323,13 @@ private struct CompletionItemRow: View {
                 // Kind icon
                 Image(systemName: item.kind?.iconName ?? "doc.text")
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 16)
 
                 // Label
                 Text(item.label)
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Spacer()

@@ -23,11 +23,11 @@ struct JsonConverterModal: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Paste your JSON data below to convert it to Excel format")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text("The JSON should be an array of objects with consistent keys")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // JSON Input
@@ -48,20 +48,20 @@ struct JsonConverterModal: View {
                 if let error = errorMessage {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                 }
 
                 if let success = successMessage {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                         Text(success)
                             .font(.caption)
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                     }
                 }
 

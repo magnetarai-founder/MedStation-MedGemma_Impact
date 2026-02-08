@@ -36,7 +36,7 @@ struct TeamMemberSidebar: View {
             HStack {
                 Text("Team Members")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 // Online count badge
                 HStack(spacing: 4) {
@@ -144,7 +144,7 @@ struct TeamMemberRow: View {
                     .overlay(
                         Text(member.initials)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     )
 
                 // Online indicator
@@ -161,12 +161,12 @@ struct TeamMemberRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.name)
                     .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected ? .primary : .textPrimary)
+                    .foregroundStyle(isSelected ? .primary : Color.textPrimary)
 
                 HStack(spacing: 4) {
                     Text(member.role)
                         .font(.system(size: 11))
-                        .foregroundColor(.textSecondary)
+                        .foregroundStyle(Color.textSecondary)
 
                     if isHovered && !member.lastActive.isEmpty {
                         Text("•")
@@ -223,7 +223,7 @@ private struct MemberActionButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundColor(isHovered ? color : .secondary)
+                .foregroundStyle(isHovered ? color : .secondary)
                 .frame(width: 24, height: 24)
                 .background(
                     Circle()
