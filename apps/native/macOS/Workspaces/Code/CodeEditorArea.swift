@@ -14,8 +14,10 @@ struct CodeEditorArea: View {
     let selectedFile: FileItem?
     let workspaceName: String?
     @Binding var fileContent: String
+    var targetLine: Int?
     let onSelectFile: (FileItem) -> Void
     let onCloseFile: (FileItem) -> Void
+    var onCursorMove: ((Int, Int) -> Void)?
 
     @AppStorage("showLineNumbers") private var showLineNumbers = true
     @AppStorage("editorFontSize") private var editorFontSize = 14
@@ -62,11 +64,15 @@ struct CodeEditorArea: View {
                             .frame(width: 1)
                     }
 
-                    // Editor
-                    TextEditor(text: $fileContent)
-                        .font(.system(size: CGFloat(editorFontSize), design: .monospaced))
-                        .scrollContentBackground(.hidden)
-                        .background(Color(nsColor: .textBackgroundColor))
+                    // Editor (NSTextView for cursor positioning + scroll-to-line)
+                    CodeTextView(
+                        text: $fileContent,
+                        fontSize: CGFloat(editorFontSize),
+                        targetLine: targetLine,
+                        onCursorMove: { line, col in
+                            onCursorMove?(line, col)
+                        }
+                    )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

@@ -22,6 +22,8 @@ struct CodeSourceControlPanel: View {
     @State private var isCommitting: Bool = false
     @State private var errorMessage: String?
     @State private var successMessage: String?
+    @State private var selectedFileDiff: String?
+    @State private var selectedDiffFileName: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -105,6 +107,47 @@ struct CodeSourceControlPanel: View {
                     }
                 } else {
                     changedFilesList
+                }
+
+                // Inline diff view
+                if let diff = selectedFileDiff, let name = selectedDiffFileName {
+                    Divider()
+
+                    HStack(spacing: 6) {
+                        Text("Diff")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button {
+                            guard let cwd = workspacePath else { return }
+                            let fullPath = (cwd as NSString).appendingPathComponent(name)
+                            onSelectFile(fullPath)
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "doc.text")
+                                    .font(.system(size: 9))
+                                Text("Open in Editor")
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            selectedFileDiff = nil
+                            selectedDiffFileName = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+
+                    CodeDiffView(diffOutput: diff, fileName: name)
+                        .frame(maxHeight: 300)
                 }
             }
         }
@@ -252,6 +295,21 @@ struct CodeSourceControlPanel: View {
 
             Spacer()
 
+            // View diff button
+            if file.status != .untracked {
+                Button {
+                    Task { await loadDiff(for: file) }
+                } label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 10))
+                        .foregroundStyle(selectedDiffFileName == file.path ? .accentColor : .secondary)
+                        .frame(width: 18, height: 18)
+                        .background(RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(0.05)))
+                }
+                .buttonStyle(.plain)
+                .help("View Diff")
+            }
+
             // Stage/unstage button
             Button {
                 Task { await toggleStage(file) }
@@ -317,6 +375,30 @@ struct CodeSourceControlPanel: View {
             await refreshStatus()
         } catch {
             logger.error("Stage/unstage failed: \(error)")
+        }
+    }
+
+    private func loadDiff(for file: GitFileStatus) async {
+        guard let cwd = workspacePath else { return }
+        do {
+            let diffArgs: [String]
+            if file.isStaged {
+                diffArgs = ["diff", "--cached", "--", file.path]
+            } else {
+                diffArgs = ["diff", "--", file.path]
+            }
+            let output = try await runGit(diffArgs, cwd: cwd)
+            await MainActor.run {
+                if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    selectedFileDiff = nil
+                    selectedDiffFileName = nil
+                } else {
+                    selectedFileDiff = output
+                    selectedDiffFileName = file.path
+                }
+            }
+        } catch {
+            logger.warning("Failed to load diff for \(file.path): \(error)")
         }
     }
 

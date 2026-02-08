@@ -48,6 +48,18 @@ struct DetachedAIWindow: View {
         .onAppear {
             isInputFocused = true
         }
+        .onChange(of: activeContext) { _, newContext in
+            let contextSessions = chatStore.sessionsForContext(newContext)
+            // Auto-select most recent session for the new context
+            if let currentId = chatStore.currentSession?.id,
+               contextSessions.contains(where: { $0.id == currentId }) {
+                // Current session already belongs to this context — keep it
+                return
+            }
+            if let mostRecent = contextSessions.first {
+                Task { await chatStore.selectSession(mostRecent) }
+            }
+        }
     }
 
     // MARK: - Global Header

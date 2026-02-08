@@ -4,7 +4,7 @@
 //
 //  Code editing workspace with activity bar, file browser, and full-height editor.
 //  Terminal access via activity bar buttons (spawn external terminal or terminal bridge).
-//  AI assistant available as detached window (⌘⇧A) — no longer embedded.
+//  AI assistant available as detached window (⇧⌘P) — no longer embedded.
 //
 
 import SwiftUI
@@ -39,6 +39,9 @@ struct CodeWorkspace: View {
     // Cursor position for status bar
     @State private var cursorLine: Int = 1
     @State private var cursorColumn: Int = 1
+
+    // Line navigation (set by search/LSP to scroll editor to a line)
+    @State private var targetLine: Int?
 
     private let codeEditorService = CodeEditorService.shared
 
@@ -112,8 +115,13 @@ struct CodeWorkspace: View {
                     selectedFile: selectedFile,
                     workspaceName: currentWorkspace?.name,
                     fileContent: $fileContent,
+                    targetLine: targetLine,
                     onSelectFile: selectFile,
-                    onCloseFile: closeFile
+                    onCloseFile: closeFile,
+                    onCursorMove: { line, col in
+                        cursorLine = line
+                        cursorColumn = col
+                    }
                 )
                 .frame(minHeight: 100)
                 .onChange(of: fileContent) { _, newValue in
@@ -164,7 +172,7 @@ struct CodeWorkspace: View {
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
-            .help("AI Assistant (⌘⇧A)")
+            .help("AI Assistant (⇧⌘P)")
 
             // Open Terminal — spawn user's preferred terminal app
             Button {
@@ -400,11 +408,50 @@ struct CodeWorkspace: View {
                 isLoadingFiles = false
             }
         } catch {
-            logger.error("Failed to load files: \(error)")
+            logger.warning("Backend unavailable, falling back to local filesystem: \(error)")
+            await loadLocalFiles()
+        }
+    }
+
+    /// Fallback: scan local workspace directory when backend is unavailable
+    private func loadLocalFiles() async {
+        let workspacePath = codingStore.workingDirectory
+        guard !workspacePath.isEmpty else {
             await MainActor.run {
-                // Show empty state if backend unavailable
                 files = []
-                errorMessage = "Backend connection failed: \(error.localizedDescription)"
+                errorMessage = "No workspace folder configured"
+                isLoadingFiles = false
+            }
+            return
+        }
+
+        do {
+            let fm = FileManager.default
+            let contents = try fm.contentsOfDirectory(atPath: workspacePath)
+            let items = contents.sorted().compactMap { name -> FileItem? in
+                // Skip hidden files
+                guard !name.hasPrefix(".") else { return nil }
+                let fullPath = (workspacePath as NSString).appendingPathComponent(name)
+                var isDir: ObjCBool = false
+                fm.fileExists(atPath: fullPath, isDirectory: &isDir)
+                return FileItem(
+                    name: name,
+                    path: fullPath,
+                    isDirectory: isDir.boolValue,
+                    size: nil,
+                    modifiedAt: nil,
+                    fileId: nil
+                )
+            }
+            await MainActor.run {
+                files = items
+                isLoadingFiles = false
+            }
+        } catch {
+            logger.error("Failed to scan local directory: \(error)")
+            await MainActor.run {
+                files = []
+                errorMessage = "Failed to scan directory: \(error.localizedDescription)"
                 isLoadingFiles = false
             }
         }
@@ -418,22 +465,29 @@ struct CodeWorkspace: View {
             openFiles.append(file)
         }
 
-        // Load file content from backend
+        // Load file content
         Task {
-            guard let fileId = file.fileId else {
-                fileContent = "// No file ID available"
-                return
-            }
-
-            do {
-                let codeFile = try await codeEditorService.getFile(fileId: fileId)
-                await MainActor.run {
-                    fileContent = codeFile.content
+            if let fileId = file.fileId {
+                // Backend-managed file
+                do {
+                    let codeFile = try await codeEditorService.getFile(fileId: fileId)
+                    await MainActor.run { fileContent = codeFile.content }
+                } catch {
+                    logger.error("Failed to load file content: \(error)")
+                    await MainActor.run {
+                        fileContent = "// Failed to load file content\n// Error: \(error.localizedDescription)"
+                    }
                 }
-            } catch {
-                logger.error("Failed to load file content: \(error)")
-                await MainActor.run {
-                    fileContent = "// Failed to load file content\n// Error: \(error.localizedDescription)"
+            } else {
+                // Local file (offline fallback)
+                do {
+                    let content = try String(contentsOfFile: file.path, encoding: .utf8)
+                    await MainActor.run { fileContent = content }
+                } catch {
+                    logger.error("Failed to read local file: \(error)")
+                    await MainActor.run {
+                        fileContent = "// Failed to read file\n// Error: \(error.localizedDescription)"
+                    }
                 }
             }
         }
@@ -498,10 +552,14 @@ struct CodeWorkspace: View {
 
     /// Open a local file at a specific line (from search results)
     private func openFileAtLine(_ path: String, _ line: Int) {
-        let fileItem = fileItemFromPath(path)
+        // Clear previous target so the same line can be re-navigated
+        targetLine = nil
         openLocalFile(path)
-        // Line navigation would require NSTextView cursor positioning — log for now
-        logger.info("Open \(path) at line \(line)")
+        // Set target line after a brief delay to ensure content is loaded
+        Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            await MainActor.run { targetLine = line }
+        }
     }
 
     /// Open a local file by path (from source control panel)

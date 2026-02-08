@@ -145,9 +145,6 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         SchedulerService.shared.start()
         logger.debug("SchedulerService started")
 
-        _ = UniversalAIPanelStore.shared
-        logger.debug("UniversalAIPanelStore initialized")
-
         logger.info("Workspace services initialization complete")
     }
 

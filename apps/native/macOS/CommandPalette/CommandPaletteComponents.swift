@@ -356,14 +356,14 @@ struct CommandPaletteView: View {
             ),
             PaletteCommand(
                 id: "ai-assist",
-                title: "Toggle AI Panel",
-                subtitle: "Show or hide the universal AI assistant",
+                title: "Open AI Assistant",
+                subtitle: "Open the AI assistant window",
                 icon: "sparkles",
                 category: .tools,
                 keywords: ["ai", "assist", "panel", "write", "improve", "grammar"],
                 shortcut: "⇧⌘P",
                 action: {
-                    UniversalAIPanelStore.shared.toggle()
+                    WindowOpener.shared.openAIAssistant()
                 }
             ),
         ])
