@@ -25,7 +25,7 @@ struct FeaturesSettingsView: View {
                             .font(.title2.bold())
                         Text("Enable power workspaces and optional features")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 8)
@@ -141,7 +141,7 @@ struct FeaturesSettingsView: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 4)
             }
@@ -174,7 +174,7 @@ private struct FeatureToggleRow: View {
 
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(disabled ? .secondary : color)
+                    .foregroundStyle(disabled ? .secondary : color)
             }
 
             // Text
@@ -187,7 +187,7 @@ private struct FeatureToggleRow: View {
                     if let badge = badge {
                         Text(badge)
                             .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
@@ -199,7 +199,7 @@ private struct FeatureToggleRow: View {
 
                 Text(description)
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
 

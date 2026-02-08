@@ -29,7 +29,7 @@ struct ModelEvictionDialog: View {
             HStack(spacing: 12) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 32))
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("All Hot Slots Are Full")
@@ -38,7 +38,7 @@ struct ModelEvictionDialog: View {
 
                     Text("Replace a model to load '\(modelToLoad)'")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -54,7 +54,7 @@ struct ModelEvictionDialog: View {
                 HStack(spacing: 12) {
                     Image(systemName: "wand.and.stars")
                         .font(.system(size: 20))
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Auto Replace Least-Used")
@@ -62,7 +62,7 @@ struct ModelEvictionDialog: View {
 
                         Text("Automatically replaces the oldest unpinned model")
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
@@ -93,7 +93,7 @@ struct ModelEvictionDialog: View {
 
                 Text("Choose which model to replace:")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 // Slot cards
                 VStack(spacing: 8) {
@@ -169,28 +169,28 @@ struct EvictionSlotCard: View {
 
                     Text("\(slot.slotNumber)")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(isSelected ? .white : .secondary)
+                        .foregroundStyle(isSelected ? .white : .secondary)
                 }
 
                 // Model info
                 VStack(alignment: .leading, spacing: 4) {
                     Text(slot.modelName ?? "Unknown")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
 
                     HStack(spacing: 8) {
                         // Memory
                         if let memoryGB = slot.memoryUsageGB {
                             Label("\(String(format: "%.1f", memoryGB)) GB", systemImage: "memorychip")
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         // Loaded time
                         if let loadedAt = slot.loadedAt {
                             Label("Loaded \(loadedAt.formatted(.relative(presentation: .named)))", systemImage: "clock")
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -205,7 +205,7 @@ struct EvictionSlotCard: View {
                         Text("PINNED")
                             .font(.system(size: 9, weight: .bold))
                     }
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.orange.opacity(0.2))
@@ -216,7 +216,7 @@ struct EvictionSlotCard: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                 }
             }
             .padding(12)

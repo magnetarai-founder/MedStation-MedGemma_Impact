@@ -111,14 +111,14 @@ struct MagnetarCloudSettingsView: View {
                                     .foregroundStyle(.secondary)
                             } else if let error = syncError {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
+                                    .foregroundStyle(.orange)
                                 Text(error)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             } else {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
+                                    .foregroundStyle(.green)
                                 Text(lastSyncText)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -141,7 +141,7 @@ struct MagnetarCloudSettingsView: View {
                         if syncService.pendingChanges > 0 {
                             HStack {
                                 Image(systemName: "arrow.up.circle")
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(.blue)
                                 Text("\(syncService.pendingChanges) pending change\(syncService.pendingChanges == 1 ? "" : "s")")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -152,7 +152,7 @@ struct MagnetarCloudSettingsView: View {
                         if syncService.activeConflicts > 0 {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.orange)
+                                    .foregroundStyle(.orange)
                                 Text("\(syncService.activeConflicts) conflict\(syncService.activeConflicts == 1 ? "" : "s") to resolve")
                                     .font(.caption)
                                     .foregroundStyle(.orange)

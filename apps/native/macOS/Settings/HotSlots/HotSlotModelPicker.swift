@@ -37,7 +37,7 @@ struct ModelPickerSheet: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -48,7 +48,7 @@ struct ModelPickerSheet: View {
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("Search models...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -58,7 +58,7 @@ struct ModelPickerSheet: View {
                         searchText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -74,16 +74,16 @@ struct ModelPickerSheet: View {
                 VStack(spacing: 12) {
                     Image(systemName: "cube.box")
                         .font(.system(size: 48))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text(searchText.isEmpty ? "No models installed" : "No matching models")
                         .font(.headline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     if searchText.isEmpty {
                         Text("Install models from MagnetarHub first")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -128,18 +128,18 @@ struct ModelPickerRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(model.name)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
 
                     HStack(spacing: 8) {
                         if let family = model.details?.family {
                             Text(family.capitalized)
                                 .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         Text(model.sizeFormatted)
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -148,7 +148,7 @@ struct ModelPickerRow: View {
                 // Assign button
                 Image(systemName: "arrow.right.circle.fill")
                     .font(.title3)
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
             }
             .padding(12)
             .background(

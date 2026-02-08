@@ -31,7 +31,7 @@ struct HotSlotCard: View {
 
                 Text("\(slot.slotNumber)")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(slot.isEmpty ? .secondary : .white)
+                    .foregroundStyle(slot.isEmpty ? Color.secondary : Color.white)
             }
 
             // Model info
@@ -45,24 +45,24 @@ struct HotSlotCard: View {
                         if let memoryGB = slot.memoryUsageGB {
                             Label("\(String(format: "%.1f", memoryGB)) GB", systemImage: "memorychip")
                                 .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         // Loaded time
                         if let loadedAt = slot.loadedAt {
                             Label(loadedAt.formatted(.relative(presentation: .named)), systemImage: "clock")
                                 .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 } else {
                     Text("Empty Slot")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text("Click 'Assign Model' to load a model")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -77,7 +77,7 @@ struct HotSlotCard: View {
                     } label: {
                         Image(systemName: slot.isPinned ? "pin.fill" : "pin")
                             .font(.system(size: 14))
-                            .foregroundColor(slot.isPinned ? .orange : .secondary)
+                            .foregroundStyle(slot.isPinned ? .orange : .secondary)
                     }
                     .buttonStyle(.plain)
                     .help(slot.isPinned ? "Unpin (allow eviction)" : "Pin (prevent eviction)")
@@ -90,7 +90,7 @@ struct HotSlotCard: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 14))
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                     .buttonStyle(.plain)
                     .help("Remove from slot")
@@ -106,7 +106,7 @@ struct HotSlotCard: View {
                         Text(slot.isEmpty ? "Assign Model" : "Replace")
                             .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
                 }
                 .buttonStyle(.plain)
             }

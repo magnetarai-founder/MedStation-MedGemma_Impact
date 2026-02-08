@@ -19,7 +19,7 @@ struct PermissionCard: View {
             // File icon
             Image(systemName: "doc.fill")
                 .font(.system(size: 24))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             // Info
             VStack(alignment: .leading, spacing: 6) {
@@ -32,7 +32,7 @@ struct PermissionCard: View {
                     Label(permission.vaultType.capitalized, systemImage: "lock.fill")
                 }
                 .font(.system(size: 10))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -46,7 +46,7 @@ struct PermissionCard: View {
                     Text("Revoke")
                 }
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
             }
             .buttonStyle(.plain)
         }
@@ -64,7 +64,7 @@ struct AuditEntryRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: entry.granted ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundColor(entry.granted ? .green : .red)
+                .foregroundStyle(entry.granted ? .green : .red)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.action)
@@ -72,14 +72,14 @@ struct AuditEntryRow: View {
 
                 Text("\(entry.fileName) • \(entry.modelId)")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Text(entry.timestamp.formatted(date: .omitted, time: .shortened))
                 .font(.system(size: 10))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 8)
     }
@@ -97,14 +97,14 @@ struct StatCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 24))
-                .foregroundColor(color)
+                .foregroundStyle(color)
 
             Text(value)
                 .font(.system(size: 20, weight: .bold))
 
             Text(label)
                 .font(.system(size: 10))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .textCase(.uppercase)
         }
         .frame(maxWidth: .infinity)
@@ -126,14 +126,14 @@ struct ResourceStat: View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundColor(color)
+                .foregroundStyle(color)
 
             Text(value)
                 .font(.system(size: 14, weight: .semibold))
 
             Text(label)
                 .font(.system(size: 10))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(12)
@@ -164,11 +164,11 @@ struct SecurityAlert: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(severity.color)
+                .foregroundStyle(severity.color)
 
             Text(message)
                 .font(.system(size: 12))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
         }
@@ -189,14 +189,14 @@ struct VaultAdminEmptyState: View {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text(title)
                 .font(.headline)
 
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)

@@ -40,10 +40,10 @@ struct SecuritySettingsView: View {
                     if securityManager.networkFirewallEnabled {
                         HStack {
                             Image(systemName: "shield.fill")
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                             Text("Firewall active - all requests require approval")
                                 .font(.caption)
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                         }
                         .padding(.top, 4)
                     }
@@ -53,7 +53,7 @@ struct SecuritySettingsView: View {
             Section("Biometric Authentication") {
                 HStack {
                     Image(systemName: biometricService.biometricType().icon)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                     Text(biometricService.biometricType().displayName)
                         .font(.headline)
                 }
@@ -69,7 +69,7 @@ struct SecuritySettingsView: View {
                     VStack(spacing: 8) {
                         HStack {
                             Image(systemName: "checkmark.shield.fill")
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                             Text("Biometric credentials stored")
                                 .font(.caption)
                             Spacer()

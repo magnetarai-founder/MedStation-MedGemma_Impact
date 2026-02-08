@@ -33,7 +33,7 @@ struct FileAccessPermissionModal: View {
 
                     Image(systemName: "lock.shield.fill")
                         .font(.system(size: 32))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -43,7 +43,7 @@ struct FileAccessPermissionModal: View {
 
                     Text("Vault: \(request.vaultType.capitalized)")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -103,7 +103,7 @@ struct FileAccessPermissionModal: View {
             HStack(spacing: 12) {
                 Image(systemName: "exclamationmark.shield.fill")
                     .font(.system(size: 20))
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Models see metadata only. File contents require permission.")
@@ -111,7 +111,7 @@ struct FileAccessPermissionModal: View {
 
                     Text("Choose how long to grant access to this file.")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(12)
@@ -137,7 +137,7 @@ struct FileAccessPermissionModal: View {
                                 .font(.system(size: 13, weight: .semibold))
                             Text("Single-use permission (expires immediately)")
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                     }
@@ -164,7 +164,7 @@ struct FileAccessPermissionModal: View {
                                 .font(.system(size: 13, weight: .semibold))
                             Text("Permission expires when session ends (1 hour)")
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                     }
@@ -187,7 +187,7 @@ struct FileAccessPermissionModal: View {
                                 .font(.system(size: 13, weight: .semibold))
                             Text("Model will not be able to read this file")
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                     }
@@ -217,7 +217,7 @@ struct FileAccessPermissionModal: View {
                         .scaleEffect(0.7)
                     Text("Authenticating...")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.top, 8)
             }
@@ -239,13 +239,13 @@ private struct InfoRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .textCase(.uppercase)
 
                 Text(value)

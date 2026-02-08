@@ -37,7 +37,7 @@ struct HotSlotSettingsView: View {
 
                             Text("Preload models for instant inference")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         Spacer()
@@ -103,7 +103,7 @@ struct HotSlotSettingsView: View {
                                     .font(.system(size: 13, weight: .medium))
                                 Text("Require confirmation before unpinning models")
                                     .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                         .onChange(of: hotSlotManager.immutableModels) { oldValue, newValue in
@@ -118,7 +118,7 @@ struct HotSlotSettingsView: View {
                                     .font(.system(size: 13, weight: .medium))
                                 Text("Show confirmation dialog when unpinning slots")
                                     .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                         .onChange(of: hotSlotManager.askBeforeUnpinning) { oldValue, newValue in
@@ -134,7 +134,7 @@ struct HotSlotSettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "info.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Hot slots keep models loaded in memory for instant inference.")
@@ -142,7 +142,7 @@ struct HotSlotSettingsView: View {
 
                         Text("Pin important models to prevent automatic eviction when loading new models.")
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(12)

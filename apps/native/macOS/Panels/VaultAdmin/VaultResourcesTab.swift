@@ -31,7 +31,7 @@ struct VaultResourcesTab: View {
                             // Slot badge
                             Text("\(slot.slotNumber)")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .frame(width: 24, height: 24)
                                 .background(Circle().fill(Color.magnetarPrimary))
 
@@ -42,7 +42,7 @@ struct VaultResourcesTab: View {
                                 if let memoryGB = slot.memoryUsageGB {
                                     Text("\(String(format: "%.1f", memoryGB)) GB")
                                         .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
 
@@ -51,7 +51,7 @@ struct VaultResourcesTab: View {
                             if slot.isPinned {
                                 Label("Pinned", systemImage: "pin.fill")
                                     .font(.system(size: 10))
-                                    .foregroundColor(.orange)
+                                    .foregroundStyle(.orange)
                             }
                         }
                         .padding(12)
@@ -102,7 +102,7 @@ struct VaultResourcesTab: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Hot Slots Memory Usage")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         HStack(spacing: 12) {
                             ForEach(hotSlotManager.hotSlots) { slot in
@@ -110,7 +110,7 @@ struct VaultResourcesTab: View {
                                     VStack(spacing: 4) {
                                         Text("Slot \(slot.slotNumber)")
                                             .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
 
                                         HStack(spacing: 4) {
                                             Image(systemName: "memorychip")
@@ -118,7 +118,7 @@ struct VaultResourcesTab: View {
                                             Text(String(format: "%.1f GB", memoryGB))
                                                 .font(.system(size: 11, weight: .medium))
                                         }
-                                        .foregroundColor(.magnetarPrimary)
+                                        .foregroundStyle(Color.magnetarPrimary)
                                     }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 6)

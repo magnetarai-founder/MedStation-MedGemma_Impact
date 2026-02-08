@@ -25,7 +25,7 @@ struct VaultAdminHeader: View {
 
                 Text("\(permissionManager.activePermissions.count) active permissions • \(permissionManager.auditLog.count) audit entries")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -39,7 +39,7 @@ struct VaultAdminHeader: View {
                     Text("Revoke All")
                 }
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Color.red)

@@ -281,20 +281,20 @@ struct WorkspaceErrorView: View {
         VStack(spacing: 24) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             Text("Something went wrong")
                 .font(.title2.bold())
 
             Text(error.localizedDescription)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
             Text(error.recoverySuggestion)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: 16) {
                 Button("Try Again") {

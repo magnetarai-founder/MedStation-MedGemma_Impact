@@ -44,7 +44,7 @@ struct VaultAdminPanel: View {
                     } label: {
                         Text(tab.rawValue)
                             .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
-                            .foregroundColor(selectedTab == tab ? .magnetarPrimary : .secondary)
+                            .foregroundStyle(selectedTab == tab ? Color.magnetarPrimary : .secondary)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
                             .background(
