@@ -51,7 +51,7 @@ struct DetachedNoteWindow: View {
             } else {
                 Text(noteTitle)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .onTapGesture(count: 2) {
                         isEditing = true
                     }
@@ -63,13 +63,13 @@ struct DetachedNoteWindow: View {
             if let saved = lastSaved {
                 Text("Saved \(formatTimestamp(saved))")
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Slash command hint
             Text("Type / for commands")
                 .font(.system(size: 11))
-                .foregroundColor(.secondary.opacity(0.6))
+                .foregroundStyle(.secondary.opacity(0.6))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(

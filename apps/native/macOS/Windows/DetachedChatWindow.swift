@@ -42,7 +42,7 @@ struct DetachedChatWindow: View {
                 .scaleEffect(1.2)
             Text("Creating new chat...")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -53,7 +53,7 @@ struct DetachedChatWindow: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
             Text("Could not create chat session")
                 .font(.headline)
             Button("Try Again") {
@@ -123,7 +123,7 @@ private struct ChatDetailView: View {
             // Model indicator
             Text(session.model ?? "Default")
                 .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(
@@ -151,7 +151,7 @@ private struct ChatDetailView: View {
                                 .scaleEffect(0.8)
                             Text("Thinking...")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .padding()
                     }
@@ -185,7 +185,7 @@ private struct ChatDetailView: View {
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(inputText.isEmpty ? .secondary : .accentColor)
+                    .foregroundStyle(inputText.isEmpty ? .secondary : Color.accentColor)
             }
             .buttonStyle(.plain)
             .disabled(inputText.isEmpty || chatStore.isStreaming)
@@ -222,14 +222,14 @@ private struct MessageRow: View {
                 .overlay(
                     Image(systemName: message.role == .user ? "person.fill" : "brain")
                         .font(.system(size: 14))
-                        .foregroundColor(message.role == .user ? .accentColor : .secondary)
+                        .foregroundStyle(message.role == .user ? Color.accentColor : .secondary)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
                 // Role label
                 Text(message.role == .user ? "You" : "Assistant")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 // Content
                 Text(message.content)

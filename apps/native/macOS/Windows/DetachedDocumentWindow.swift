@@ -65,7 +65,7 @@ struct DetachedDocumentWindow: View {
 
                 Image(systemName: mimeIcon)
                     .font(.system(size: 18))
-                    .foregroundColor(Color(mimeColor))
+                    .foregroundStyle(Color(mimeColor))
             }
 
             // File info
@@ -77,14 +77,14 @@ struct DetachedDocumentWindow: View {
                 HStack(spacing: 6) {
                     Text(documentInfo.mimeType?.uppercased() ?? "FILE")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text("•")
-                        .foregroundColor(.secondary.opacity(0.5))
+                        .foregroundStyle(.secondary.opacity(0.5))
 
                     Text(formattedSize)
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -134,7 +134,7 @@ struct DetachedDocumentWindow: View {
                 .scaleEffect(1.2)
             Text("Loading document...")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -143,14 +143,14 @@ struct DetachedDocumentWindow: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             Text("Could not load document")
                 .font(.headline)
 
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
             Button("Try Again") {
@@ -166,14 +166,14 @@ struct DetachedDocumentWindow: View {
         VStack(spacing: 20) {
             Image(systemName: mimeIcon)
                 .font(.system(size: 64))
-                .foregroundColor(Color(mimeColor))
+                .foregroundStyle(Color(mimeColor))
 
             Text(documentInfo.fileName)
                 .font(.title2.bold())
 
             Text("Preview not available for this file type")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Button("Download to View") {
                 Task { await downloadFile() }
@@ -219,14 +219,14 @@ struct DetachedDocumentWindow: View {
             VStack(spacing: 20) {
                 Image(systemName: "doc.text.fill")
                     .font(.system(size: 64))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
 
                 Text("PDF Preview")
                     .font(.title2.bold())
 
                 Text("PDF rendering coming soon")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Button("Open in Preview") {
                     openInDefaultApp(data: data)
