@@ -117,7 +117,6 @@ struct MainAppView: View {
     @Environment(VaultPermissionManager.self) private var permissionManager
     @Environment(AuthStore.self) private var authStore
     @State private var workspaceError: WorkspaceError?
-    @State private var aiPanelStore = UniversalAIPanelStore.shared
     @AppStorage("autoLockEnabled") private var autoLockEnabled = true
     @AppStorage("autoLockTimeout") private var autoLockTimeout = 15
 
@@ -144,20 +143,7 @@ struct MainAppView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.magnetarFade)
 
-                    // Universal AI Panel (toggled via Header sparkles or ⇧⌘P)
-                    if aiPanelStore.isVisible {
-                        ResizableDivider(
-                            dimension: $aiPanelStore.panelWidth,
-                            axis: .horizontal,
-                            minValue: Double(UniversalAIPanelStore.minWidth),
-                            maxValue: Double(UniversalAIPanelStore.maxWidth),
-                            defaultValue: 320,
-                            invertDrag: true
-                        )
-
-                        UniversalAIPanel()
-                            .frame(width: CGFloat(aiPanelStore.panelWidth))
-                    }
+                    // AI Assistant is now always a detached pop-out window (⇧⌘P)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

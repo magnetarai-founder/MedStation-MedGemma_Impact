@@ -2,8 +2,9 @@
 //  UniversalAIPanelStore.swift
 //  MagnetarStudio
 //
-//  State management for the universal AI side panel.
-//  Controls visibility and width across all workspaces.
+//  DEPRECATED: Inline AI panel removed. AI is now always a detached pop-out window
+//  (DetachedAIWindow via ⇧⌘P). This store is no longer referenced by active views.
+//  Kept for backwards compatibility with persisted UserDefaults keys.
 //
 
 import Foundation

@@ -126,7 +126,7 @@ final class ChatStore {
 
     // MARK: - Per-Session Model Override (transient, resets on app restart)
 
-    struct SessionModelOverride: Sendable {
+    struct SessionModelOverride: Codable, Sendable {
         let mode: String       // "intelligent" or "manual"
         let modelId: String?
     }
@@ -149,10 +149,115 @@ final class ChatStore {
     }
 
     func effectiveModelSelection(for sessionId: UUID) -> (mode: String, modelId: String?) {
+        // Tier 1: per-session override
         if let override = sessionModelOverrides[sessionId] {
             return (override.mode, override.modelId)
         }
+        // Tier 2: per-workspace-context override
+        if let context = sessionWorkspaceContext[sessionId],
+           let workspaceOverride = workspaceModelOverrides[context] {
+            return (workspaceOverride.mode, workspaceOverride.modelId)
+        }
+        // Tier 3: global default
         return (selectedMode, selectedModelId)
+    }
+
+    // MARK: - Per-Workspace Model Override (persisted to UserDefaults)
+
+    private static let workspaceModelOverridesKey = "chat.workspaceModelOverrides"
+    private static let sessionWorkspaceContextKey = "chat.sessionWorkspaceContext"
+
+    @ObservationIgnored
+    private var workspaceModelOverrides: [WorkspaceAIContext: SessionModelOverride] = [:]
+
+    @ObservationIgnored
+    private var sessionWorkspaceContext: [UUID: WorkspaceAIContext] = [:]
+
+    func setWorkspaceModelOverride(context: WorkspaceAIContext, mode: String, modelId: String?) {
+        workspaceModelOverrides[context] = SessionModelOverride(mode: mode, modelId: modelId)
+        saveWorkspaceModelOverrides()
+        logger.debug("Set workspace model override for \(context.rawValue): mode=\(mode), model=\(modelId ?? "nil")")
+    }
+
+    func clearWorkspaceModelOverride(context: WorkspaceAIContext) {
+        workspaceModelOverrides.removeValue(forKey: context)
+        saveWorkspaceModelOverrides()
+        logger.debug("Cleared workspace model override for \(context.rawValue)")
+    }
+
+    func hasWorkspaceModelOverride(for context: WorkspaceAIContext) -> Bool {
+        workspaceModelOverrides[context] != nil
+    }
+
+    func workspaceModelSelection(for context: WorkspaceAIContext) -> (mode: String, modelId: String?) {
+        if let override = workspaceModelOverrides[context] {
+            return (override.mode, override.modelId)
+        }
+        return (selectedMode, selectedModelId)
+    }
+
+    func tagSession(_ sessionId: UUID, withContext context: WorkspaceAIContext) {
+        sessionWorkspaceContext[sessionId] = context
+        saveSessionWorkspaceContext()
+    }
+
+    func sessionsForContext(_ context: WorkspaceAIContext) -> [ChatSession] {
+        sessions.filter { session in
+            let mapped = sessionWorkspaceContext[session.id]
+            if context == .general {
+                return mapped == nil || mapped == .general
+            }
+            return mapped == context
+        }
+    }
+
+    // MARK: - Workspace Override Persistence
+
+    private func saveWorkspaceModelOverrides() {
+        do {
+            let mapped = Dictionary(uniqueKeysWithValues: workspaceModelOverrides.map { ($0.key.rawValue, $0.value) })
+            let data = try JSONEncoder().encode(mapped)
+            UserDefaults.standard.set(data, forKey: Self.workspaceModelOverridesKey)
+        } catch {
+            logger.warning("Failed to save workspace model overrides: \(error)")
+        }
+    }
+
+    private func loadWorkspaceModelOverrides() {
+        guard let data = UserDefaults.standard.data(forKey: Self.workspaceModelOverridesKey) else { return }
+        do {
+            let decoded = try JSONDecoder().decode([String: SessionModelOverride].self, from: data)
+            workspaceModelOverrides = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
+                guard let context = WorkspaceAIContext(rawValue: key) else { return nil }
+                return (context, value)
+            })
+        } catch {
+            logger.warning("Failed to load workspace model overrides: \(error)")
+        }
+    }
+
+    private func saveSessionWorkspaceContext() {
+        do {
+            let mapped = Dictionary(uniqueKeysWithValues: sessionWorkspaceContext.map { ($0.key.uuidString, $0.value.rawValue) })
+            let data = try JSONEncoder().encode(mapped)
+            UserDefaults.standard.set(data, forKey: Self.sessionWorkspaceContextKey)
+        } catch {
+            logger.warning("Failed to save session workspace context: \(error)")
+        }
+    }
+
+    private func loadSessionWorkspaceContext() {
+        guard let data = UserDefaults.standard.data(forKey: Self.sessionWorkspaceContextKey) else { return }
+        do {
+            let decoded = try JSONDecoder().decode([String: String].self, from: data)
+            sessionWorkspaceContext = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
+                guard let uuid = UUID(uuidString: key),
+                      let context = WorkspaceAIContext(rawValue: value) else { return nil }
+                return (uuid, context)
+            })
+        } catch {
+            logger.warning("Failed to load session workspace context: \(error)")
+        }
     }
 
     // Session ID mapping: local UUID -> backend string ID
@@ -183,6 +288,10 @@ final class ChatStore {
            let uuid = UUID(uuidString: savedSessionId) {
             self.pendingRestoreSessionId = uuid
         }
+
+        // Restore workspace model overrides
+        loadWorkspaceModelOverrides()
+        loadSessionWorkspaceContext()
 
         // Load models and sessions on init with retry logic
         Task {

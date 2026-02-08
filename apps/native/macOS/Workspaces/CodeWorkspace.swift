@@ -65,16 +65,35 @@ struct CodeWorkspace: View {
                     .fill(Color(nsColor: .separatorColor))
                     .frame(width: 1)
 
-                // Left: File Browser
+                // Left: Sidebar panel (switches based on activity bar selection)
                 if showSidebar {
-                    CodeFileBrowser(
-                        currentWorkspace: currentWorkspace,
-                        files: files,
-                        isLoadingFiles: isLoadingFiles,
-                        selectedFile: selectedFile,
-                        onRefresh: loadFiles,
-                        onSelectFile: selectFile
-                    )
+                    Group {
+                        switch activeActivityItem {
+                        case .files:
+                            CodeFileBrowser(
+                                currentWorkspace: currentWorkspace,
+                                files: files,
+                                isLoadingFiles: isLoadingFiles,
+                                selectedFile: selectedFile,
+                                onRefresh: loadFiles,
+                                onSelectFile: selectFile
+                            )
+                        case .search:
+                            CodeSearchPanel(
+                                workspacePath: currentWorkspace?.diskPath ?? codingStore.workingDirectory,
+                                onOpenFile: openFileAtLine
+                            )
+                        case .sourceControl:
+                            CodeSourceControlPanel(
+                                workspacePath: currentWorkspace?.diskPath ?? codingStore.workingDirectory,
+                                onSelectFile: { path in openLocalFile(path) }
+                            )
+                        case .debug:
+                            CodeComingSoonPanel(panelName: "Debug", icon: "ladybug")
+                        case .extensions:
+                            CodeComingSoonPanel(panelName: "Extensions", icon: "square.grid.2x2")
+                        }
+                    }
                     .frame(width: CGFloat(sidebarWidth))
 
                     // Resizable sidebar divider
@@ -120,19 +139,15 @@ struct CodeWorkspace: View {
             ForEach(ActivityBarItem.allCases) { item in
                 ActivityBarButton(
                     item: item,
-                    isActive: activeActivityItem == item && (item == .files ? showSidebar : false)
+                    isActive: activeActivityItem == item && showSidebar
                 ) {
-                    if item == .files {
-                        if activeActivityItem == .files {
-                            withAnimation(.magnetarQuick) { showSidebar.toggle() }
-                        } else {
-                            activeActivityItem = .files
-                            if !showSidebar {
-                                withAnimation(.magnetarQuick) { showSidebar = true }
-                            }
-                        }
+                    if item == activeActivityItem {
+                        withAnimation(.magnetarQuick) { showSidebar.toggle() }
                     } else {
                         activeActivityItem = item
+                        if !showSidebar {
+                            withAnimation(.magnetarQuick) { showSidebar = true }
+                        }
                     }
                 }
             }
@@ -479,6 +494,53 @@ struct CodeWorkspace: View {
         }
     }
 
+    // MARK: - Local File Opening (for Search & Source Control)
+
+    /// Open a local file at a specific line (from search results)
+    private func openFileAtLine(_ path: String, _ line: Int) {
+        let fileItem = fileItemFromPath(path)
+        openLocalFile(path)
+        // Line navigation would require NSTextView cursor positioning — log for now
+        logger.info("Open \(path) at line \(line)")
+    }
+
+    /// Open a local file by path (from source control panel)
+    private func openLocalFile(_ path: String) {
+        let fileItem = fileItemFromPath(path)
+
+        selectedFile = fileItem
+        if !openFiles.contains(where: { $0.path == fileItem.path }) {
+            openFiles.append(fileItem)
+        }
+
+        // Read content from disk directly (no backend)
+        Task {
+            do {
+                let content = try String(contentsOfFile: path, encoding: .utf8)
+                await MainActor.run { fileContent = content }
+            } catch {
+                logger.error("Failed to read local file: \(error)")
+                await MainActor.run {
+                    fileContent = "// Failed to read file\n// Error: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func fileItemFromPath(_ path: String) -> FileItem {
+        let name = (path as NSString).lastPathComponent
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+        return FileItem(
+            name: name,
+            path: path,
+            isDirectory: isDir.boolValue,
+            size: nil,
+            modifiedAt: nil,
+            fileId: nil
+        )
+    }
+
     // MARK: - LSP Integration
 
     /// Request diagnostics refresh (debounced)
@@ -541,7 +603,10 @@ enum ActivityBarItem: String, CaseIterable, Identifiable {
     }
 
     var isImplemented: Bool {
-        self == .files
+        switch self {
+        case .files, .search, .sourceControl: return true
+        case .debug, .extensions: return false
+        }
     }
 }
 

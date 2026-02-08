@@ -2,8 +2,9 @@
 //  DetachedAIWindow.swift
 //  MagnetarStudio (macOS)
 //
-//  Floating AI assistant window accessible from any workspace via ⌘⇧A.
-//  Shares ChatStore with the main app. Supports per-session model override.
+//  Floating AI assistant window with workspace context tabs.
+//  Global model picker + per-tab model override + per-session override.
+//  Accessible via ⇧⌘P or sparkles button in header.
 //
 
 import SwiftUI
@@ -14,12 +15,23 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Detache
 struct DetachedAIWindow: View {
     @Environment(ChatStore.self) private var chatStore
     @State private var inputText = ""
+    @State private var activeContext: WorkspaceAIContext = .general
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            aiHeader
+            // Global header with app-wide model picker
+            globalHeader
+
+            Divider()
+
+            // Workspace context tab bar
+            contextTabBar
+
+            Divider()
+
+            // Per-tab sub-header: tab model picker + session switcher
+            tabSubHeader
 
             Divider()
 
@@ -31,16 +43,16 @@ struct DetachedAIWindow: View {
             // Input
             aiInputArea
         }
-        .frame(minWidth: 500, minHeight: 400)
+        .frame(minWidth: 550, minHeight: 500)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             isInputFocused = true
         }
     }
 
-    // MARK: - Header
+    // MARK: - Global Header
 
-    private var aiHeader: some View {
+    private var globalHeader: some View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
                 .font(.system(size: 18))
@@ -51,112 +63,178 @@ struct DetachedAIWindow: View {
 
             Spacer()
 
-            // Session picker
-            if !chatStore.sessions.isEmpty {
-                Menu {
-                    ForEach(chatStore.sessions.prefix(10)) { session in
-                        Button {
-                            Task { await chatStore.selectSession(session) }
-                        } label: {
-                            HStack {
-                                Text(session.title)
-                                if chatStore.currentSession?.id == session.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
+            // Global model picker (sets app-wide default)
+            Text("Global")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
 
-                    Divider()
-
-                    Button {
-                        Task { await chatStore.createSession() }
-                    } label: {
-                        Label("New Session", systemImage: "plus")
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "bubble.left.and.bubble.right")
-                            .font(.system(size: 10))
-                        Text(currentSessionTitle)
-                            .font(.system(size: 11))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8))
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.05))
-                    )
-                }
-                .menuStyle(.borderlessButton)
-            }
-
-            // Model picker
-            modelPicker
+            ModelSelectorMenu(
+                selectedMode: Binding(
+                    get: { chatStore.selectedMode },
+                    set: { chatStore.selectedMode = $0 }
+                ),
+                selectedModelId: Binding(
+                    get: { chatStore.selectedModelId },
+                    set: { chatStore.selectedModelId = $0 }
+                ),
+                availableModels: chatStore.availableModels,
+                onRefresh: { await chatStore.fetchModels() }
+            )
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.gray.opacity(0.03))
     }
 
+    // MARK: - Context Tab Bar
+
+    private var contextTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(WorkspaceAIContext.allCases) { context in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        activeContext = context
+                    }
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: context.icon)
+                            .font(.system(size: 13))
+                        Text(context.displayName)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundStyle(activeContext == context ? .primary : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        activeContext == context
+                            ? Color.accentColor.opacity(0.1)
+                            : Color.clear
+                    )
+                    .overlay(alignment: .bottom) {
+                        if activeContext == context {
+                            Rectangle()
+                                .fill(Color.accentColor)
+                                .frame(height: 2)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(Color.gray.opacity(0.02))
+    }
+
+    // MARK: - Tab Sub-Header
+
+    private var tabSubHeader: some View {
+        HStack(spacing: 12) {
+            // Per-tab model picker
+            tabModelPicker
+
+            Spacer()
+
+            // Session switcher for this context
+            sessionPicker
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.gray.opacity(0.02))
+    }
+
+    private var tabModelPicker: some View {
+        let hasOverride = chatStore.hasWorkspaceModelOverride(for: activeContext)
+        let selection = chatStore.workspaceModelSelection(for: activeContext)
+
+        return HStack(spacing: 6) {
+            Text(activeContext.displayName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            ModelSelectorMenu(
+                selectedMode: Binding(
+                    get: { selection.mode },
+                    set: { newMode in
+                        chatStore.setWorkspaceModelOverride(
+                            context: activeContext,
+                            mode: newMode,
+                            modelId: selection.modelId
+                        )
+                    }
+                ),
+                selectedModelId: Binding(
+                    get: { selection.modelId },
+                    set: { newModel in
+                        chatStore.setWorkspaceModelOverride(
+                            context: activeContext,
+                            mode: "manual",
+                            modelId: newModel
+                        )
+                    }
+                ),
+                availableModels: chatStore.availableModels,
+                onRefresh: { await chatStore.fetchModels() },
+                hasOverride: hasOverride,
+                onClearOverride: {
+                    chatStore.clearWorkspaceModelOverride(context: activeContext)
+                }
+            )
+        }
+    }
+
+    private var sessionPicker: some View {
+        let contextSessions = chatStore.sessionsForContext(activeContext)
+
+        return Menu {
+            ForEach(contextSessions.prefix(15)) { session in
+                Button {
+                    Task { await chatStore.selectSession(session) }
+                } label: {
+                    HStack {
+                        Text(session.title)
+                        if chatStore.currentSession?.id == session.id {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+
+            if !contextSessions.isEmpty {
+                Divider()
+            }
+
+            Button {
+                Task {
+                    await chatStore.createSession()
+                    if let newSession = chatStore.currentSession {
+                        chatStore.tagSession(newSession.id, withContext: activeContext)
+                    }
+                }
+            } label: {
+                Label("New Session", systemImage: "plus")
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.system(size: 10))
+                Text(currentSessionTitle)
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8))
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.05))
+            )
+        }
+        .menuStyle(.borderlessButton)
+    }
+
     private var currentSessionTitle: String {
         chatStore.currentSession?.title ?? "No Session"
-    }
-
-    // MARK: - Model Picker (per-session override)
-
-    private var sessionId: UUID? {
-        chatStore.currentSession?.id
-    }
-
-    private var effectiveMode: String {
-        guard let id = sessionId else { return chatStore.selectedMode }
-        return chatStore.effectiveModelSelection(for: id).mode
-    }
-
-    private var effectiveModelId: String? {
-        guard let id = sessionId else { return chatStore.selectedModelId }
-        return chatStore.effectiveModelSelection(for: id).modelId
-    }
-
-    private var modelPicker: some View {
-        let hasOverride = sessionId.map { chatStore.hasModelOverride(for: $0) } ?? false
-
-        return ModelSelectorMenu(
-            selectedMode: Binding(
-                get: { effectiveMode },
-                set: { newMode in
-                    guard let id = sessionId else {
-                        chatStore.selectedMode = newMode
-                        return
-                    }
-                    chatStore.setSessionModelOverride(sessionId: id, mode: newMode, modelId: effectiveModelId)
-                }
-            ),
-            selectedModelId: Binding(
-                get: { effectiveModelId },
-                set: { newModel in
-                    guard let id = sessionId else {
-                        chatStore.selectedModelId = newModel
-                        return
-                    }
-                    chatStore.setSessionModelOverride(sessionId: id, mode: "manual", modelId: newModel)
-                }
-            ),
-            availableModels: chatStore.availableModels,
-            onRefresh: {
-                await chatStore.fetchModels()
-            },
-            hasOverride: hasOverride,
-            onClearOverride: {
-                guard let id = sessionId else { return }
-                chatStore.clearSessionModelOverride(sessionId: id)
-            }
-        )
     }
 
     // MARK: - Messages
@@ -207,20 +285,35 @@ struct DetachedAIWindow: View {
 
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "sparkles")
+            Image(systemName: activeContext.icon)
                 .font(.system(size: 40))
                 .foregroundStyle(LinearGradient.magnetarGradient)
 
-            Text("AI Assistant")
+            Text("\(activeContext.displayName) Assistant")
                 .font(.title2.weight(.semibold))
 
-            Text("Ask anything — code questions, writing help,\ndata analysis, or general knowledge.")
+            Text(emptyStateDescription)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 60)
+    }
+
+    private var emptyStateDescription: String {
+        switch activeContext {
+        case .code:
+            return "Ask about code, debugging, architecture,\nor get help writing implementations."
+        case .writing:
+            return "Get help with writing, editing, formatting,\nor brainstorming content ideas."
+        case .sheets:
+            return "Ask about formulas, data analysis,\nor get help with spreadsheet tasks."
+        case .voice:
+            return "Get help with transcriptions, summaries,\nor voice content analysis."
+        case .general:
+            return "Ask anything — code questions, writing help,\ndata analysis, or general knowledge."
+        }
     }
 
     // MARK: - Input
@@ -257,6 +350,11 @@ struct DetachedAIWindow: View {
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+
+        // Auto-tag session to current context if not already tagged
+        if let sessionId = chatStore.currentSession?.id {
+            chatStore.tagSession(sessionId, withContext: activeContext)
+        }
 
         inputText = ""
         Task {
@@ -305,5 +403,5 @@ private struct AIMessageRow: View {
 #Preview {
     DetachedAIWindow()
         .environment(ChatStore())
-        .frame(width: 600, height: 700)
+        .frame(width: 650, height: 750)
 }

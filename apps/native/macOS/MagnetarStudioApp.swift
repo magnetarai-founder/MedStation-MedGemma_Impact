@@ -176,14 +176,14 @@ struct MagnetarStudioApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 700, height: 600)
 
-        // AI Assistant window (⌘⇧A) — floating, usable from any workspace
+        // AI Assistant window (⇧⌘P) — floating, usable from any workspace
         WindowGroup("AI Assistant", id: "detached-ai") {
             DetachedAIWindow()
                 .environment(chatStore)
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
-        .defaultSize(width: 600, height: 700)
+        .defaultSize(width: 650, height: 750)
 
         // Founder Admin window — role-gated, accessible from + menu
         WindowGroup("Founder Admin", id: "admin-window") {

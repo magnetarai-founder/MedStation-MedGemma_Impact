@@ -524,17 +524,15 @@ struct QuickActionButton: View {
 // MARK: - AI Toggle Button
 
 struct AIToggleButton: View {
-    @State private var aiPanelStore = UniversalAIPanelStore.shared
-
     var body: some View {
         HeaderToolbarButton(
             icon: "sparkles",
-            tint: aiPanelStore.isVisible ? .purple : .secondary,
-            background: aiPanelStore.isVisible ? Color.purple.opacity(0.15) : Color.white.opacity(0.12)
+            tint: .purple,
+            background: Color.purple.opacity(0.15)
         ) {
-            aiPanelStore.toggle()
+            WindowOpener.shared.openAIAssistant()
         }
-        .help("Toggle AI Panel (⇧⌘P)")
+        .help("Open AI Assistant (⇧⌘P)")
         .keyboardShortcut("p", modifiers: [.command, .shift])
     }
 }
