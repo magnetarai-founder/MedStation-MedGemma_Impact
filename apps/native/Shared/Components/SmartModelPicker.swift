@@ -19,6 +19,8 @@ struct SmartModelPicker: View {
     @State private var hotSlotManager = HotSlotManager.shared
     @State private var availableModels: [String] = []
     @State private var isExpanded = false
+    @State private var showEvictionDialog: Bool = false
+    @State private var evictionModelName: String = ""
 
     var body: some View {
         Menu {
@@ -125,6 +127,37 @@ struct SmartModelPicker: View {
         .task {
             await loadData()
         }
+        .sheet(isPresented: $showEvictionDialog) {
+            ModelEvictionDialog(
+                modelToLoad: evictionModelName,
+                hotSlots: hotSlotManager.hotSlots,
+                onAutoReplace: {
+                    showEvictionDialog = false
+                    Task {
+                        if let candidate = hotSlotManager.findEvictionCandidate() {
+                            try? await hotSlotManager.removeFromSlot(slotNumber: candidate)
+                            try? await hotSlotManager.assignToSlot(slotNumber: candidate, modelId: evictionModelName)
+                            selectedMode = "manual"
+                            selectedModelId = evictionModelName
+                            await loadData()
+                        }
+                    }
+                },
+                onManualSelect: { slotNumber in
+                    showEvictionDialog = false
+                    Task {
+                        try? await hotSlotManager.removeFromSlot(slotNumber: slotNumber)
+                        try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: evictionModelName)
+                        selectedMode = "manual"
+                        selectedModelId = evictionModelName
+                        await loadData()
+                    }
+                },
+                onCancel: {
+                    showEvictionDialog = false
+                }
+            )
+        }
     }
 
     // MARK: - Computed Properties
@@ -168,34 +201,17 @@ struct SmartModelPicker: View {
     }
 
     private func loadModelAndSelect(_ modelName: String) async {
-        // Check if all slots are full
         if hotSlotManager.areAllSlotsFull {
-            // Show prompt: auto-evict or manual
-            // For now, auto-evict LRU
-            if let evictSlot = hotSlotManager.findEvictionCandidate() {
-                do {
-                    try await hotSlotManager.removeFromSlot(slotNumber: evictSlot)
-                    try await hotSlotManager.assignToSlot(slotNumber: evictSlot, modelId: modelName)
-
-                    // Select the model
-                    selectedMode = "manual"
-                    selectedModelId = modelName
-
-                    await loadData()
-                } catch {
-                    logger.error("Failed to load model: \(error)")
-                }
-            }
+            // Show eviction dialog — let user choose auto-replace or manual
+            evictionModelName = modelName
+            showEvictionDialog = true
         } else {
             // Find empty slot
             if let emptySlot = hotSlotManager.hotSlots.first(where: { $0.isEmpty }) {
                 do {
                     try await hotSlotManager.assignToSlot(slotNumber: emptySlot.slotNumber, modelId: modelName)
-
-                    // Select the model
                     selectedMode = "manual"
                     selectedModelId = modelName
-
                     await loadData()
                 } catch {
                     logger.error("Failed to load model: \(error)")

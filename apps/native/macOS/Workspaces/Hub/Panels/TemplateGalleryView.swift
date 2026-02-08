@@ -2,9 +2,8 @@
 //  TemplateGalleryView.swift
 //  MagnetarStudio (macOS)
 //
-//  STUB: Not yet routed — future "Manage Templates" full-screen gallery.
-//  TemplatePickerSheet handles the quick-pick flow currently.
-//  FUTURE: Wire from Settings or a dedicated panel for browse/search/preview of all templates.
+//  Template gallery — presented from WorkspaceSidebarView "Manage Templates" button.
+//  TemplatePickerSheet handles the quick-pick flow; this is the full browse/search/preview gallery.
 //
 
 import SwiftUI

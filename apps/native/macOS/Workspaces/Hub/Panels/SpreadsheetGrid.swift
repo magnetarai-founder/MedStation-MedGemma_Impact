@@ -116,6 +116,14 @@ struct SpreadsheetGrid: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 12, weight: cell.isBold ? .semibold : .regular))
                 .padding(.horizontal, 4)
+            } else if cell.rawValue.uppercased().hasPrefix("=SPARKLINE("),
+                      let sparkData = SparklineParser.parse(formula: cell.rawValue, cells: document.cells) {
+                // Sparkline cell — render chart instead of text
+                SparklineView(
+                    values: sparkData.values,
+                    style: sparkData.style
+                )
+                .padding(2)
             } else {
                 // Display mode
                 let displayValue = cell.isFormula

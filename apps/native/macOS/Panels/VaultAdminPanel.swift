@@ -2,7 +2,7 @@
 //  VaultAdminPanel.swift
 //  MagnetarStudio (macOS)
 //
-//  STUB: Not currently wired — future vault administration panel (between Control Center and Panic in header).
+//  Vault administration panel — presented from Header shield button.
 //  Vault security admin panel for monitoring and emergency revocation
 //  Refactored in Phase 6.16 - extracted tabs and components
 //

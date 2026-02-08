@@ -2,8 +2,7 @@
 //  TemplateEditorView.swift
 //  MagnetarStudio (macOS)
 //
-//  STUB: Not yet routed — future template editor for custom workspace templates.
-//  FUTURE: Present from TemplateGalleryView's "Create Template" action.
+//  Template editor — presented as sheet from TemplateGalleryView selection.
 //
 
 import SwiftUI

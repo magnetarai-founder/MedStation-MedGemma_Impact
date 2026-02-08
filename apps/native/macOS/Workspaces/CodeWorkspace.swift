@@ -144,6 +144,10 @@ struct CodeWorkspace: View {
                     .frame(minHeight: 100)
                     .onChange(of: fileContent) { _, newValue in
                         requestDiagnosticsRefresh(content: newValue)
+                        codingStore.activeFileContent = newValue
+                    }
+                    .onChange(of: selectedFile) { _, newFile in
+                        codingStore.activeFileName = newFile?.name
                     }
                     // Hidden save button for ⌘S
                     .background {
@@ -708,22 +712,6 @@ struct CodeWorkspace: View {
         }
     }
 
-    /// Send selected code to AI assistant for explanation/help
-    private func sendCodeToAssistant() {
-        guard !fileContent.isEmpty else { return }
-
-        let fileName = selectedFile?.name ?? "Unknown"
-        let language = selectedFile?.fileExtension ?? "text"
-
-        Task {
-            await ContextBridgeService.shared.addCodeContext(
-                code: fileContent,
-                fileName: fileName,
-                language: language
-            )
-        }
-    }
-
     // MARK: - Local File Opening (for Search & Source Control)
 
     /// Open a local file at a specific line (from search results)
@@ -798,16 +786,6 @@ struct CodeWorkspace: View {
             workspacePath: workspacePath,
             content: content
         )
-    }
-
-    /// Navigate to a specific location in a file
-    private func navigateToLocation(filePath: String, line: Int, character: Int) {
-        // Find or open the file
-        if let file = files.first(where: { $0.path == filePath }) {
-            selectFile(file)
-            // Note: Full cursor positioning would require NSTextView integration
-            logger.info("[LSP] Navigate to \(filePath):\(line):\(character)")
-        }
     }
 
 }

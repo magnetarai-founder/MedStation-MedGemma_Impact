@@ -10,6 +10,8 @@ import SwiftUI
 
 struct WorkspaceSidebarView: View {
     @Bindable var store: WorkspaceHubStore
+    @State private var showTemplateGallery = false
+    @State private var editingTemplate: WorkspaceTemplate?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,11 +61,44 @@ struct WorkspaceSidebarView: View {
 
             Spacer()
 
-            // Bottom: workspace info
+            // Bottom: Manage Templates + workspace info
+            Button {
+                showTemplateGallery = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 11))
+                    Text("Manage Templates")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+
             sidebarFooter
         }
         .frame(maxHeight: .infinity)
         .background(Color.surfaceTertiary)
+        .sheet(isPresented: $showTemplateGallery) {
+            TemplateGalleryView(onSelect: { template in
+                editingTemplate = template
+                showTemplateGallery = false
+            })
+            .frame(minWidth: 600, minHeight: 450)
+        }
+        .sheet(item: $editingTemplate) { template in
+            TemplateEditorView(
+                template: template,
+                onSave: { updated in
+                    TemplateStore.shared.save(template: updated)
+                    editingTemplate = nil
+                },
+                onCancel: { editingTemplate = nil }
+            )
+        }
     }
 
     // MARK: - Header

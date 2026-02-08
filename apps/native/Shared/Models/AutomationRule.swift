@@ -159,6 +159,7 @@ enum AutomationAction: Codable, Identifiable, Equatable, Sendable {
     case sendNotification(title: String, body: String)
     case createNote(title: String, content: String)
     case updateCell(address: String, value: String)
+    case runPluginAction(actionId: String, parameters: [String: String])
 
     var id: String {
         switch self {
@@ -168,6 +169,7 @@ enum AutomationAction: Codable, Identifiable, Equatable, Sendable {
         case .sendNotification(let t, let b): return "notify-\(t.prefix(16))-\(b.prefix(16))"
         case .createNote(let t, let c): return "note-\(t.prefix(16))-\(c.prefix(16))"
         case .updateCell(let a, let v): return "cell-\(a)-\(v.prefix(16))"
+        case .runPluginAction(let id, _): return "plugin-\(id)"
         }
     }
 
@@ -179,6 +181,7 @@ enum AutomationAction: Codable, Identifiable, Equatable, Sendable {
         case .sendNotification: return "Send Notification"
         case .createNote: return "Create Note"
         case .updateCell(let addr, _): return "Update Cell \(addr)"
+        case .runPluginAction(let id, _): return "Plugin: \(id)"
         }
     }
 
@@ -190,6 +193,7 @@ enum AutomationAction: Codable, Identifiable, Equatable, Sendable {
         case .sendNotification: return "bell"
         case .createNote: return "note.text.badge.plus"
         case .updateCell: return "tablecells"
+        case .runPluginAction: return "puzzlepiece.extension"
         }
     }
 

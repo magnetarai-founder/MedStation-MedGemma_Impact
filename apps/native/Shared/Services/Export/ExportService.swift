@@ -17,6 +17,28 @@ final class ExportService {
     static let shared = ExportService()
     private init() {}
 
+    // MARK: - Plugin Export Formats
+
+    /// Available plugin-provided export formats.
+    var pluginExportFormats: [RegisteredExportFormat] {
+        PluginRegistry.shared.exportFormats
+    }
+
+    /// Export content using a plugin-provided format handler.
+    func exportViaPlugin(formatId: String, content: String, title: String) async throws -> URL {
+        guard let handler = PluginRegistry.shared.exportHandler(for: formatId) else {
+            throw ExportError.renderingFailed("No plugin handler for format: \(formatId)")
+        }
+        let data = try await handler.export(content: content, title: title)
+        let url = try await showSavePanel(
+            defaultName: "\(sanitizeFilename(title)).\(handler.fileExtension)",
+            fileExtension: handler.fileExtension
+        )
+        try data.write(to: url, options: .atomic)
+        logger.debug("[Export] Plugin export '\(handler.formatName)' saved to \(url.lastPathComponent)")
+        return url
+    }
+
     // MARK: - Public API
 
     /// Export content to a file in the given format. Returns the saved URL.

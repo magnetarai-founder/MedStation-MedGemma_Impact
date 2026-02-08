@@ -2,7 +2,7 @@
 //  ControlCenterSheet.swift
 //  MagnetarStudio
 //
-//  STUB: Not currently wired — future system monitoring panel.
+//  System monitoring panel — presented from Header gauge button.
 //  Control Center modal with system stats - Extracted from Header.swift
 //
 

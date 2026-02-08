@@ -26,6 +26,8 @@ struct ModelSelectorMenu: View {
     @State private var hotSlotManager = HotSlotManager.shared
     @State private var showPinConfirmation: Bool = false
     @State private var modelToPinToggle: String? = nil
+    @State private var showEvictionDialog: Bool = false
+    @State private var evictionModelId: String = ""
 
     var body: some View {
         Menu {
@@ -218,6 +220,29 @@ struct ModelSelectorMenu: View {
         } message: {
             Text("Are you sure you want to unpin this model? It may be automatically evicted when loading other models.")
         }
+        .sheet(isPresented: $showEvictionDialog) {
+            ModelEvictionDialog(
+                modelToLoad: evictionModelId,
+                hotSlots: hotSlotManager.hotSlots,
+                onAutoReplace: {
+                    showEvictionDialog = false
+                    Task {
+                        if let candidate = hotSlotManager.findEvictionCandidate() {
+                            try? await hotSlotManager.assignToSlot(slotNumber: candidate, modelId: evictionModelId)
+                        }
+                    }
+                },
+                onManualSelect: { slotNumber in
+                    showEvictionDialog = false
+                    Task {
+                        try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: evictionModelId)
+                    }
+                },
+                onCancel: {
+                    showEvictionDialog = false
+                }
+            )
+        }
     }
 
     // MARK: - Helpers
@@ -250,20 +275,10 @@ struct ModelSelectorMenu: View {
     }
 
     private func loadModelIntoHotSlot(_ modelId: String) async {
-        // Check if all slots are full
         if hotSlotManager.areAllSlotsFull {
-            // Find eviction candidate
-            if let candidateSlot = hotSlotManager.findEvictionCandidate() {
-                // Auto-replace least used
-                do {
-                    try await hotSlotManager.assignToSlot(slotNumber: candidateSlot, modelId: modelId)
-                } catch {
-                    logger.error("Failed to assign model to slot \(candidateSlot): \(error)")
-                }
-            } else {
-                // All slots pinned - show error
-                logger.warning("Cannot load model: All slots are full and pinned")
-            }
+            // Show eviction dialog — let user choose auto-replace or manual
+            evictionModelId = modelId
+            showEvictionDialog = true
         } else {
             // Find first empty slot
             if let emptySlot = hotSlotManager.hotSlots.first(where: { $0.isEmpty }) {

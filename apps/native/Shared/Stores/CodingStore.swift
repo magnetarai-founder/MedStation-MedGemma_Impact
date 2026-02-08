@@ -193,6 +193,10 @@ final class CodingStore {
     /// Terminal context history (for AI consumption)
     var contextHistory: [TerminalContext] = []
 
+    /// Active editor context (injected by CodeWorkspace)
+    var activeFileName: String?
+    var activeFileContent: String?
+
     /// Code indexing state
     var isCodeIndexing: Bool = false
     var indexedFileCount: Int = 0
@@ -364,6 +368,13 @@ final class CodingStore {
         }
     }
 
+    /// Build code context string from active editor state
+    private func buildActiveCodeContext() -> String? {
+        guard let content = activeFileContent, !content.isEmpty else { return nil }
+        let name = activeFileName ?? "untitled"
+        return "File: \(name)\n```\n\(content.prefix(8000))\n```"
+    }
+
     /// Manually refresh the code index
     func refreshCodeIndex() {
         guard let dir = workingDirectory else { return }
@@ -391,7 +402,7 @@ final class CodingStore {
             let request = OrchestratedRequest(
                 query: message,
                 terminalContext: terminalContexts,
-                codeContext: nil,  // TODO: Inject from active editor
+                codeContext: buildActiveCodeContext(),
                 mode: orchestrator.currentMode
             )
 

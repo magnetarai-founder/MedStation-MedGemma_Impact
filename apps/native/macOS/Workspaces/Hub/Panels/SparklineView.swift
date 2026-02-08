@@ -2,10 +2,8 @@
 //  SparklineView.swift
 //  MagnetarStudio (macOS)
 //
-//  STUB: Tiny inline chart for spreadsheet cells.
+//  Tiny inline chart for spreadsheet cells — rendered by SpreadsheetGrid for =SPARKLINE() formulas.
 //  Renders as a mini line or bar sparkline within cell bounds.
-//  Not yet integrated with FormulaEngine — the =SPARKLINE() formula function
-//  is not registered. Wire into FormulaEngine.registerBuiltinFunctions() to activate.
 //
 
 import SwiftUI

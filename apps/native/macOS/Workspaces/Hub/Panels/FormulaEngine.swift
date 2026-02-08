@@ -97,6 +97,9 @@ struct FormulaEngine {
         case "CONCATENATE", "CONCAT":
             // Return 0 for numeric context — concatenation handled at display level
             return 0
+        case "SPARKLINE":
+            // Return 0 for numeric context — sparkline rendered visually by SparklineView
+            return 0
         default:
             throw FormulaError.unknownFunction(funcName)
         }

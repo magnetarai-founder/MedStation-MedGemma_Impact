@@ -16,6 +16,8 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "Header"
 struct Header: View {
     @State private var showPanicMode = false
     @State private var showEmergencyMode = false
+    @State private var showControlCenter = false
+    @State private var showVaultAdmin = false
 
     var body: some View {
         ZStack(alignment: .center) {
@@ -57,8 +59,28 @@ struct Header: View {
 
                 Spacer()
 
-                // Right: AI toggle + Panic
+                // Right: Control Center + Vault Admin + AI + Panic
                 HStack(spacing: 8) {
+                    Button {
+                        showControlCenter = true
+                    } label: {
+                        Image(systemName: "gauge.medium")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Control Center")
+
+                    Button {
+                        showVaultAdmin = true
+                    } label: {
+                        Image(systemName: "shield.lefthalf.filled")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Vault Admin")
+
                     AIToggleButton()
 
                     PanicButton(
@@ -69,6 +91,12 @@ struct Header: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
+            .sheet(isPresented: $showControlCenter) {
+                ControlCenterSheet()
+            }
+            .sheet(isPresented: $showVaultAdmin) {
+                VaultAdminPanel()
+            }
             .sheet(isPresented: $showPanicMode) {
                 PanicModeSheet()
             }

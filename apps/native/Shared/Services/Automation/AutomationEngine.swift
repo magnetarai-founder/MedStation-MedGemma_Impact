@@ -52,6 +52,9 @@ struct AutomationEngine {
 
         case .updateCell(let address, let value):
             try await executeUpdateCell(address: address, value: value, context: context)
+
+        case .runPluginAction(let actionId, let parameters):
+            try await executePluginAction(actionId: actionId, parameters: parameters, context: context)
         }
     }
 
@@ -181,5 +184,14 @@ struct AutomationEngine {
         sheet.setCell(at: cellAddr, value: resolvedValue)
         PersistenceHelpers.save(sheet, to: file, label: "automation cell update '\(cellAddr)'")
         logger.info("Automation updated cell \(cellAddr) to '\(resolvedValue)' in sheet \(sheet.title)")
+    }
+
+    @MainActor
+    private static func executePluginAction(actionId: String, parameters: [String: String], context: TriggerContext) async throws {
+        guard let handler = PluginRegistry.shared.automationHandler(for: actionId) else {
+            throw EngineError.actionFailed("No plugin handler registered for action: \(actionId)")
+        }
+        try await handler.execute(parameters: parameters, context: context.fields)
+        logger.info("Plugin action '\(actionId)' executed successfully")
     }
 }
