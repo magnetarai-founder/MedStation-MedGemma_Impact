@@ -74,7 +74,7 @@ struct ModelSelectorMenu: View {
                                 // Slot badge
                                 Text("\(slot.slotNumber)")
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .frame(width: 18, height: 18)
                                     .background(Circle().fill(Color.magnetarPrimary))
 
@@ -85,7 +85,7 @@ struct ModelSelectorMenu: View {
                                 if slot.isPinned {
                                     Image(systemName: "pin.fill")
                                         .font(.system(size: 9))
-                                        .foregroundColor(.orange)
+                                        .foregroundStyle(.orange)
                                 }
 
                                 // Selection checkmark
@@ -128,7 +128,7 @@ struct ModelSelectorMenu: View {
             Section("All Models") {
                 if availableModels.isEmpty {
                     Text("Loading models...")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 } else {
                     ForEach(availableModels, id: \.self) { model in
                         Button {
@@ -142,7 +142,7 @@ struct ModelSelectorMenu: View {
                                 if let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == model }) {
                                     Text("Slot \(slot.slotNumber)")
                                         .font(.system(size: 9))
-                                        .foregroundColor(.white)
+                                        .foregroundStyle(.white)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(Color.magnetarPrimary)
