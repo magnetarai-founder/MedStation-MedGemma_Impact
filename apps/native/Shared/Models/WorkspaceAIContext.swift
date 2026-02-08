@@ -36,4 +36,20 @@ enum WorkspaceAIContext: String, CaseIterable, Identifiable, Codable, Sendable {
         case .general: return "sparkles"
         }
     }
+
+    /// Context-specific system prompt prefix injected into AI requests
+    var systemPromptPrefix: String? {
+        switch self {
+        case .code:
+            return "You are a coding assistant. Help with programming, debugging, code review, and software architecture. Provide code examples in the user's language when relevant."
+        case .writing:
+            return "You are a writing assistant. Help with drafting, editing, tone, grammar, and style. Be clear and concise in suggestions."
+        case .sheets:
+            return "You are a spreadsheet and data assistant. Help with formulas, data analysis, calculations, and data transformation. Use formula syntax when applicable."
+        case .voice:
+            return "You are a voice and transcription assistant. Help with cleaning up transcriptions, summarizing audio content, and extracting key points."
+        case .general:
+            return nil  // No additional context — use global system prompt only
+        }
+    }
 }

@@ -2,8 +2,8 @@
 //  CodeFileBrowser.swift
 //  MagnetarStudio (macOS)
 //
-//  File browser sidebar - Extracted from CodeWorkspace.swift (Phase 6.18)
-//  Enhanced with search, file counts, and visual polish
+//  File browser sidebar with recursive tree rendering and search.
+//  Directories show disclosure triangles; click expands/collapses.
 //
 
 import SwiftUI
@@ -18,6 +18,7 @@ struct CodeFileBrowser: View {
 
     @State private var searchText: String = ""
     @State private var isRefreshing = false
+    @State private var expandedFolders: Set<String> = []
     @AppStorage("enableBlurEffects") private var enableBlurEffects = true
     @AppStorage("reduceTransparency") private var reduceTransparency = false
 
@@ -25,13 +26,11 @@ struct CodeFileBrowser: View {
         if searchText.isEmpty {
             return files
         }
-        return files.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText)
-        }
+        return flattenAndFilter(files, query: searchText)
     }
 
     var fileCount: Int {
-        files.filter { !$0.isDirectory }.count
+        countFiles(in: files)
     }
 
     var folderCount: Int {
@@ -47,7 +46,7 @@ struct CodeFileBrowser: View {
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
 
-                if !files.isEmpty {
+                if fileCount > 0 {
                     Text("(\(fileCount))")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
@@ -151,13 +150,27 @@ struct CodeFileBrowser: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(filteredFiles) { file in
-                            CodeFileRow(
-                                file: file,
-                                isSelected: selectedFile?.id == file.id,
-                                onSelect: { onSelectFile(file) }
-                            )
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if searchText.isEmpty {
+                            // Tree view
+                            ForEach(files) { file in
+                                FileTreeRow(
+                                    file: file,
+                                    depth: 0,
+                                    selectedFile: selectedFile,
+                                    expandedFolders: $expandedFolders,
+                                    onSelectFile: onSelectFile
+                                )
+                            }
+                        } else {
+                            // Flat filtered results
+                            ForEach(filteredFiles) { file in
+                                CodeFileRow(
+                                    file: file,
+                                    isSelected: selectedFile?.id == file.id,
+                                    onSelect: { onSelectFile(file) }
+                                )
+                            }
                         }
                     }
                     .padding(.vertical, 4)
@@ -169,6 +182,117 @@ struct CodeFileBrowser: View {
                 AnyView(Rectangle().fill(.ultraThinMaterial))
             } else {
                 AnyView(Color(nsColor: .controlBackgroundColor))
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Recursively count all files (non-directory) in the tree
+    private func countFiles(in items: [FileItem]) -> Int {
+        items.reduce(0) { count, item in
+            if item.isDirectory {
+                return count + countFiles(in: item.children ?? [])
+            }
+            return count + 1
+        }
+    }
+
+    /// Flatten tree and filter by search query (returns files only)
+    private func flattenAndFilter(_ items: [FileItem], query: String) -> [FileItem] {
+        var result: [FileItem] = []
+        for item in items {
+            if item.isDirectory {
+                result.append(contentsOf: flattenAndFilter(item.children ?? [], query: query))
+            } else if item.name.localizedCaseInsensitiveContains(query) {
+                result.append(item)
+            }
+        }
+        return result
+    }
+}
+
+// MARK: - Recursive File Tree Row
+
+private struct FileTreeRow: View {
+    let file: FileItem
+    let depth: Int
+    let selectedFile: FileItem?
+    @Binding var expandedFolders: Set<String>
+    let onSelectFile: (FileItem) -> Void
+
+    private var isExpanded: Bool {
+        expandedFolders.contains(file.path)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // This row
+            HStack(spacing: 4) {
+                // Indentation
+                if depth > 0 {
+                    Spacer()
+                        .frame(width: CGFloat(depth) * 16)
+                }
+
+                // Disclosure triangle for directories
+                if file.isDirectory {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 12)
+                } else {
+                    Spacer().frame(width: 12)
+                }
+
+                // File icon
+                Image(systemName: file.iconName)
+                    .font(.system(size: 11))
+                    .foregroundColor(selectedFile?.id == file.id ? .white : file.iconColor)
+                    .frame(width: 14)
+
+                // File name
+                Text(file.name)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .foregroundStyle(selectedFile?.id == file.id ? .white : .primary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .frame(height: 24)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(selectedFile?.id == file.id ? Color.accentColor : Color.clear)
+                    .padding(.horizontal, 4)
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if file.isDirectory {
+                    withAnimation(.magnetarQuick) {
+                        if isExpanded {
+                            expandedFolders.remove(file.path)
+                        } else {
+                            expandedFolders.insert(file.path)
+                        }
+                    }
+                } else {
+                    onSelectFile(file)
+                }
+            }
+
+            // Children (if expanded)
+            if file.isDirectory && isExpanded, let children = file.children {
+                ForEach(children) { child in
+                    FileTreeRow(
+                        file: child,
+                        depth: depth + 1,
+                        selectedFile: selectedFile,
+                        expandedFolders: $expandedFolders,
+                        onSelectFile: onSelectFile
+                    )
+                }
             }
         }
     }

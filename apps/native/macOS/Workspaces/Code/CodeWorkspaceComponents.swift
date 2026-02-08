@@ -19,6 +19,11 @@ struct FileItem: Identifiable, Hashable {
     let size: Int64?
     let modifiedAt: Date?
     let fileId: String?  // Backend file ID
+    var children: [FileItem]?  // Non-nil for expanded directories
+
+    var hasChildren: Bool {
+        isDirectory && (children == nil || !(children?.isEmpty ?? true))
+    }
 
     /// File extension
     var fileExtension: String {

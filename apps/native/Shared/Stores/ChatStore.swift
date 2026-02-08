@@ -960,7 +960,7 @@ final class ChatStore {
     /// Prevents extremely long messages that could cause memory/API issues
     private static let maxMessageLength = 100_000  // 100KB text is generous
 
-    func sendMessage(_ text: String) async {
+    func sendMessage(_ text: String, contextPrompt: String? = nil) async {
         // Input validation
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -1021,7 +1021,8 @@ final class ChatStore {
                 sessionId: backendSessionId,
                 localSessionId: session.id,
                 content: trimmedText,
-                model: modelToUse
+                model: modelToUse,
+                contextPrompt: contextPrompt
             )
 
             // Store context for semantic search (fire and forget)
@@ -1055,13 +1056,15 @@ final class ChatStore {
         sessionId: String,
         localSessionId: UUID,
         content: String,
-        model: String
+        model: String,
+        contextPrompt: String? = nil
     ) async throws -> String {
         // Build request
         let request = try buildMessageRequest(
             sessionId: sessionId,
             content: content,
-            model: model
+            model: model,
+            contextPrompt: contextPrompt
         )
 
         // Execute streaming request
@@ -1087,7 +1090,8 @@ final class ChatStore {
     private func buildMessageRequest(
         sessionId: String,
         content: String,
-        model: String
+        model: String,
+        contextPrompt: String? = nil
     ) throws -> URLRequest {
         guard let url = URL(string: "\(APIConfiguration.shared.versionedBaseURL)/chat/sessions/\(sessionId)/messages") else {
             throw ChatError.sendFailed("Invalid URL for session messages")
@@ -1121,12 +1125,22 @@ final class ChatStore {
         let repeatPenalty = defaults.double(forKey: "defaultRepeatPenalty")
         if repeatPenalty > 0 { requestBody["repeat_penalty"] = repeatPenalty }
 
-        // Global system prompt from Settings → Models
+        // System prompt: global + optional workspace context
+        var systemPromptParts: [String] = []
+
         if defaults.bool(forKey: "enableGlobalPrompt") {
-            let systemPrompt = defaults.string(forKey: "globalSystemPrompt") ?? ""
-            if !systemPrompt.isEmpty {
-                requestBody["system_prompt"] = systemPrompt
+            let globalPrompt = defaults.string(forKey: "globalSystemPrompt") ?? ""
+            if !globalPrompt.isEmpty {
+                systemPromptParts.append(globalPrompt)
             }
+        }
+
+        if let contextPrompt, !contextPrompt.isEmpty {
+            systemPromptParts.append(contextPrompt)
+        }
+
+        if !systemPromptParts.isEmpty {
+            requestBody["system_prompt"] = systemPromptParts.joined(separator: "\n\n")
         }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)

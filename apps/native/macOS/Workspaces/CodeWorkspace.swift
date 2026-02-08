@@ -18,10 +18,12 @@ struct CodeWorkspace: View {
     @State private var selectedFile: FileItem? = nil
     @State private var openFiles: [FileItem] = []
     @State private var fileContent: String = ""
+    @State private var originalFileContent: String = ""  // For modified detection
     @State private var currentWorkspace: CodeEditorWorkspace? = nil
     @State private var files: [FileItem] = []
     @State private var isLoadingFiles: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var isBackendOnline: Bool = true
 
     // Layout state — persisted via AppStorage
     @AppStorage("code.sidebarWidth") private var sidebarWidth: Double = 250
@@ -115,6 +117,7 @@ struct CodeWorkspace: View {
                     selectedFile: selectedFile,
                     workspaceName: currentWorkspace?.name,
                     fileContent: $fileContent,
+                    isModified: isFileModified,
                     targetLine: targetLine,
                     onSelectFile: selectFile,
                     onCloseFile: closeFile,
@@ -126,6 +129,12 @@ struct CodeWorkspace: View {
                 .frame(minHeight: 100)
                 .onChange(of: fileContent) { _, newValue in
                     requestDiagnosticsRefresh(content: newValue)
+                }
+                // Hidden save button for ⌘S
+                .background {
+                    Button("") { saveCurrentFile() }
+                        .keyboardShortcut("s", modifiers: .command)
+                        .hidden()
                 }
             }
 
@@ -287,6 +296,20 @@ struct CodeWorkspace: View {
                     .frame(height: 12)
             }
 
+            // Backend health indicator
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(isBackendOnline ? Color.green : Color.orange)
+                    .frame(width: 6, height: 6)
+                Text(isBackendOnline ? "Online" : "Local")
+                    .font(.system(size: 11))
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+
+            Color(nsColor: .separatorColor)
+                .frame(width: 1, height: 12)
+
             // Encoding
             Text("UTF-8")
                 .font(.system(size: 11))
@@ -365,6 +388,39 @@ struct CodeWorkspace: View {
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
     }
 
+    // MARK: - File Save
+
+    private var isFileModified: Bool {
+        fileContent != originalFileContent && selectedFile != nil
+    }
+
+    private func saveCurrentFile() {
+        guard isFileModified else { return }
+        guard let file = selectedFile else { return }
+
+        if let fileId = file.fileId {
+            // Backend-managed file
+            Task {
+                do {
+                    try await codeEditorService.updateFile(fileId: fileId, content: fileContent)
+                    await MainActor.run { originalFileContent = fileContent }
+                    logger.info("Saved file via backend: \(file.name)")
+                } catch {
+                    logger.error("Failed to save file via backend: \(error)")
+                }
+            }
+        } else {
+            // Local file — write to disk
+            do {
+                try fileContent.write(toFile: file.path, atomically: true, encoding: .utf8)
+                originalFileContent = fileContent
+                logger.info("Saved local file: \(file.path)")
+            } catch {
+                logger.error("Failed to save local file: \(error)")
+            }
+        }
+    }
+
     // MARK: - Actions
 
     private func loadFiles() async {
@@ -406,14 +462,22 @@ struct CodeWorkspace: View {
             await MainActor.run {
                 files = fileItems
                 isLoadingFiles = false
+                isBackendOnline = true
             }
         } catch {
             logger.warning("Backend unavailable, falling back to local filesystem: \(error)")
+            await MainActor.run { isBackendOnline = false }
             await loadLocalFiles()
         }
     }
 
-    /// Fallback: scan local workspace directory when backend is unavailable
+    // Directories to skip during recursive scan
+    private static let skipDirectories: Set<String> = [
+        ".git", "node_modules", "__pycache__", ".build", ".swiftpm",
+        "DerivedData", ".hg", ".svn", "Pods", "xcuserdata", ".DS_Store"
+    ]
+
+    /// Fallback: recursively scan local workspace directory when backend is unavailable
     private func loadLocalFiles() async {
         let workspacePath = codingStore.workingDirectory
         guard !workspacePath.isEmpty else {
@@ -426,23 +490,7 @@ struct CodeWorkspace: View {
         }
 
         do {
-            let fm = FileManager.default
-            let contents = try fm.contentsOfDirectory(atPath: workspacePath)
-            let items = contents.sorted().compactMap { name -> FileItem? in
-                // Skip hidden files
-                guard !name.hasPrefix(".") else { return nil }
-                let fullPath = (workspacePath as NSString).appendingPathComponent(name)
-                var isDir: ObjCBool = false
-                fm.fileExists(atPath: fullPath, isDirectory: &isDir)
-                return FileItem(
-                    name: name,
-                    path: fullPath,
-                    isDirectory: isDir.boolValue,
-                    size: nil,
-                    modifiedAt: nil,
-                    fileId: nil
-                )
-            }
+            let items = try scanDirectory(workspacePath, depth: 0)
             await MainActor.run {
                 files = items
                 isLoadingFiles = false
@@ -457,7 +505,58 @@ struct CodeWorkspace: View {
         }
     }
 
+    /// Recursively scan a directory, returning sorted FileItems (directories first)
+    private func scanDirectory(_ path: String, depth: Int) throws -> [FileItem] {
+        guard depth <= 4 else { return [] }
+
+        let fm = FileManager.default
+        let contents = try fm.contentsOfDirectory(atPath: path)
+
+        var dirs: [FileItem] = []
+        var regularFiles: [FileItem] = []
+
+        for name in contents.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
+            guard !name.hasPrefix(".") else { continue }
+            guard !Self.skipDirectories.contains(name) else { continue }
+
+            let fullPath = (path as NSString).appendingPathComponent(name)
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: fullPath, isDirectory: &isDir) else { continue }
+
+            if isDir.boolValue {
+                let children = (try? scanDirectory(fullPath, depth: depth + 1)) ?? []
+                dirs.append(FileItem(
+                    name: name,
+                    path: fullPath,
+                    isDirectory: true,
+                    size: nil,
+                    modifiedAt: nil,
+                    fileId: nil,
+                    children: children
+                ))
+            } else {
+                let attrs = try? fm.attributesOfItem(atPath: fullPath)
+                regularFiles.append(FileItem(
+                    name: name,
+                    path: fullPath,
+                    isDirectory: false,
+                    size: attrs?[.size] as? Int64,
+                    modifiedAt: attrs?[.modificationDate] as? Date,
+                    fileId: nil
+                ))
+            }
+        }
+
+        return dirs + regularFiles
+    }
+
     private func selectFile(_ file: FileItem) {
+        // Skip directory selection — expand/collapse handled by browser
+        guard !file.isDirectory else { return }
+
+        // Auto-save previous file if modified
+        if isFileModified { saveCurrentFile() }
+
         selectedFile = file
 
         // Add to open files if not already open
@@ -471,22 +570,30 @@ struct CodeWorkspace: View {
                 // Backend-managed file
                 do {
                     let codeFile = try await codeEditorService.getFile(fileId: fileId)
-                    await MainActor.run { fileContent = codeFile.content }
+                    await MainActor.run {
+                        fileContent = codeFile.content
+                        originalFileContent = codeFile.content
+                    }
                 } catch {
                     logger.error("Failed to load file content: \(error)")
                     await MainActor.run {
                         fileContent = "// Failed to load file content\n// Error: \(error.localizedDescription)"
+                        originalFileContent = fileContent
                     }
                 }
             } else {
                 // Local file (offline fallback)
                 do {
                     let content = try String(contentsOfFile: file.path, encoding: .utf8)
-                    await MainActor.run { fileContent = content }
+                    await MainActor.run {
+                        fileContent = content
+                        originalFileContent = content
+                    }
                 } catch {
                     logger.error("Failed to read local file: \(error)")
                     await MainActor.run {
                         fileContent = "// Failed to read file\n// Error: \(error.localizedDescription)"
+                        originalFileContent = fileContent
                     }
                 }
             }
@@ -564,6 +671,9 @@ struct CodeWorkspace: View {
 
     /// Open a local file by path (from source control panel)
     private func openLocalFile(_ path: String) {
+        // Auto-save previous file if modified
+        if isFileModified { saveCurrentFile() }
+
         let fileItem = fileItemFromPath(path)
 
         selectedFile = fileItem
@@ -575,11 +685,15 @@ struct CodeWorkspace: View {
         Task {
             do {
                 let content = try String(contentsOfFile: path, encoding: .utf8)
-                await MainActor.run { fileContent = content }
+                await MainActor.run {
+                    fileContent = content
+                    originalFileContent = content
+                }
             } catch {
                 logger.error("Failed to read local file: \(error)")
                 await MainActor.run {
                     fileContent = "// Failed to read file\n// Error: \(error.localizedDescription)"
+                    originalFileContent = fileContent
                 }
             }
         }

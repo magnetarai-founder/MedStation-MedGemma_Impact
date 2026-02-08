@@ -16,10 +16,13 @@ struct CodeSourceControlPanel: View {
     let onSelectFile: (String) -> Void
 
     @State private var currentBranch: String = ""
+    @State private var branches: [String] = []
     @State private var changedFiles: [GitFileStatus] = []
     @State private var commitMessage: String = ""
     @State private var isLoading: Bool = false
     @State private var isCommitting: Bool = false
+    @State private var isPushing: Bool = false
+    @State private var isPulling: Bool = false
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var selectedFileDiff: String?
@@ -27,13 +30,48 @@ struct CodeSourceControlPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
+            // Header with push/pull buttons
+            HStack(spacing: 6) {
                 Text("Source Control")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
 
+                // Pull
+                Button {
+                    Task { await pullChanges() }
+                } label: {
+                    if isPulling {
+                        ProgressView().scaleEffect(0.4)
+                    } else {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(isPulling || isPushing)
+                .help("Pull")
+                .frame(width: 18, height: 18)
+
+                // Push
+                Button {
+                    Task { await pushChanges() }
+                } label: {
+                    if isPushing {
+                        ProgressView().scaleEffect(0.4)
+                    } else {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(isPulling || isPushing)
+                .help("Push")
+                .frame(width: 18, height: 18)
+
+                // Refresh
                 Button {
                     Task { await refreshStatus() }
                 } label: {
@@ -47,17 +85,37 @@ struct CodeSourceControlPanel: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
 
-            // Branch indicator
+            // Branch picker
             if !currentBranch.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.purple)
-                    Text(currentBranch)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Spacer()
+                Menu {
+                    ForEach(branches, id: \.self) { branch in
+                        Button {
+                            Task { await switchBranch(to: branch) }
+                        } label: {
+                            HStack {
+                                Text(branch)
+                                if branch == currentBranch {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        .disabled(branch == currentBranch)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.purple)
+                        Text(currentBranch)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.primary)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 7))
+                            .foregroundStyle(.tertiary)
+                        Spacer()
+                    }
                 }
+                .menuStyle(.borderlessButton)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 6)
             }
@@ -343,11 +401,14 @@ struct CodeSourceControlPanel: View {
             // Check if git is available and this is a repo
             let branch = try await runGit(["branch", "--show-current"], cwd: cwd)
             let statusOutput = try await runGit(["status", "--porcelain"], cwd: cwd)
+            let branchOutput = try await runGit(["branch", "--no-color"], cwd: cwd)
 
             let files = parseGitStatus(statusOutput)
+            let branchList = parseBranchList(branchOutput)
 
             await MainActor.run {
                 currentBranch = branch.trimmingCharacters(in: .whitespacesAndNewlines)
+                branches = branchList
                 changedFiles = files
                 isLoading = false
             }
@@ -441,6 +502,86 @@ struct CodeSourceControlPanel: View {
                 isCommitting = false
             }
         }
+    }
+
+    private func switchBranch(to branch: String) async {
+        guard let cwd = workspacePath else { return }
+        do {
+            _ = try await runGit(["checkout", branch], cwd: cwd)
+            await MainActor.run { successMessage = "Switched to \(branch)" }
+            await refreshStatus()
+            // Clear success after delay
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run {
+                if successMessage == "Switched to \(branch)" {
+                    successMessage = nil
+                }
+            }
+        } catch {
+            logger.error("Branch switch failed: \(error)")
+            await MainActor.run {
+                errorMessage = "Switch failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func pushChanges() async {
+        guard let cwd = workspacePath else { return }
+        isPushing = true
+        errorMessage = nil
+        do {
+            _ = try await runGit(["push"], cwd: cwd)
+            await MainActor.run {
+                successMessage = "Pushed successfully"
+                isPushing = false
+            }
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run {
+                if successMessage == "Pushed successfully" {
+                    successMessage = nil
+                }
+            }
+        } catch {
+            logger.error("Push failed: \(error)")
+            await MainActor.run {
+                errorMessage = "Push failed: \(error.localizedDescription)"
+                isPushing = false
+            }
+        }
+    }
+
+    private func pullChanges() async {
+        guard let cwd = workspacePath else { return }
+        isPulling = true
+        errorMessage = nil
+        do {
+            _ = try await runGit(["pull"], cwd: cwd)
+            await MainActor.run {
+                successMessage = "Pulled successfully"
+                isPulling = false
+            }
+            await refreshStatus()
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run {
+                if successMessage == "Pulled successfully" {
+                    successMessage = nil
+                }
+            }
+        } catch {
+            logger.error("Pull failed: \(error)")
+            await MainActor.run {
+                errorMessage = "Pull failed: \(error.localizedDescription)"
+                isPulling = false
+            }
+        }
+    }
+
+    private func parseBranchList(_ output: String) -> [String] {
+        output.components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.hasPrefix("* ") ? String($0.dropFirst(2)) : $0 }
+            .filter { !$0.isEmpty }
+            .sorted()
     }
 
     private func parseGitStatus(_ output: String) -> [GitFileStatus] {

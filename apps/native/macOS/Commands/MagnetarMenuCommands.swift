@@ -167,6 +167,11 @@ struct MagnetarMenuCommands: Commands {
             }
             .keyboardShortcut("k", modifiers: .command)
 
+            Button("Command Palette...") {
+                toggleCommandPalette()
+            }
+            .keyboardShortcut("a", modifiers: [.command, .shift])
+
             Divider()
 
             Button("Open AI Assistant") {

@@ -370,7 +370,7 @@ struct DetachedAIWindow: View {
 
         inputText = ""
         Task {
-            await chatStore.sendMessage(text)
+            await chatStore.sendMessage(text, contextPrompt: activeContext.systemPromptPrefix)
         }
     }
 }

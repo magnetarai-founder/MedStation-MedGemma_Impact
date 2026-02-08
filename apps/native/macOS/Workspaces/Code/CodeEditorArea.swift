@@ -14,6 +14,7 @@ struct CodeEditorArea: View {
     let selectedFile: FileItem?
     let workspaceName: String?
     @Binding var fileContent: String
+    var isModified: Bool = false
     var targetLine: Int?
     let onSelectFile: (FileItem) -> Void
     let onCloseFile: (FileItem) -> Void
@@ -21,6 +22,10 @@ struct CodeEditorArea: View {
 
     @AppStorage("showLineNumbers") private var showLineNumbers = true
     @AppStorage("editorFontSize") private var editorFontSize = 14
+
+    private var detectedLanguage: CodeLanguage {
+        CodeLanguage.detect(from: selectedFile?.path ?? "")
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,6 +37,7 @@ struct CodeEditorArea: View {
                             CodeFileTab(
                                 file: file,
                                 isSelected: selectedFile?.id == file.id,
+                                isModified: isModified && selectedFile?.id == file.id,
                                 onSelect: { onSelectFile(file) },
                                 onClose: { onCloseFile(file) }
                             )
@@ -53,27 +59,16 @@ struct CodeEditorArea: View {
 
             // Editor content
             if selectedFile != nil {
-                HStack(spacing: 0) {
-                    // Line number gutter (respects settings)
-                    if showLineNumbers {
-                        LineNumberGutter(text: fileContent, fontSize: CGFloat(max(editorFontSize - 2, 9)))
-
-                        // Thin separator
-                        Rectangle()
-                            .fill(Color(nsColor: .separatorColor))
-                            .frame(width: 1)
+                CodeTextView(
+                    text: $fileContent,
+                    fontSize: CGFloat(editorFontSize),
+                    language: detectedLanguage,
+                    showLineNumbers: showLineNumbers,
+                    targetLine: targetLine,
+                    onCursorMove: { line, col in
+                        onCursorMove?(line, col)
                     }
-
-                    // Editor (NSTextView for cursor positioning + scroll-to-line)
-                    CodeTextView(
-                        text: $fileContent,
-                        fontSize: CGFloat(editorFontSize),
-                        targetLine: targetLine,
-                        onCursorMove: { line, col in
-                            onCursorMove?(line, col)
-                        }
-                    )
-                }
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 CodeEditorWelcome()
@@ -120,40 +115,6 @@ struct CodeEditorArea: View {
         Image(systemName: "chevron.right")
             .font(.system(size: 7, weight: .semibold))
             .foregroundStyle(.tertiary)
-    }
-}
-
-// MARK: - Line Number Gutter
-
-private struct LineNumberGutter: View {
-    let text: String
-    var fontSize: CGFloat = 11
-
-    private var lineCount: Int {
-        max(text.components(separatedBy: "\n").count, 1)
-    }
-
-    /// Line height matches TextEditor's default line spacing for the given font size
-    private var lineHeight: CGFloat {
-        max(fontSize * 1.4, 16)
-    }
-
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .trailing, spacing: 0) {
-                ForEach(1...lineCount, id: \.self) { lineNumber in
-                    Text("\(lineNumber)")
-                        .font(.system(size: fontSize, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                        .frame(height: lineHeight)
-                }
-            }
-            .padding(.top, 7)
-            .padding(.trailing, 8)
-            .padding(.leading, 4)
-        }
-        .frame(width: max(44, fontSize * 4))
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
     }
 }
 
