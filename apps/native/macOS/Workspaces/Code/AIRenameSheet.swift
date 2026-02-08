@@ -27,7 +27,7 @@ struct AIRenameSheet: View {
             // Header
             HStack {
                 Image(systemName: "pencil.line")
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                 Text("Rename Symbol")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
@@ -134,7 +134,7 @@ struct AIRenameSheet: View {
             """
 
             let response = await aiService.generateSync(
-                action: .generate,
+                action: .askAI,
                 input: prompt,
                 strategy: TextAIStrategy()
             )

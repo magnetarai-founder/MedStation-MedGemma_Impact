@@ -83,7 +83,7 @@ struct CodeExplainPopover: View {
 
         streamTask = Task { @MainActor in
             let stream = aiService.generate(
-                action: .explain,
+                action: .askAI,
                 input: prompt,
                 strategy: TextAIStrategy()
             )

@@ -53,7 +53,7 @@ struct CodeSearchPanel: View {
                 } label: {
                     Image(systemName: showReplace ? "arrow.up.arrow.down.square.fill" : "arrow.up.arrow.down.square")
                         .font(.system(size: 12))
-                        .foregroundStyle(showReplace ? .accentColor : .secondary)
+                        .foregroundStyle(showReplace ? Color.accentColor : Color.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Toggle Replace")
@@ -457,7 +457,7 @@ private struct SearchFileGroup: View {
                     } label: {
                         Text("Replace")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.accentColor)
+                            .foregroundStyle(Color.accentColor)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(RoundedRectangle(cornerRadius: 3).fill(Color.accentColor.opacity(0.1)))

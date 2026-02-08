@@ -78,7 +78,7 @@ struct CodeTextView: NSViewRepresentable {
         // Observe text layout changes to update ruler
         NotificationCenter.default.addObserver(
             context.coordinator,
-            selector: #selector(Coordinator.textStorageDidProcessEditing(_:)),
+            selector: #selector(Coordinator.handleTextStorageEdit(_:)),
             name: NSTextStorage.didProcessEditingNotification,
             object: textView.textStorage
         )
@@ -182,7 +182,7 @@ struct CodeTextView: NSViewRepresentable {
             scheduleHighlight()
         }
 
-        @objc func textStorageDidProcessEditing(_ notification: Notification) {
+        @objc func handleTextStorageEdit(_ notification: Notification) {
             rulerView?.needsDisplay = true
         }
 
@@ -471,7 +471,7 @@ struct CodeTextView: NSViewRepresentable {
             }
 
             // Add "AI Rename Symbol" for word at cursor
-            let wordRange = nsText.doubleClick(at: charIndex)
+            let wordRange = textView.selectionRange(forProposedRange: NSRange(location: charIndex, length: 0), granularity: .selectByWord)
             if wordRange.length > 0 {
                 let word = nsText.substring(with: wordRange)
                 // Only offer rename for identifiers (starts with letter/underscore)

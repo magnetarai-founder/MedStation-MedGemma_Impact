@@ -90,7 +90,7 @@ struct CodeEditorArea: View {
                     } label: {
                         Image(systemName: isSplit ? "rectangle" : "rectangle.split.2x1")
                             .font(.system(size: 11))
-                            .foregroundStyle(isSplit ? .accentColor : .secondary)
+                            .foregroundStyle(isSplit ? Color.accentColor : Color.secondary)
                     }
                     .buttonStyle(.plain)
                     .padding(.trailing, 8)

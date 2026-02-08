@@ -472,7 +472,7 @@ struct CodeWorkspace: View {
             // Backend-managed file
             Task {
                 do {
-                    try await codeEditorService.updateFile(fileId: fileId, content: fileContent)
+                    _ = try await codeEditorService.updateFile(fileId: fileId, content: fileContent)
                     await MainActor.run { originalFileContent = fileContent }
                     logger.info("Saved file via backend: \(file.name)")
                 } catch {
@@ -549,8 +549,7 @@ struct CodeWorkspace: View {
 
     /// Fallback: recursively scan local workspace directory when backend is unavailable
     private func loadLocalFiles() async {
-        let workspacePath = codingStore.workingDirectory
-        guard !workspacePath.isEmpty else {
+        guard let workspacePath = codingStore.workingDirectory, !workspacePath.isEmpty else {
             await MainActor.run {
                 files = []
                 errorMessage = "No workspace folder configured"

@@ -82,12 +82,12 @@ final class InlineCompletionManager {
 
         let aiService = WorkspaceAIService.shared
         let result = await aiService.generateSync(
-            action: .generate,
+            action: .askAI,
             input: prompt,
             strategy: TextAIStrategy()
         )
 
-        let completion = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        let completion = result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         guard !completion.isEmpty, !Task.isCancelled else { return }
 
         // Show ghost text
@@ -96,8 +96,7 @@ final class InlineCompletionManager {
     }
 
     private func showGhostText(_ text: String, at position: Int) {
-        guard let textView = textView,
-              let layoutManager = textView.layoutManager else { return }
+        guard let textView = textView else { return }
 
         let range = NSRange(location: position, length: 0)
         ghostText = text

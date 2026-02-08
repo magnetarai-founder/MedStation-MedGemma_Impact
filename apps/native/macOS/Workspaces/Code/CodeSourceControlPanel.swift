@@ -364,7 +364,7 @@ struct CodeSourceControlPanel: View {
                 } label: {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 10))
-                        .foregroundStyle(selectedDiffFileName == file.path ? .accentColor : .secondary)
+                        .foregroundStyle(selectedDiffFileName == file.path ? Color.accentColor : Color.secondary)
                         .frame(width: 18, height: 18)
                         .background(RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(0.05)))
                 }
@@ -461,7 +461,7 @@ struct CodeSourceControlPanel: View {
                             } label: {
                                 Text("Apply")
                                     .font(.system(size: 10))
-                                    .foregroundStyle(.accentColor)
+                                    .foregroundStyle(Color.accentColor)
                             }
                             .buttonStyle(.plain)
                             Button {
