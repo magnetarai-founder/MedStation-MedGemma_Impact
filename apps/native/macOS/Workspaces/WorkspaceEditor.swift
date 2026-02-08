@@ -1131,7 +1131,7 @@ struct SlashCommandMenu: View {
             // Header with filter
             HStack {
                 Image(systemName: "slash.circle")
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                 Text(query.isEmpty ? "Type to filter..." : query)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)

@@ -5,10 +5,8 @@
 //  Central registry for all plugin extension points.
 //  Plugins register handlers via PluginManager on load; unregister on unload.
 //
-//  FUTURE: Lookup methods (exportHandler(for:), automationHandler(for:)) are
-//  not yet called by the app — they exist as the dispatch interface for when
-//  plugin-provided export formats and automation actions are integrated into
-//  ExportService and AutomationEngine respectively.
+//  Lookup methods: automationHandler(for:) is called by AutomationEngine.executePluginAction.
+//  exportHandler(for:) is available for plugin-provided export formats via ExportService.
 //
 
 import Foundation

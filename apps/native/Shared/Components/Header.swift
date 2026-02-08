@@ -26,8 +26,8 @@ struct Header: View {
                 // Muted gradient with faint chroma sweep
                 LinearGradient(
                     colors: [
-                        Color(red: 0.11, green: 0.13, blue: 0.18).opacity(0.92),
-                        Color(red: 0.08, green: 0.09, blue: 0.14).opacity(0.94)
+                        Color(.windowBackgroundColor).opacity(0.92),
+                        Color(.windowBackgroundColor).opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

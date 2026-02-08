@@ -126,7 +126,7 @@ struct ModelManagerWindow: View {
                         Text("\(loadedModelsCount)/4")
                             .font(.caption2)
                     }
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                 }
             }
 

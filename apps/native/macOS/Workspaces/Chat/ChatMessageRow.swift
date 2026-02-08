@@ -293,7 +293,7 @@ struct CodeBlockView: View {
                     .padding(12)
             }
         }
-        .background(Color(red: 0.1, green: 0.1, blue: 0.12))
+        .background(Color(.textBackgroundColor).opacity(0.6))
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)

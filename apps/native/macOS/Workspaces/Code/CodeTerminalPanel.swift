@@ -144,7 +144,7 @@ struct CodeTerminalPanel: View {
                         Spacer()
                         if codingStore.preferredTerminal == app {
                             Image(systemName: "checkmark")
-                                .foregroundColor(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                     .padding(.horizontal, 8)

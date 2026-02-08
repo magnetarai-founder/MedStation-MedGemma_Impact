@@ -36,7 +36,7 @@ struct SmartModelPicker: View {
                     if selectedMode == "intelligent" {
                         Spacer()
                         Image(systemName: "checkmark")
-                            .foregroundColor(.accentColor)
+                            .foregroundStyle(Color.accentColor)
                     }
                 }
             }
@@ -60,7 +60,7 @@ struct SmartModelPicker: View {
                                 if selectedMode == "manual" && selectedModelId == modelName {
                                     Spacer()
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
+                                        .foregroundStyle(Color.accentColor)
                                 }
                             }
                         }

@@ -171,7 +171,7 @@ struct WorkspaceSettingsWindow: View {
 
                 if connectionMode == value {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
             }
             .padding(.vertical, 8)
