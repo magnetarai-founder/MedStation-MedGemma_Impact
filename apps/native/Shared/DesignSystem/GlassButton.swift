@@ -43,7 +43,7 @@ struct GlassButton: View {
             .padding(.vertical, 12)
             .padding(.horizontal, 20)
             .background(backgroundView)
-            .foregroundColor(foregroundColor)
+            .foregroundStyle(foregroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: shadowColor, radius: isHovered ? 12 : 8, y: 4)
             .scaleEffect(isHovered ? 1.02 : 1.0)

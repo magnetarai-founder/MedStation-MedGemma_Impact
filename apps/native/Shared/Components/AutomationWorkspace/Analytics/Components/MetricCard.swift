@@ -22,25 +22,25 @@ struct MetricCard: View {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: isCompact ? 18 : 24))
-                    .foregroundColor(color)
+                    .foregroundStyle(color)
 
                 Spacer()
 
                 Text(title)
                     .font(.system(size: isCompact ? 12 : 13))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .textCase(.uppercase)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(value)
                     .font(.system(size: isCompact ? 24 : 32, weight: .bold))
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

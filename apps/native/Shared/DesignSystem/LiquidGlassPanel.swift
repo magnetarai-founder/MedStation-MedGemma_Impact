@@ -102,7 +102,7 @@ extension View {
                         .font(.headline)
                     Text("Most transparent layer")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -112,7 +112,7 @@ extension View {
                         .font(.headline)
                     Text("Balanced transparency")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -122,7 +122,7 @@ extension View {
                         .font(.headline)
                     Text("More opaque, stronger backdrop")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

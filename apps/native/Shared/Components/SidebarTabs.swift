@@ -71,7 +71,7 @@ struct TabButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(isSelected ? .magnetarPrimary : (isHovered ? .primary : .secondary))
+                .foregroundStyle(isSelected ? Color.magnetarPrimary : (isHovered ? .primary : .secondary))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .overlay(
@@ -100,11 +100,11 @@ struct ColumnInspector: View {
                 VStack(spacing: 12) {
                     Image(systemName: "cylinder")
                         .font(.system(size: 32))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text("No file loaded")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -112,7 +112,7 @@ struct ColumnInspector: View {
                 HStack {
                     Text("Columns (\(columns.count))")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
 
                     Spacer()
                 }
@@ -148,14 +148,14 @@ struct ColumnRow: View {
         HStack {
             Text(column.name)
                 .font(.system(size: 13))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
 
             if isHovered && column.isClickable {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 16))
-                    .foregroundColor(.magnetarPrimary)
+                    .foregroundStyle(Color.magnetarPrimary)
             }
         }
         .padding(.horizontal, 12)
@@ -193,11 +193,11 @@ struct LogViewer: View {
                 VStack(spacing: 12) {
                     Image(systemName: "doc.text")
                         .font(.system(size: 32))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text("No logs yet")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -221,12 +221,12 @@ struct LogRow: View {
         HStack(alignment: .top, spacing: 8) {
             Text(log.timestamp)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 60, alignment: .leading)
 
             Text(log.message)
                 .font(.system(size: 11))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
         }
     }
 }

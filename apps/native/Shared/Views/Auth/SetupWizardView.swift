@@ -39,7 +39,7 @@ struct SetupWizardView: View {
 
                         Text("Let's get you set up")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     // Progress indicator
@@ -109,7 +109,7 @@ struct SetupWizardView: View {
 
                 Text("You can change this later in settings")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
         case 1:
@@ -123,7 +123,7 @@ struct SetupWizardView: View {
 
                 Text("Teams allow you to collaborate with others")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
         case 2:

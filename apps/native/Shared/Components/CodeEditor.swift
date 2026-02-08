@@ -322,7 +322,7 @@ struct CodeEditorToolbarButton<Content: View>: View {
     var body: some View {
         Button(action: action) {
             content
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
         }
@@ -345,7 +345,7 @@ struct ToolbarIconButton<Content: View>: View {
     var body: some View {
         Button(action: action) {
             content
-                .foregroundColor(buttonForegroundColor)
+                .foregroundStyle(buttonForegroundColor)
                 .frame(width: 28, height: 28)
         }
         .buttonStyle(.plain)
@@ -410,13 +410,13 @@ struct RecentQueriesSheet: View {
                 VStack(spacing: 16) {
                     Image(systemName: "clock")
                         .font(.system(size: 48))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text("No recent queries")
                         .font(.headline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text("Queries you run will appear here")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -433,13 +433,13 @@ struct RecentQueriesSheet: View {
                                         Spacer()
                                         Image(systemName: "chevron.right")
                                             .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
 
                                     Text(query)
                                         .font(.system(size: 12, design: .monospaced))
                                         .lineLimit(2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -42,7 +42,7 @@ struct NewDocumentModal: View {
 
                         Text("Choose a document type to get started")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     // Document type tiles (4 options)
@@ -61,7 +61,7 @@ struct NewDocumentModal: View {
                             Text("Document Title")
                                 .font(.caption)
                                 .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
 
                             TextField("Enter title...", text: $title)
                                 .textFieldStyle(.roundedBorder)
@@ -74,7 +74,7 @@ struct NewDocumentModal: View {
                     if let error = errorMessage {
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
 
                     // Action buttons
@@ -125,12 +125,12 @@ struct NewDocumentModal: View {
                 // Name
                 Text(type.displayName)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(selectedType == type ? .primary : .secondary)
+                    .foregroundStyle(selectedType == type ? .primary : .secondary)
 
                 // Description
                 Text(type.description)
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }

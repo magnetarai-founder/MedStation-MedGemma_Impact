@@ -40,7 +40,7 @@ struct SaveQueryDialog: View {
             if let error = errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
             }
 
             HStack(spacing: 12) {

@@ -42,7 +42,7 @@ struct NetworkSelector: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10))
             }
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(

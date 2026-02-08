@@ -16,7 +16,7 @@ struct BrandCluster: View {
     var body: some View {
         Text("MagnetarStudio")
             .font(.system(size: 22, weight: .bold))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
     }
 }
 
@@ -89,7 +89,7 @@ struct HeaderToolbarButton: View {
                         .padding(.trailing, 2)
                 }
             }
-            .foregroundColor(tint.opacity(isHovering ? 1.0 : 0.85))
+            .foregroundStyle(tint.opacity(isHovering ? 1.0 : 0.85))
             .padding(.horizontal, label == nil ? 10 : 12)
             .padding(.vertical, 8)
             .background(
@@ -129,7 +129,7 @@ struct ActivityMonitorTile: View {
                 HStack(spacing: 12) {
                     Image(systemName: "network")
                         .font(.system(size: 18))
-                        .foregroundColor(.purple)
+                        .foregroundStyle(.purple)
                         .frame(width: 28)
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -150,7 +150,7 @@ struct ActivityMonitorTile: View {
                                     .font(.system(size: 11))
                             }
                         }
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
@@ -183,12 +183,12 @@ struct ControlCenterButton: View {
 
                     Image(systemName: icon)
                         .font(.system(size: 22))
-                        .foregroundColor(color)
+                        .foregroundStyle(color)
                 }
 
                 Text(label)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
@@ -220,17 +220,17 @@ struct NetworkStatusRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundColor(isActive ? .magnetarPrimary : .secondary)
+                .foregroundStyle(isActive ? Color.magnetarPrimary : .secondary)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Text(status)
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -267,7 +267,7 @@ struct ResourceRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -277,7 +277,7 @@ struct ResourceRow: View {
                     Spacer()
                     Text("\(Int(percentage))%")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 GeometryReader { geometry in
@@ -311,12 +311,12 @@ struct SecurityActionRow: View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
                 .frame(width: 20)
 
             Text(text)
                 .font(.system(size: 13))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
         }
@@ -368,7 +368,7 @@ struct WorkspaceTab: View {
                 Text(workspace.shortName)
                     .font(.system(size: 13, weight: .medium))
             }
-            .foregroundColor(isActive ? .white : (isHovered ? .primary : .secondary))
+            .foregroundStyle(isActive ? .white : (isHovered ? .primary : .secondary))
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(
@@ -484,7 +484,7 @@ struct QuickActionButton: View {
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(isHovered ? .primary : .secondary)
+                .foregroundStyle(isHovered ? .primary : .secondary)
                 .padding(8)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)

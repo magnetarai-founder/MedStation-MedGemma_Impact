@@ -40,12 +40,12 @@ struct EmptyState: View {
             VStack(spacing: 8) {
                 Text(title)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 if let message = message {
                     Text(message)
                         .font(.system(size: 14))
-                        .foregroundColor(.textSecondary)
+                        .foregroundStyle(Color.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
@@ -59,7 +59,7 @@ struct EmptyState: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
                         .background(Color.magnetarPrimary.opacity(0.1))
-                        .foregroundColor(.magnetarPrimary)
+                        .foregroundStyle(Color.magnetarPrimary)
                         .cornerRadius(8)
                 }
                 .buttonStyle(.plain)

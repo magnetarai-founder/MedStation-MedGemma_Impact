@@ -77,7 +77,7 @@ struct WorkflowBuilderView: View {
             } label: {
                 Image(systemName: "arrow.left")
                     .font(.system(size: 20))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
@@ -118,14 +118,14 @@ struct WorkflowBuilderView: View {
                         if isHoveringTitle {
                             Image(systemName: "pencil")
                                 .font(.system(size: 16))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
 
                 Text("Drag nodes to customize your workflow")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -137,7 +137,7 @@ struct WorkflowBuilderView: View {
                 } label: {
                     Image(systemName: "square.and.arrow.down")
                         .font(.system(size: 20))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
@@ -151,7 +151,7 @@ struct WorkflowBuilderView: View {
                 } label: {
                     Image(systemName: "play.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
@@ -176,14 +176,14 @@ struct WorkflowBuilderView: View {
             VStack(spacing: 16) {
                 Image(systemName: "square.grid.3x2")
                     .font(.system(size: 64))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text("Workflow Canvas")
                     .font(.title)
 
                 Text("ReactFlow-style node editor will render here")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Minimap (top-right corner)
@@ -194,7 +194,7 @@ struct WorkflowBuilderView: View {
                     VStack(spacing: 8) {
                         Text("MiniMap")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         RoundedRectangle(cornerRadius: 4)
                             .fill(Color.gray.opacity(0.3))
@@ -226,7 +226,7 @@ struct WorkflowBuilderView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundColor(isActive ? Color.magnetarPrimary : .primary)
+                .foregroundStyle(isActive ? Color.magnetarPrimary : .primary)
                 .frame(width: 40, height: 40)
         }
         .buttonStyle(.plain)
@@ -321,12 +321,12 @@ struct WorkflowBuilderView: View {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 16))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .frame(width: 20)
 
                 Text(label)
                     .font(.system(size: 14))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
             }
@@ -351,7 +351,7 @@ struct WorkflowBuilderView: View {
 
             Text(label)
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Spacer()
         }

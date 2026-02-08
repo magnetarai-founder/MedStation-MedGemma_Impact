@@ -25,7 +25,7 @@ struct WorkflowTabButton: View {
                 Text(title)
                     .font(.system(size: 14, weight: isActive ? .medium : .regular))
             }
-            .foregroundColor(isActive ? Color.magnetarPrimary : (isHovered ? .primary : .secondary))
+            .foregroundStyle(isActive ? Color.magnetarPrimary : (isHovered ? .primary : .secondary))
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(

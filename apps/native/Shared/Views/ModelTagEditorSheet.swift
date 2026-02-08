@@ -31,14 +31,14 @@ struct ModelTagEditorSheet: View {
 
                     Text(modelName)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -53,14 +53,14 @@ struct ModelTagEditorSheet: View {
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 48))
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
 
                     Text("Error Loading Tags")
                         .font(.headline)
 
                     Text(error)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
                     Button("Retry") {
@@ -90,7 +90,7 @@ struct ModelTagEditorSheet: View {
                                             Text("Manual Override")
                                                 .font(.caption2)
                                         }
-                                        .foregroundColor(.orange)
+                                        .foregroundStyle(.orange)
                                     } else {
                                         HStack(spacing: 4) {
                                             Image(systemName: "sparkles")
@@ -98,7 +98,7 @@ struct ModelTagEditorSheet: View {
                                             Text("Auto-Detected")
                                                 .font(.caption2)
                                         }
-                                        .foregroundColor(.green)
+                                        .foregroundStyle(.green)
                                     }
                                 }
 
@@ -128,7 +128,7 @@ struct ModelTagEditorSheet: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(category.rawValue)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
 
                                     FlowLayout(spacing: 8) {
                                         ForEach(category.tags(from: availableTags)) { tag in
@@ -275,7 +275,7 @@ struct TagChip: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(isSelected ? tag.color.opacity(0.2) : Color.surfaceSecondary)
-            .foregroundColor(isSelected ? tag.color : .textSecondary)
+            .foregroundStyle(isSelected ? tag.color : Color.textSecondary)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)

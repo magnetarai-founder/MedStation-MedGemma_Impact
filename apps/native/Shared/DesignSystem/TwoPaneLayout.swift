@@ -93,7 +93,7 @@ struct ToolbarButton: View {
             .padding(.horizontal, style == .icon ? 8 : 12)
             .padding(.vertical, 6)
             .background(backgroundColor)
-            .foregroundColor(foregroundColor)
+            .foregroundStyle(foregroundColor)
             .cornerRadius(6)
         }
         .buttonStyle(.plain)
@@ -156,7 +156,7 @@ struct ToolbarDivider: View {
         VStack {
             Text("Main Content Area")
                 .font(.title)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -22,7 +22,7 @@ struct LoadingView: View {
 
                 Text(message)
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             }
         }
     }

@@ -12,14 +12,14 @@ struct WorkflowDesignerView: View {
         VStack(spacing: 16) {
             Image(systemName: "paintbrush")
                 .font(.system(size: 64))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text("Workflow Designer")
                 .font(.title)
 
             Text("Stage list and editor will appear here")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

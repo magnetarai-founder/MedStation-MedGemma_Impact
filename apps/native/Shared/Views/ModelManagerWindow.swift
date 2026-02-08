@@ -65,7 +65,7 @@ struct ModelManagerWindow: View {
                             // Search
                             HStack(spacing: 6) {
                                 Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.textSecondary)
+                                    .foregroundStyle(Color.textSecondary)
                                     .font(.caption)
 
                                 TextField("Search", text: $searchText)
@@ -114,11 +114,11 @@ struct ModelManagerWindow: View {
                         Text(formattedMemory)
                             .font(.caption2)
                     }
-                    .foregroundColor(.textSecondary)
+                    .foregroundStyle(Color.textSecondary)
 
                     Text("•")
                         .font(.caption2)
-                        .foregroundColor(.textTertiary)
+                        .foregroundStyle(Color.textTertiary)
 
                     HStack(spacing: 4) {
                         Image(systemName: "bolt.fill")
@@ -135,7 +135,7 @@ struct ModelManagerWindow: View {
             Button(action: { Task { await loadData() } }) {
                 Image(systemName: "arrow.clockwise")
                     .font(.caption)
-                    .foregroundColor(.textSecondary)
+                    .foregroundStyle(Color.textSecondary)
             }
             .buttonStyle(.plain)
             .disabled(isLoading)
@@ -167,7 +167,7 @@ struct ModelManagerWindow: View {
         }) {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(selectedTag == tag ? .white : .textSecondary)
+                .foregroundStyle(selectedTag == tag ? .white : Color.textSecondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(selectedTag == tag ? Color.accentColor : Color.surfaceSecondary)
@@ -187,7 +187,7 @@ struct ModelManagerWindow: View {
             // Slot number indicator
             Text("\(slotNumber)")
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundColor(.textTertiary)
+                .foregroundStyle(Color.textTertiary)
                 .frame(width: 24)
 
             if isEmpty {
@@ -195,13 +195,13 @@ struct ModelManagerWindow: View {
                 HStack {
                     Text("Empty Slot")
                         .font(.subheadline)
-                        .foregroundColor(.textTertiary)
+                        .foregroundStyle(Color.textTertiary)
 
                     Spacer()
 
                     Image(systemName: "circle.dashed")
                         .font(.caption)
-                        .foregroundColor(.textTertiary)
+                        .foregroundStyle(Color.textTertiary)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -210,7 +210,7 @@ struct ModelManagerWindow: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                        .foregroundColor(.textTertiary.opacity(0.3))
+                        .foregroundStyle(Color.textTertiary.opacity(0.3))
                 )
             } else if let modelName = slot?.modelName {
                 // Loaded model - compact row
@@ -230,7 +230,7 @@ struct ModelManagerWindow: View {
                         if let memoryGB = slot?.memoryUsageGB {
                             Text(String(format: "%.1f GB", memoryGB))
                                 .font(.system(size: 10))
-                                .foregroundColor(.textSecondary)
+                                .foregroundStyle(Color.textSecondary)
                         }
                     }
 
@@ -242,7 +242,7 @@ struct ModelManagerWindow: View {
                     }) {
                         Image(systemName: isPinned ? "pin.fill" : "pin")
                             .font(.caption)
-                            .foregroundColor(isPinned ? .yellow : .textSecondary)
+                            .foregroundStyle(isPinned ? .yellow : Color.textSecondary)
                     }
                     .buttonStyle(.plain)
                     .help(isPinned ? "Unpin" : "Pin")
@@ -253,7 +253,7 @@ struct ModelManagerWindow: View {
                     }) {
                         Image(systemName: "eject.fill")
                             .font(.caption)
-                            .foregroundColor(.red.opacity(0.8))
+                            .foregroundStyle(.red.opacity(0.8))
                     }
                     .buttonStyle(.plain)
                     .help("Unload Model")
@@ -292,7 +292,7 @@ struct ModelManagerWindow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(model.name)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(isLoaded ? .textPrimary : .textSecondary)
+                    .foregroundStyle(isLoaded ? Color.textPrimary : Color.textSecondary)
 
                 // Tags
                 if !model.tags.isEmpty {
@@ -300,7 +300,7 @@ struct ModelManagerWindow: View {
                         ForEach(model.tags.prefix(3), id: \.self) { tag in
                             Text(tag)
                                 .font(.system(size: 9))
-                                .foregroundColor(.textTertiary)
+                                .foregroundStyle(Color.textTertiary)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(Color.accentColor.opacity(0.1))
@@ -316,14 +316,14 @@ struct ModelManagerWindow: View {
             if let memory = memoryTracker.getMemoryUsage(for: model.name) {
                 Text(String(format: "%.1f GB", memory))
                     .font(.system(size: 10))
-                    .foregroundColor(.textTertiary)
+                    .foregroundStyle(Color.textTertiary)
             }
 
             // Slot number buttons [1][2][3][4]
             if isLoaded {
                 Text("Loaded")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Color.green.opacity(0.1))
@@ -355,7 +355,7 @@ struct ModelManagerWindow: View {
         }) {
             Text("\(slotNumber)")
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundColor(isOccupied ? .textTertiary : .accentColor)
+                .foregroundStyle(isOccupied ? Color.textTertiary : Color.accentColor)
                 .frame(width: 20, height: 20)
                 .background(isOccupied ? Color.gray.opacity(0.2) : Color.accentColor.opacity(0.15))
                 .cornerRadius(4)

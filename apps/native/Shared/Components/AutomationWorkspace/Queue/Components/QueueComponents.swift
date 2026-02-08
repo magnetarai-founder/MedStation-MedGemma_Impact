@@ -18,7 +18,7 @@ struct ToggleButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: isActive ? .medium : .regular))
-                .foregroundColor(isActive ? Color.magnetarPrimary : .secondary)
+                .foregroundStyle(isActive ? Color.magnetarPrimary : .secondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
@@ -43,7 +43,7 @@ struct StatusPill: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(pillColor.opacity(0.2))
             )
-            .foregroundColor(pillColor)
+            .foregroundStyle(pillColor)
     }
 
     private var pillColor: Color {

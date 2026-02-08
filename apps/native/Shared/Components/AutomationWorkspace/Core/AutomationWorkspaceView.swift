@@ -52,7 +52,7 @@ struct AutomationWorkspaceView: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("Search workflows...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -76,7 +76,7 @@ struct AutomationWorkspaceView: View {
                     Text("New Workflow")
                         .font(.system(size: 14, weight: .medium))
                 }
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(

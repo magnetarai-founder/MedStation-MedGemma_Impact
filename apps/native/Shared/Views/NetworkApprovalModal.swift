@@ -37,7 +37,7 @@ struct NetworkApprovalModal: View {
 
                         Text("MagnetarStudio wants to connect")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     Divider()
@@ -62,7 +62,7 @@ struct NetworkApprovalModal: View {
                         Text("Action")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         VStack(spacing: 8) {
                             ApprovalOption(
@@ -157,12 +157,12 @@ struct NetworkDetailRow: View {
             Text(label + ":")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 80, alignment: .leading)
 
             Text(value)
                 .font(.caption)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
         }
@@ -178,7 +178,7 @@ struct ApprovalOption: View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(selected ? .blue : .gray)
+                    .foregroundStyle(selected ? .blue : .gray)
                     .font(.system(size: 16))
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -188,7 +188,7 @@ struct ApprovalOption: View {
 
                     Text(mode.description)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()

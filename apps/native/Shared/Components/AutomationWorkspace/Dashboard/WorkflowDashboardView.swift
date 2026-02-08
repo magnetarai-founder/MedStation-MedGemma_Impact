@@ -39,7 +39,7 @@ struct WorkflowDashboardView: View {
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 10))
                         }
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -51,7 +51,7 @@ struct WorkflowDashboardView: View {
 
                     Text("\(starredWorkflows.count + recentWorkflows.count) workflows")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Spacer()
 
@@ -66,7 +66,7 @@ struct WorkflowDashboardView: View {
                                 Text("Browse Templates")
                                     .font(.system(size: 14, weight: .medium))
                             }
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(
@@ -85,7 +85,7 @@ struct WorkflowDashboardView: View {
                                 Text("Create")
                                     .font(.system(size: 14, weight: .medium))
                             }
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(
@@ -105,7 +105,7 @@ struct WorkflowDashboardView: View {
                         HStack {
                             Image(systemName: "star.fill")
                                 .font(.system(size: 16))
-                                .foregroundColor(.orange)
+                                .foregroundStyle(.orange)
                             Text("Starred")
                                 .font(.system(size: 18, weight: .semibold))
                         }
@@ -125,7 +125,7 @@ struct WorkflowDashboardView: View {
                         HStack {
                             Image(systemName: "clock")
                                 .font(.system(size: 16))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("Recent")
                                 .font(.system(size: 18, weight: .semibold))
                         }

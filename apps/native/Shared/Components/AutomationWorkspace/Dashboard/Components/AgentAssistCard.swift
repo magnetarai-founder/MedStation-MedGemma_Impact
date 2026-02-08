@@ -35,7 +35,7 @@ struct AgentAssistCard: View {
 
                 Text("Let AI help you build, optimize, and maintain workflows automatically")
                     .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -46,7 +46,7 @@ struct AgentAssistCard: View {
                 } label: {
                     Text("Browse Templates")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -61,7 +61,7 @@ struct AgentAssistCard: View {
                 } label: {
                     Text("Learn About Agent Assist")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.purple)
+                        .foregroundStyle(.purple)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(

@@ -446,7 +446,7 @@ struct SmartFilePicker: View {
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             TextField("Search files...", text: $searchQuery)
                 .textFieldStyle(.plain)
@@ -456,7 +456,7 @@ struct SmartFilePicker: View {
                     searchQuery = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -521,14 +521,14 @@ struct SmartFilePicker: View {
         VStack(spacing: 8) {
             Image(systemName: "doc.questionmark")
                 .font(.largeTitle)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text("No suggestions available")
                 .font(.headline)
 
             Text("Try searching or browse all files")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -568,7 +568,7 @@ private struct SuggestionRow: View {
             HStack(spacing: 12) {
                 // Selection indicator
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
 
                 // File icon
                 FileTypeIcon(fileType: suggestion.file.fileType)
@@ -584,7 +584,7 @@ private struct SuggestionRow: View {
 
                         Text(suggestion.explanation)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -612,7 +612,7 @@ private struct FileRow: View {
         Button(action: onTap) {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
 
                 FileTypeIcon(fileType: file.fileType)
 
@@ -625,7 +625,7 @@ private struct FileRow: View {
                 if file.isVaultProtected {
                     Image(systemName: "lock.shield.fill")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                 }
             }
             .padding(.vertical, 6)
@@ -643,7 +643,7 @@ private struct FileTypeIcon: View {
     var body: some View {
         Image(systemName: iconName)
             .font(.title3)
-            .foregroundColor(iconColor)
+            .foregroundStyle(iconColor)
             .frame(width: 24)
     }
 
@@ -694,7 +694,7 @@ private struct ScoreBadge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(backgroundColor)
-            .foregroundColor(.white)
+            .foregroundStyle(.white)
             .cornerRadius(4)
     }
 

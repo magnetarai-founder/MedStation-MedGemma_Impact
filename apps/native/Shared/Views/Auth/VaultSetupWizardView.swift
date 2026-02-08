@@ -40,7 +40,7 @@ struct VaultSetupWizardView: View {
 
                         Text("Configure both vault passwords")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     // Progress indicator
@@ -57,7 +57,7 @@ struct VaultSetupWizardView: View {
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .padding(.horizontal, 40)
                     }
 
@@ -119,7 +119,7 @@ struct VaultSetupWizardView: View {
 
                 Text("This password protects your sensitive files")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     SecureField("Sensitive vault password", text: $passwordSensitive)
@@ -142,12 +142,12 @@ struct VaultSetupWizardView: View {
 
                     Text(passwordStrengthText(passwordSensitive))
                         .font(.caption2)
-                        .foregroundColor(strengthColor(passwordSensitive))
+                        .foregroundStyle(strengthColor(passwordSensitive))
                 }
 
                 Text("Minimum 8 characters required")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
         case 1:
@@ -157,7 +157,7 @@ struct VaultSetupWizardView: View {
 
                 Text("This password protects your regular files")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     SecureField("Unsensitive vault password", text: $passwordUnsensitive)
@@ -180,12 +180,12 @@ struct VaultSetupWizardView: View {
 
                     Text(passwordStrengthText(passwordUnsensitive))
                         .font(.caption2)
-                        .foregroundColor(strengthColor(passwordUnsensitive))
+                        .foregroundStyle(strengthColor(passwordUnsensitive))
                 }
 
                 Text("Must be different from sensitive password")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
         default:

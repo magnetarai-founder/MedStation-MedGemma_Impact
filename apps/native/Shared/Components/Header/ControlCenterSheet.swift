@@ -36,7 +36,7 @@ struct ControlCenterSheet: View {
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(8)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -63,10 +63,10 @@ struct ControlCenterSheet: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "terminal.fill")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(.blue)
                                 Text("Terminal")
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.primary)
+                                    .foregroundStyle(.primary)
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -79,7 +79,7 @@ struct ControlCenterSheet: View {
                         // Session count badge - same size as button
                         Text("\(terminalCount)/3")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(terminalCount >= 3 ? .red : .secondary)
+                            .foregroundStyle(terminalCount >= 3 ? .red : .secondary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(Color.secondary.opacity(0.08))

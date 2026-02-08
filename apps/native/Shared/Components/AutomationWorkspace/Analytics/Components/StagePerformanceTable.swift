@@ -18,27 +18,27 @@ struct StagePerformanceTable: View {
             HStack(spacing: 16) {
                 Text("Stage")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text("Entered")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 80, alignment: .trailing)
 
                 Text("Completed")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 100, alignment: .trailing)
 
                 Text("Avg Time")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 100, alignment: .trailing)
 
                 Text("Median Time")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 100, alignment: .trailing)
             }
             .padding(.horizontal, 16)
@@ -53,27 +53,27 @@ struct StagePerformanceTable: View {
                     HStack(spacing: 16) {
                         Text(stage.name)
                             .font(.system(size: 14))
-                            .foregroundColor(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         Text("\(stage.entered)")
                             .font(.system(size: 14))
-                            .foregroundColor(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                             .frame(width: 80, alignment: .trailing)
 
                         Text("\(stage.completed)")
                             .font(.system(size: 14))
-                            .foregroundColor(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                             .frame(width: 100, alignment: .trailing)
 
                         Text(stage.avgTime)
                             .font(.system(size: 14, design: .monospaced))
-                            .foregroundColor(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                             .frame(width: 100, alignment: .trailing)
 
                         Text(stage.medianTime ?? "—")
                             .font(.system(size: 14, design: .monospaced))
-                            .foregroundColor(stage.medianTime != nil ? .textPrimary : .secondary)
+                            .foregroundStyle(stage.medianTime != nil ? Color.textPrimary : .secondary)
                             .frame(width: 100, alignment: .trailing)
                     }
                     .padding(.horizontal, 16)

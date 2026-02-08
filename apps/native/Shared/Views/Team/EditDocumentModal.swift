@@ -39,7 +39,7 @@ struct EditDocumentModal: View {
 
                         Text("Update the document title")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     // Title input
@@ -47,7 +47,7 @@ struct EditDocumentModal: View {
                         Text("Document Title")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         TextField("Enter title...", text: $title)
                             .textFieldStyle(.roundedBorder)
@@ -58,7 +58,7 @@ struct EditDocumentModal: View {
                     if let error = errorMessage {
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
 
                     // Action buttons

@@ -108,7 +108,7 @@ struct WorkflowQueueView: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10))
                 }
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
@@ -289,7 +289,7 @@ struct WorkflowQueueView: View {
 
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
@@ -312,7 +312,7 @@ struct WorkflowQueueView: View {
 
             Text("Fetching available work items")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -328,7 +328,7 @@ struct WorkflowQueueView: View {
 
             Text(viewMode == .myActive ? "You have no active work items" : "Check back later for new work")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

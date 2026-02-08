@@ -87,7 +87,7 @@ struct SmartModelPicker: View {
                                 Text(modelName)
                                 Spacer()
                                 Image(systemName: "arrow.down.circle")
-                                    .foregroundColor(.gray)
+                                    .foregroundStyle(.gray)
                                     .font(.caption)
                             }
                         }
@@ -118,7 +118,7 @@ struct SmartModelPicker: View {
                 Image(systemName: "chevron.down")
                     .font(.caption2)
             }
-            .foregroundColor(.textSecondary)
+            .foregroundStyle(Color.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color.surfaceSecondary)

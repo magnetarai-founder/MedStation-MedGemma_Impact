@@ -26,7 +26,7 @@ struct PanicModeSheet: View {
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(8)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -40,7 +40,7 @@ struct PanicModeSheet: View {
             // Warning Icon
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 64))
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
 
             // Title
             Text("Panic Mode")
@@ -53,7 +53,7 @@ struct PanicModeSheet: View {
 
                 Text("This will immediately:")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     SecurityActionRow(icon: "lock.fill", text: "Lock all vaults")
@@ -70,7 +70,7 @@ struct PanicModeSheet: View {
             Toggle(isOn: $shouldQuitApp) {
                 HStack {
                     Image(systemName: "power")
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                     Text("Quit application after panic")
                         .font(.system(size: 14, weight: .medium))
                 }

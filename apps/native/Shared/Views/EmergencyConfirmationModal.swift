@@ -75,15 +75,15 @@ struct EmergencyConfirmationModal: View {
             VStack(spacing: 12) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
 
                 Text("⚠️ EMERGENCY MODE ⚠️")
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
 
                 Text("THIS IS IRREVERSIBLE")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(.top, 40)
 
@@ -94,7 +94,7 @@ struct EmergencyConfirmationModal: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("This will PERMANENTLY DELETE:")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     EmergencyWarningRow(icon: "lock.fill", text: "All vault files (sensitive + unsensitive)")
@@ -107,7 +107,7 @@ struct EmergencyConfirmationModal: View {
 
                 Text("THERE IS NO RECOVERY. THIS IS FINAL.")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .padding(.top, 8)
             }
             .padding(.horizontal, 32)
@@ -119,7 +119,7 @@ struct EmergencyConfirmationModal: View {
             VStack(spacing: 12) {
                 Text("Type \"I UNDERSTAND\" to proceed:")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("", text: $userInput)
                     .textFieldStyle(.plain)
@@ -145,7 +145,7 @@ struct EmergencyConfirmationModal: View {
                 // Alternative: Key combo hint
                 Text("Or: Hold Cmd+Shift+Delete for 5 seconds")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 if keyHoldProgress > 0 {
                     ProgressView(value: keyHoldProgress)
@@ -162,7 +162,7 @@ struct EmergencyConfirmationModal: View {
             HStack {
                 Text("Window closes in \(countdown) seconds")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Spacer()
 
@@ -185,16 +185,16 @@ struct EmergencyConfirmationModal: View {
             VStack(spacing: 12) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .symbolEffect(.pulse)
 
                 Text("FINAL WARNING")
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
 
                 Text("Are you absolutely sure?")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(.top, 60)
 
@@ -213,11 +213,11 @@ struct EmergencyConfirmationModal: View {
                     Text("• Recovery is IMPOSSIBLE")
                 }
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
                 Text("This action cannot be undone.")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .padding(.top, 8)
             }
             .padding(.horizontal, 32)
@@ -255,12 +255,12 @@ struct EmergencyConfirmationModal: View {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .frame(width: 20)
 
                 Text(text)
                     .font(.system(size: 13))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
             }

@@ -75,19 +75,19 @@ struct PaneHeader: View {
             if let icon = icon {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Title and subtitle
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -141,12 +141,12 @@ struct PaneEmptyState: View {
                 Text(title)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -200,7 +200,7 @@ struct PaneEmptyState: View {
                         .font(.headline)
                     Text("Preview text...")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .listStyle(.plain)

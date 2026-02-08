@@ -22,7 +22,7 @@ struct QueueItemCard: View {
 
                 Text(item.reference)
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
@@ -37,19 +37,19 @@ struct QueueItemCard: View {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.triangle.branch")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(item.workflowName)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 Text("→")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(item.stageName)
                     .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             // Status pills
@@ -65,7 +65,7 @@ struct QueueItemCard: View {
                     Text("Data Preview")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .textCase(.uppercase)
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -73,11 +73,11 @@ struct QueueItemCard: View {
                             HStack(spacing: 8) {
                                 Text(preview.key)
                                     .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
 
                                 Text(preview.value)
                                     .font(.system(size: 12, design: .monospaced))
-                                    .foregroundColor(.textPrimary)
+                                    .foregroundStyle(Color.textPrimary)
                             }
                         }
                     }
@@ -95,11 +95,11 @@ struct QueueItemCard: View {
                 HStack(spacing: 4) {
                     Image(systemName: "clock")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text(item.createdAt)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Tags
@@ -107,11 +107,11 @@ struct QueueItemCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "tag")
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Text(item.tags.joined(separator: ", "))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -126,7 +126,7 @@ struct QueueItemCard: View {
 
                         Text(assignee)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

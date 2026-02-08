@@ -44,7 +44,7 @@ struct WelcomeView: View {
 
                         Text("Professional AI Platform")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.bottom, 16)
 
@@ -84,7 +84,7 @@ struct WelcomeView: View {
                     if let error = authStore.error {
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .padding(.horizontal)
                     }
 
@@ -110,7 +110,7 @@ struct WelcomeView: View {
                                     Text("Enable \(biometricService.biometricType().displayName)")
                                         .font(.caption)
                                 }
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             }
                             .toggleStyle(.checkbox)
                         }
@@ -121,7 +121,7 @@ struct WelcomeView: View {
                         } label: {
                             Text(isRegistering ? "Already have an account? Sign in" : "Don't have an account? Register")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -131,7 +131,7 @@ struct WelcomeView: View {
                         VStack(spacing: 8) {
                             Text("or")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
 
                             GlassButton(
                                 "Sign in with \(biometricService.biometricType().displayName)",

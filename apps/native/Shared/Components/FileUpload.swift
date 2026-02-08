@@ -50,7 +50,7 @@ struct FileUpload: View {
 
             Text("Uploading file...")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(40)
@@ -63,13 +63,13 @@ struct FileUpload: View {
             // Upload icon
             Image(systemName: "arrow.up.doc")
                 .font(.system(size: 32))
-                .foregroundColor(isHovered ? Color.magnetarPrimary : .secondary)
+                .foregroundStyle(isHovered ? Color.magnetarPrimary : .secondary)
 
             // Label
             VStack(spacing: 4) {
                 Text("Drop file or click to upload")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 // Format badges
                 HStack(spacing: 6) {
@@ -85,7 +85,7 @@ struct FileUpload: View {
                 .strokeBorder(
                     style: StrokeStyle(lineWidth: 2, dash: [6, 4])
                 )
-                .foregroundColor(isHovered ? Color.magnetarPrimary.opacity(0.6) : Color.gray.opacity(0.3))
+                .foregroundStyle(isHovered ? Color.magnetarPrimary.opacity(0.6) : Color.gray.opacity(0.3))
         )
         .background(
             RoundedRectangle(cornerRadius: 8)
@@ -113,12 +113,12 @@ struct FileUpload: View {
             HStack(spacing: 8) {
                 Image(systemName: "doc.text")
                     .font(.system(size: 16))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(file.name)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -127,7 +127,7 @@ struct FileUpload: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(4)
                 }
                 .buttonStyle(.plain)
@@ -138,11 +138,11 @@ struct FileUpload: View {
             HStack(spacing: 16) {
                 Text("\(file.rows) × \(file.cols)")
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(file.sizeFormatted)
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(12)
@@ -246,7 +246,7 @@ struct FormatBadge: View {
                 Capsule()
                     .fill(Color.blue.opacity(0.1))
             )
-            .foregroundColor(.blue)
+            .foregroundStyle(.blue)
     }
 }
 

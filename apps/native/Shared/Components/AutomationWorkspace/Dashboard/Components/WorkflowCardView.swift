@@ -23,11 +23,11 @@ struct WorkflowCardView: View {
                 HStack(spacing: 6) {
                     Image(systemName: workflow.icon)
                         .font(.system(size: 14))
-                        .foregroundColor(workflow.typeColor)
+                        .foregroundStyle(workflow.typeColor)
 
                     Text(workflow.typeName)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(workflow.typeColor)
+                        .foregroundStyle(workflow.typeColor)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -45,7 +45,7 @@ struct WorkflowCardView: View {
                     } label: {
                         Image(systemName: isStarred ? "star.fill" : "star")
                             .font(.system(size: 16))
-                            .foregroundColor(isStarred ? .orange : .secondary)
+                            .foregroundStyle(isStarred ? .orange : .secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -54,14 +54,14 @@ struct WorkflowCardView: View {
             // Title
             Text(workflow.name)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
 
             // Template badge
             if workflow.isTemplate {
                 Text("TEMPLATE")
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundColor(.purple)
+                    .foregroundStyle(.purple)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(
@@ -73,18 +73,18 @@ struct WorkflowCardView: View {
             // Description
             Text(workflow.description)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .lineLimit(2)
 
             // Visibility badge
             HStack(spacing: 4) {
                 Image(systemName: workflow.visibility.icon)
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text(workflow.visibility.displayName)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(16)

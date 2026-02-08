@@ -86,7 +86,7 @@ struct ResultsTable: View {
                     Text(showCopied ? "Copied!" : "Copy All")
                         .font(.system(size: 11, weight: .medium))
                 }
-                .foregroundColor(showCopied ? .green : .secondary)
+                .foregroundStyle(showCopied ? .green : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(
@@ -141,7 +141,7 @@ struct ResultsTable: View {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .frame(height: 28)
                 }
                 .help("Export Format")
@@ -245,7 +245,7 @@ struct ResultsTable: View {
                     ForEach(results.columns, id: \.self) { column in
                         Text(column)
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .frame(minWidth: 120, alignment: .leading)
@@ -286,7 +286,7 @@ struct ResultsTable: View {
                 if results.isLimited {
                     Text("Showing first \(results.rows.count) rows...")
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(8)
                         .background(Color(.controlBackgroundColor).opacity(0.9))
                         .cornerRadius(6)
@@ -302,11 +302,11 @@ struct ResultsTable: View {
         VStack(spacing: 16) {
             Image(systemName: "tablecells")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text("Execute a query to view results")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -323,7 +323,7 @@ struct ResultsTable: View {
 
                 Text("Loading preview...")
                     .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(24)
             .background(
@@ -384,14 +384,14 @@ struct TableCell: View {
             if let value = value {
                 Text(value)
                     .font(.system(size: 12))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             } else {
                 Text("null")
                     .font(.system(size: 12))
                     .italic()
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -403,7 +403,7 @@ struct TableCell: View {
                 Button(action: copyValue) {
                     Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                         .font(.system(size: 10))
-                        .foregroundColor(showCopied ? .green : .secondary)
+                        .foregroundStyle(showCopied ? .green : .secondary)
                 }
                 .buttonStyle(.plain)
                 .transition(.opacity)
