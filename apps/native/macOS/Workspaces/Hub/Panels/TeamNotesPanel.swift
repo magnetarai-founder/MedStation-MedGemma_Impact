@@ -382,7 +382,7 @@ struct TeamNotesPanel: View {
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(messageText.isEmpty ? .gray : Color.magnetarPrimary)
+                    .foregroundStyle(messageText.isEmpty ? .gray : Color.magnetarPrimary)
             }
             .buttonStyle(.plain)
             .disabled(messageText.isEmpty)
@@ -520,7 +520,7 @@ private struct TeamChannelRow: View {
                 if channel.isMuted {
                     Image(systemName: "speaker.slash.fill")
                         .font(.system(size: 9))
-                        .foregroundColor(isSelected ? .white.opacity(0.5) : .gray)
+                        .foregroundStyle(isSelected ? .white.opacity(0.5) : .gray)
                 }
 
                 if channel.unreadCount > 0 {

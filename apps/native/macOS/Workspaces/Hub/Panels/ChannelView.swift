@@ -230,7 +230,7 @@ struct ChannelView: View {
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(messageText.isEmpty ? .gray : Color.magnetarPrimary)
+                    .foregroundStyle(messageText.isEmpty ? .gray : Color.magnetarPrimary)
             }
             .buttonStyle(.plain)
             .disabled(messageText.isEmpty)

@@ -366,7 +366,7 @@ private struct NoteListRow: View {
                     Spacer()
                     Text(formatTimestamp(note.updatedAt))
                         .font(.system(size: 10))
-                        .foregroundColor(isSelected ? .white.opacity(0.6) : .secondary)
+                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .secondary)
                 }
                 Text(note.content.prefix(80).replacingOccurrences(of: "\n", with: " "))
                     .font(.system(size: 11))
