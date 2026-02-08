@@ -690,7 +690,8 @@ final class ChatStore {
 
         logger.info("Archived session: \(session.title)")
 
-        // TODO: Sync to backend when API supports status updates
+        // Backend API does not support archive status — local only for now.
+        // When /v1/chat/sessions/:id/archive endpoint is added, sync here.
     }
 
     /// Restore a session from archived or deleted state
@@ -706,7 +707,8 @@ final class ChatStore {
 
         logger.info("Restored session: \(session.title)")
 
-        // TODO: Sync to backend when API supports status updates
+        // Backend API does not support restore status — local only for now.
+        // When /v1/chat/sessions/:id/restore endpoint is added, sync here.
     }
 
     /// Move session to deleted state (can still be restored)
@@ -730,7 +732,17 @@ final class ChatStore {
 
         logger.info("Moved session to trash: \(session.title)")
 
-        // TODO: Sync to backend when API supports status updates
+        // Best-effort backend sync — delete on backend since it has no "trash" state
+        if let backendId = sessionIdMapping[session.id] {
+            Task {
+                do {
+                    try await chatService.deleteSession(sessionId: backendId)
+                    logger.debug("Backend session \(backendId) deleted (trash sync)")
+                } catch {
+                    logger.warning("Failed to sync trash to backend: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 
     /// Permanently delete a session (no recovery)

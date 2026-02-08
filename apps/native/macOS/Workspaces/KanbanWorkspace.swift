@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "KanbanWorkspace")
 
 struct KanbanWorkspace: View {
     @State private var selectedBoard: KanbanBoard? = nil
@@ -262,7 +265,19 @@ struct KanbanWorkspace: View {
             }
         }
 
-        // TODO: Sync with backend via crudOperations.updateTask()
+        // Best-effort backend sync
+        if let backendTaskId = task.taskId {
+            Task {
+                do {
+                    _ = try await KanbanService.shared.updateTask(
+                        taskId: backendTaskId,
+                        status: newStatus.rawValue
+                    )
+                } catch {
+                    logger.warning("Failed to sync task status to backend: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 
     private func updateTaskPriority(_ task: KanbanTask, to newPriority: TaskPriority) {
@@ -290,7 +305,19 @@ struct KanbanWorkspace: View {
             }
         }
 
-        // TODO: Sync with backend via crudOperations.updateTask()
+        // Best-effort backend sync
+        if let backendTaskId = task.taskId {
+            Task {
+                do {
+                    _ = try await KanbanService.shared.updateTask(
+                        taskId: backendTaskId,
+                        priority: newPriority.rawValue
+                    )
+                } catch {
+                    logger.warning("Failed to sync task priority to backend: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 }
 
