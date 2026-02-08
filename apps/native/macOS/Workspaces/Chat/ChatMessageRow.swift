@@ -27,7 +27,7 @@ struct ChatMessageRow: View {
                     .overlay(
                         Image(systemName: message.role == .user ? "person.fill" : "sparkles")
                             .font(.system(size: 14))
-                            .foregroundColor(message.role == .user ? .white : .textSecondary)
+                            .foregroundStyle(message.role == .user ? .white : .textSecondary)
                     )
 
                 // Message content
@@ -36,25 +36,25 @@ struct ChatMessageRow: View {
                     HStack(spacing: 8) {
                         Text(message.role.displayName)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.textSecondary)
+                            .foregroundStyle(Color.textSecondary)
 
                         Text("·")
                             .font(.system(size: 11))
-                            .foregroundColor(.textSecondary.opacity(0.5))
+                            .foregroundStyle(Color.textSecondary.opacity(0.5))
 
                         Text(message.createdAt.relativeFormatted)
                             .font(.system(size: 11))
-                            .foregroundColor(.textSecondary.opacity(0.7))
+                            .foregroundStyle(Color.textSecondary.opacity(0.7))
 
                         // Model indicator for assistant messages
                         if message.role == .assistant, let modelId = message.modelId {
                             Text("·")
                                 .font(.system(size: 11))
-                                .foregroundColor(.textSecondary.opacity(0.5))
+                                .foregroundStyle(Color.textSecondary.opacity(0.5))
 
                             Text(modelId.components(separatedBy: ":").first ?? modelId)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.magnetarPrimary.opacity(0.8))
+                                .foregroundStyle(Color.magnetarPrimary.opacity(0.8))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
@@ -86,7 +86,7 @@ struct ChatMessageRow: View {
                         } label: {
                             Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                                 .font(.system(size: 12))
-                                .foregroundColor(showCopied ? .green : .textSecondary)
+                                .foregroundStyle(showCopied ? .green : .textSecondary)
                                 .frame(width: 24, height: 24)
                                 .background(Color.surfaceSecondary.opacity(0.8))
                                 .cornerRadius(4)
@@ -99,7 +99,7 @@ struct ChatMessageRow: View {
                             Button(action: onRetry) {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.textSecondary)
+                                    .foregroundStyle(Color.textSecondary)
                                     .frame(width: 24, height: 24)
                                     .background(Color.surfaceSecondary.opacity(0.8))
                                     .cornerRadius(4)
@@ -116,12 +116,12 @@ struct ChatMessageRow: View {
             if message.isIncomplete {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                         .font(.system(size: 12))
 
                     Text("Response interrupted")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
 
                     Spacer()
 
@@ -132,7 +132,7 @@ struct ChatMessageRow: View {
                                 Text("Retry")
                             }
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                             .background(Color.orange)
@@ -264,7 +264,7 @@ struct CodeBlockView: View {
                 if let language, !language.isEmpty {
                     Text(language)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.textSecondary)
+                        .foregroundStyle(Color.textSecondary)
                 }
 
                 Spacer()
@@ -277,7 +277,7 @@ struct CodeBlockView: View {
                         Text(showCopied ? "Copied!" : "Copy")
                     }
                     .font(.system(size: 11))
-                    .foregroundColor(showCopied ? .green : .textSecondary)
+                    .foregroundStyle(showCopied ? .green : .textSecondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -289,7 +289,7 @@ struct CodeBlockView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
                     .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundStyle(.white.opacity(0.9))
                     .padding(12)
             }
         }

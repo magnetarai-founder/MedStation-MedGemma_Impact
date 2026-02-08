@@ -25,16 +25,16 @@ struct ChatSidebar: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(chatStore.selectedFilter.displayName)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
 
                     if chatStore.isLoadingSessions {
                         Text("Loading...")
                             .font(.system(size: 11))
-                            .foregroundColor(.textSecondary)
+                            .foregroundStyle(Color.textSecondary)
                     } else {
                         Text("\(chatStore.filteredSessions.count) conversation\(chatStore.filteredSessions.count == 1 ? "" : "s")")
                             .font(.system(size: 11))
-                            .foregroundColor(.textSecondary)
+                            .foregroundStyle(Color.textSecondary)
                     }
                 }
 
@@ -49,7 +49,7 @@ struct ChatSidebar: View {
                     }) {
                         Image(systemName: "square.and.pencil")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.textSecondary)
+                            .foregroundStyle(Color.textSecondary)
                     }
                     .buttonStyle(.plain)
                     .help("New Chat")
@@ -67,7 +67,7 @@ struct ChatSidebar: View {
                             if activeBadge > 0 {
                                 Text("\(activeBadge)")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             if chatStore.selectedFilter == .active {
                                 Image(systemName: "checkmark")
@@ -87,7 +87,7 @@ struct ChatSidebar: View {
                             if archivedBadge > 0 {
                                 Text("\(archivedBadge)")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             if chatStore.selectedFilter == .archived {
                                 Image(systemName: "checkmark")
@@ -105,7 +105,7 @@ struct ChatSidebar: View {
                             if deletedBadge > 0 {
                                 Text("\(deletedBadge)")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             if chatStore.selectedFilter == .deleted {
                                 Image(systemName: "checkmark")
@@ -128,7 +128,7 @@ struct ChatSidebar: View {
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "line.3.horizontal.decrease")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.textSecondary)
+                            .foregroundStyle(Color.textSecondary)
 
                         // Show badge if non-active filters have items
                         if chatStore.selectedFilter == .active && (archivedBadge > 0 || deletedBadge > 0) {
@@ -158,18 +158,18 @@ struct ChatSidebar: View {
 
                     Text("Loading sessions...")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if chatStore.filteredSessions.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: chatStore.selectedFilter.icon)
                         .font(.system(size: 42))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Text(emptyStateMessage)
                         .font(.headline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     if chatStore.selectedFilter == .active {
                         Button(action: {
@@ -185,7 +185,7 @@ struct ChatSidebar: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(LinearGradient.magnetarGradient)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .cornerRadius(8)
                         }
                         .buttonStyle(.plain)

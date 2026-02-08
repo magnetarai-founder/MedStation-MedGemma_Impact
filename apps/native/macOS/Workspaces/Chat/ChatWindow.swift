@@ -25,11 +25,11 @@ struct ChatWindow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(chatStore.currentSession?.title ?? "Chat")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
 
                     Text("\(chatStore.messages.count) messages")
                         .font(.system(size: 11))
-                        .foregroundColor(.textSecondary)
+                        .foregroundStyle(Color.textSecondary)
                 }
 
                 Spacer()
@@ -41,7 +41,7 @@ struct ChatWindow: View {
                     }) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 14))
-                            .foregroundColor(showTimeline ? .magnetarPrimary : .textSecondary)
+                            .foregroundStyle(showTimeline ? Color.magnetarPrimary : Color.textSecondary)
                     }
                     .buttonStyle(.plain)
                     .help("Session Timeline")
@@ -73,14 +73,14 @@ struct ChatWindow: View {
             if let error = chatStore.error {
                 HStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Error")
                             .font(.system(size: 12, weight: .semibold))
                         Text(error.localizedDescription)
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
@@ -181,7 +181,7 @@ struct ChatWelcomeView: View {
 
                 Text("Click 'Start New Chat' in the sidebar or press ⌘N")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -195,7 +195,7 @@ struct ChatEmptyMessagesView: View {
         VStack(spacing: 16) {
             Image(systemName: "text.bubble")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             VStack(spacing: 4) {
                 Text("Start a conversation")
@@ -203,7 +203,7 @@ struct ChatEmptyMessagesView: View {
 
                 Text("Ask me anything! I can help with code, answer questions, or just chat.")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 400)
             }

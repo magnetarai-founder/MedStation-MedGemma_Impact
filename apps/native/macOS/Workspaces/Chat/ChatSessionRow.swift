@@ -17,12 +17,12 @@ struct ChatSessionRow: View {
                 Text(session.title)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
-                    .foregroundColor(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
 
                 // Sessions don't have fixed models - show "Multi-model" or "Intelligent"
                 Text("Multi-model")
                     .font(.system(size: 11))
-                    .foregroundColor(.textSecondary)
+                    .foregroundStyle(Color.textSecondary)
             }
 
             Spacer()

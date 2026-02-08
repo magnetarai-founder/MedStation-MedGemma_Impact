@@ -47,10 +47,10 @@ struct ChatTimelineSheet: View {
         VStack(spacing: 16) {
             Image(systemName: "clock")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text("No session selected")
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -82,7 +82,7 @@ private struct SessionTimelineDetails: View {
 
             HStack {
                 Text("Created:")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(session.createdAt, style: .date)
                 Text(session.createdAt, style: .time)
             }
@@ -114,7 +114,7 @@ private struct InfoRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text(value)
         }
         .font(.system(size: 13))
@@ -129,7 +129,7 @@ private struct TimelineMessageRow: View {
         HStack(alignment: .top, spacing: 12) {
             Text("#\(index + 1)")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 30, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -139,13 +139,13 @@ private struct TimelineMessageRow: View {
                     Spacer()
                     Text(message.createdAt, style: .time)
                         .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Text(message.content)
                     .font(.system(size: 12))
                     .lineLimit(3)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(12)
