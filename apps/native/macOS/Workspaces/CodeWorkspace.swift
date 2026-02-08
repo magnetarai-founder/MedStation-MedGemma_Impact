@@ -45,6 +45,13 @@ struct CodeWorkspace: View {
     // Line navigation (set by search/LSP to scroll editor to a line)
     @State private var targetLine: Int?
 
+    // B3: Embedded terminal
+    @State private var showTerminal: Bool = false
+    @AppStorage("code.terminalHeight") private var terminalHeight: Double = 200
+
+    // C1: Quick open
+    @State private var showQuickOpen: Bool = false
+
     private let codeEditorService = CodeEditorService.shared
 
     // MARK: - Layout Constants
@@ -93,6 +100,10 @@ struct CodeWorkspace: View {
                                 workspacePath: currentWorkspace?.diskPath ?? codingStore.workingDirectory,
                                 onSelectFile: { path in openLocalFile(path) }
                             )
+                        case .gitLog:
+                            GitLogPanel(
+                                workspacePath: currentWorkspace?.diskPath ?? codingStore.workingDirectory
+                            )
                         case .debug:
                             CodeComingSoonPanel(panelName: "Debug", icon: "ladybug")
                         case .extensions:
@@ -111,35 +122,86 @@ struct CodeWorkspace: View {
                     )
                 }
 
-                // Center: Full-height Code Editor
-                CodeEditorArea(
-                    openFiles: openFiles,
-                    selectedFile: selectedFile,
-                    workspaceName: currentWorkspace?.name,
-                    fileContent: $fileContent,
-                    isModified: isFileModified,
-                    targetLine: targetLine,
-                    onSelectFile: selectFile,
-                    onCloseFile: closeFile,
-                    onCursorMove: { line, col in
-                        cursorLine = line
-                        cursorColumn = col
+                // Center: Code Editor + optional Terminal
+                VStack(spacing: 0) {
+                    CodeEditorArea(
+                        openFiles: openFiles,
+                        selectedFile: selectedFile,
+                        workspaceName: currentWorkspace?.name,
+                        fileContent: $fileContent,
+                        isModified: isFileModified,
+                        targetLine: targetLine,
+                        onSelectFile: selectFile,
+                        onCloseFile: closeFile,
+                        onCursorMove: { line, col in
+                            cursorLine = line
+                            cursorColumn = col
+                        },
+                        onDropFile: { url in
+                            openLocalFile(url.path)
+                        }
+                    )
+                    .frame(minHeight: 100)
+                    .onChange(of: fileContent) { _, newValue in
+                        requestDiagnosticsRefresh(content: newValue)
                     }
-                )
-                .frame(minHeight: 100)
-                .onChange(of: fileContent) { _, newValue in
-                    requestDiagnosticsRefresh(content: newValue)
-                }
-                // Hidden save button for ⌘S
-                .background {
-                    Button("") { saveCurrentFile() }
-                        .keyboardShortcut("s", modifiers: .command)
-                        .hidden()
+                    // Hidden save button for ⌘S
+                    .background {
+                        Button("") { saveCurrentFile() }
+                            .keyboardShortcut("s", modifiers: .command)
+                            .hidden()
+                    }
+
+                    // B3: Embedded terminal
+                    if showTerminal {
+                        ResizableDivider(
+                            dimension: $terminalHeight,
+                            axis: .vertical,
+                            minValue: 100,
+                            maxValue: 500,
+                            defaultValue: 200
+                        )
+
+                        CodeTerminalPanel(
+                            showTerminal: $showTerminal,
+                            codingStore: codingStore,
+                            onSpawnTerminal: { await spawnTerminal() }
+                        )
+                        .frame(height: CGFloat(terminalHeight))
+                    }
                 }
             }
 
             // Status Bar
             statusBar
+        }
+        // C1: Quick Open overlay
+        .overlay {
+            if showQuickOpen {
+                ZStack {
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                        .onTapGesture { showQuickOpen = false }
+
+                    VStack {
+                        QuickOpenPanel(
+                            files: files,
+                            onSelectFile: { file in
+                                selectFile(file)
+                            },
+                            onDismiss: { showQuickOpen = false }
+                        )
+                        .padding(.top, 60)
+                        Spacer()
+                    }
+                }
+            }
+        }
+        // ⌘P shortcut for Quick Open
+        .background {
+            Button("") { showQuickOpen.toggle() }
+                .keyboardShortcut("p", modifiers: .command)
+                .hidden()
         }
         .task {
             await loadFiles()
@@ -183,18 +245,26 @@ struct CodeWorkspace: View {
             .buttonStyle(.plain)
             .help("AI Assistant (⇧⌘P)")
 
-            // Open Terminal — spawn user's preferred terminal app
+            // Toggle embedded terminal (primary), external terminal (context menu)
             Button {
-                Task { await spawnTerminal() }
+                withAnimation(.magnetarQuick) { showTerminal.toggle() }
             } label: {
                 Image(systemName: "terminal")
                     .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(showTerminal ? .primary : .secondary)
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
-            .help("Open Terminal (\(codingStore.preferredTerminal.displayName))")
+            .help("Toggle Terminal")
             .contextMenu {
+                Button {
+                    Task { await spawnTerminal() }
+                } label: {
+                    Label("Open External Terminal", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+
+                Divider()
+
                 ForEach(TerminalApp.allCases, id: \.self) { app in
                     Button {
                         codingStore.preferredTerminal = app
@@ -749,6 +819,7 @@ enum ActivityBarItem: String, CaseIterable, Identifiable {
     case files
     case search
     case sourceControl
+    case gitLog
     case debug
     case extensions
 
@@ -759,6 +830,7 @@ enum ActivityBarItem: String, CaseIterable, Identifiable {
         case .files: return "doc.on.doc"
         case .search: return "magnifyingglass"
         case .sourceControl: return "arrow.triangle.branch"
+        case .gitLog: return "clock.arrow.circlepath"
         case .debug: return "ladybug"
         case .extensions: return "square.grid.2x2"
         }
@@ -769,6 +841,7 @@ enum ActivityBarItem: String, CaseIterable, Identifiable {
         case .files: return "Explorer"
         case .search: return "Search"
         case .sourceControl: return "Source Control"
+        case .gitLog: return "Git Log"
         case .debug: return "Debug"
         case .extensions: return "Extensions"
         }
@@ -776,7 +849,7 @@ enum ActivityBarItem: String, CaseIterable, Identifiable {
 
     var isImplemented: Bool {
         switch self {
-        case .files, .search, .sourceControl: return true
+        case .files, .search, .sourceControl, .gitLog: return true
         case .debug, .extensions: return false
         }
     }

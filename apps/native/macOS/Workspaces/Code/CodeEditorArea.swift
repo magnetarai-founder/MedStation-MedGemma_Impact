@@ -2,12 +2,12 @@
 //  CodeEditorArea.swift
 //  MagnetarStudio (macOS)
 //
-//  Editor area with tabs, breadcrumbs, line number gutter, and content.
+//  Editor area with tabs, breadcrumbs, find bar, minimap, split editor, and drag-drop.
 //  Extracted from CodeWorkspace.swift (Phase 6.18)
-//  Enhanced with breadcrumb bar and line number gutter (Native IDE Redesign)
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct CodeEditorArea: View {
     let openFiles: [FileItem]
@@ -19,61 +19,302 @@ struct CodeEditorArea: View {
     let onSelectFile: (FileItem) -> Void
     let onCloseFile: (FileItem) -> Void
     var onCursorMove: ((Int, Int) -> Void)?
+    var onDropFile: ((URL) -> Void)?  // C3: file drop
 
     @AppStorage("showLineNumbers") private var showLineNumbers = true
     @AppStorage("editorFontSize") private var editorFontSize = 14
+    @AppStorage("showMinimap") private var showMinimap = true
+
+    @State private var showFindBar = false
+    @State private var editorCoordinator: CodeTextView.Coordinator?
+    @State private var cursorLine = 1
+    @State private var visibleLineCount = 40
+
+    // D1/D2: AI overlays
+    @State private var showExplainPopover = false
+    @State private var explainCode = ""
+    @State private var showRenameSheet = false
+    @State private var renameWord = ""
+    @State private var renameContext = ""
+
+    // C4: Split editor
+    @State private var isSplit = false
+    @State private var splitContent: String = ""
+    @State private var splitFilePath: String?
+    @State private var splitWidth: Double = 0.5 // fraction
 
     private var detectedLanguage: CodeLanguage {
         CodeLanguage.detect(from: selectedFile?.path ?? "")
+    }
+
+    private var splitLanguage: CodeLanguage {
+        CodeLanguage.detect(from: splitFilePath ?? "")
+    }
+
+    private var totalLines: Int {
+        fileContent.components(separatedBy: "\n").count
+    }
+
+    private var visibleLineRange: ClosedRange<Int> {
+        let lower = max(1, cursorLine - visibleLineCount / 2)
+        let upper = min(totalLines, lower + visibleLineCount)
+        return lower...upper
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // Tab bar
             if !openFiles.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 1) {
-                        ForEach(openFiles) { file in
-                            CodeFileTab(
-                                file: file,
-                                isSelected: selectedFile?.id == file.id,
-                                isModified: isModified && selectedFile?.id == file.id,
-                                onSelect: { onSelectFile(file) },
-                                onClose: { onCloseFile(file) }
-                            )
+                tabBar
+                Divider()
+            }
+
+            // Breadcrumb bar + split toggle
+            if selectedFile != nil {
+                HStack(spacing: 0) {
+                    breadcrumbBar
+                    Spacer()
+                    // Split toggle
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if isSplit {
+                                isSplit = false
+                                splitContent = ""
+                                splitFilePath = nil
+                            } else if let file = selectedFile {
+                                isSplit = true
+                                splitContent = fileContent
+                                splitFilePath = file.path
+                            }
                         }
+                    } label: {
+                        Image(systemName: isSplit ? "rectangle" : "rectangle.split.2x1")
+                            .font(.system(size: 11))
+                            .foregroundStyle(isSplit ? .accentColor : .secondary)
                     }
-                    .padding(.horizontal, 4)
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 8)
+                    .help(isSplit ? "Close Split" : "Split Editor")
                 }
-                .frame(height: 30)
-                .background(.bar)
-
                 Divider()
             }
 
-            // Breadcrumb bar
-            if selectedFile != nil {
-                breadcrumbBar
-                Divider()
-            }
-
-            // Editor content
-            if selectedFile != nil {
-                CodeTextView(
-                    text: $fileContent,
-                    fontSize: CGFloat(editorFontSize),
-                    language: detectedLanguage,
-                    showLineNumbers: showLineNumbers,
-                    targetLine: targetLine,
-                    onCursorMove: { line, col in
-                        onCursorMove?(line, col)
-                    }
+            // Find bar (⌘F)
+            if showFindBar && selectedFile != nil {
+                FindReplaceBar(
+                    isVisible: $showFindBar,
+                    coordinator: editorCoordinator
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
+            }
+
+            // Editor content + split + minimap
+            if selectedFile != nil {
+                HStack(spacing: 0) {
+                    // Primary editor
+                    primaryEditor
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // C4: Split editor
+                    if isSplit {
+                        Divider()
+                        splitEditor
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+
+                    // Minimap (right edge)
+                    if showMinimap {
+                        Divider()
+                        EditorMinimap(
+                            text: fileContent,
+                            language: detectedLanguage,
+                            visibleLineRange: visibleLineRange,
+                            totalLines: totalLines,
+                            onScrollToLine: { line in
+                                editorCoordinator?.scrollToLine(line)
+                            }
+                        )
+                    }
+                }
+                // C3: Drop support
+                .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                    handleDrop(providers)
+                }
             } else {
                 CodeEditorWelcome()
+                    // C3: Drop on welcome view too
+                    .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                        handleDrop(providers)
+                    }
             }
         }
+        .background {
+            // ⌘F toggles find bar
+            Button("") { showFindBar.toggle() }
+                .keyboardShortcut("f", modifiers: .command)
+                .hidden()
+
+            // Escape dismisses find bar + AI overlays
+            Button("") {
+                if showExplainPopover { showExplainPopover = false }
+                else if showRenameSheet { showRenameSheet = false }
+                else if showFindBar {
+                    editorCoordinator?.clearFindHighlights()
+                    showFindBar = false
+                }
+            }
+            .keyboardShortcut(.escape, modifiers: [])
+            .hidden()
+        }
+        // D1: Explain Selection overlay
+        .overlay {
+            if showExplainPopover {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        CodeExplainPopover(
+                            selectedCode: explainCode,
+                            language: detectedLanguage.rawValue,
+                            isPresented: $showExplainPopover
+                        )
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .background(Color.black.opacity(0.15))
+                .onTapGesture { showExplainPopover = false }
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: showExplainPopover)
+        // D2: AI Rename sheet overlay
+        .overlay {
+            if showRenameSheet {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        AIRenameSheet(
+                            originalName: renameWord,
+                            codeContext: renameContext,
+                            language: detectedLanguage.rawValue,
+                            onRename: { newName in
+                                editorCoordinator?.replaceAllOccurrences(
+                                    of: renameWord, with: newName
+                                )
+                                showRenameSheet = false
+                            },
+                            onDismiss: { showRenameSheet = false }
+                        )
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .background(Color.black.opacity(0.15))
+                .onTapGesture { showRenameSheet = false }
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: showRenameSheet)
+    }
+
+    // MARK: - Tab Bar
+
+    private var tabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 1) {
+                ForEach(openFiles) { file in
+                    CodeFileTab(
+                        file: file,
+                        isSelected: selectedFile?.id == file.id,
+                        isModified: isModified && selectedFile?.id == file.id,
+                        onSelect: { onSelectFile(file) },
+                        onClose: { onCloseFile(file) }
+                    )
+                    .contextMenu {
+                        if isSplit {
+                            Button("Show in Split") {
+                                openInSplit(file)
+                            }
+                        } else {
+                            Button("Open in Split") {
+                                isSplit = true
+                                openInSplit(file)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .frame(height: 30)
+        .background(.bar)
+    }
+
+    // MARK: - Primary Editor
+
+    private var primaryEditor: some View {
+        CodeTextView(
+            text: $fileContent,
+            fontSize: CGFloat(editorFontSize),
+            language: detectedLanguage,
+            showLineNumbers: showLineNumbers,
+            targetLine: targetLine,
+            onCursorMove: { line, col in
+                cursorLine = line
+                onCursorMove?(line, col)
+            },
+            onCoordinatorReady: { coord in
+                editorCoordinator = coord
+            },
+            onExplainSelection: { code in
+                explainCode = code
+                showExplainPopover = true
+            },
+            onAIRename: { word, context in
+                renameWord = word
+                renameContext = context
+                showRenameSheet = true
+            }
+        )
+    }
+
+    // MARK: - C4: Split Editor
+
+    private var splitEditor: some View {
+        CodeTextView(
+            text: $splitContent,
+            fontSize: CGFloat(editorFontSize),
+            language: splitLanguage,
+            showLineNumbers: showLineNumbers,
+            targetLine: nil,
+            onCursorMove: { _, _ in }
+        )
+    }
+
+    private func openInSplit(_ file: FileItem) {
+        splitFilePath = file.path
+        do {
+            splitContent = try String(contentsOfFile: file.path, encoding: .utf8)
+        } catch {
+            splitContent = "// Failed to load: \(file.name)"
+        }
+    }
+
+    // MARK: - C3: Drag & Drop
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                guard let data = item as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                DispatchQueue.main.async {
+                    onDropFile?(url)
+                }
+            }
+        }
+        return true
     }
 
     // MARK: - Breadcrumb Bar
@@ -131,9 +372,10 @@ struct CodeEditorWelcome: View {
                 .font(.title2)
                 .fontWeight(.bold)
 
-            Text("Select a file from the sidebar to start editing")
+            Text("Select a file from the sidebar to start editing\nor drop a file here")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

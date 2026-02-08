@@ -167,6 +167,9 @@ struct CodeSourceControlPanel: View {
                     changedFilesList
                 }
 
+                // Stash section
+                stashSection
+
                 // Inline diff view
                 if let diff = selectedFileDiff, let name = selectedDiffFileName {
                     Divider()
@@ -211,6 +214,7 @@ struct CodeSourceControlPanel: View {
         }
         .task {
             await refreshStatus()
+            await loadStashes()
         }
     }
 
@@ -383,6 +387,148 @@ struct CodeSourceControlPanel: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 3)
+    }
+
+    // MARK: - B1: Git Stash
+
+    @State private var stashEntries: [StashEntry] = []
+    @State private var showStashSection: Bool = true
+    @State private var stashMessage: String = ""
+
+    private var stashSection: some View {
+        VStack(spacing: 0) {
+            Divider()
+
+            // Stash header
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showStashSection.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: showStashSection ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.tertiary)
+                    Text("Stash")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    if !stashEntries.isEmpty {
+                        Text("\(stashEntries.count)")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.primary.opacity(0.06)))
+                    }
+                    Spacer()
+
+                    // Stash current changes
+                    Button {
+                        Task { await stashChanges() }
+                    } label: {
+                        Image(systemName: "tray.and.arrow.down")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Stash Changes")
+                    .disabled(changedFiles.isEmpty)
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+
+            if showStashSection {
+                if stashEntries.isEmpty {
+                    Text("No stashes")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .padding(.vertical, 8)
+                } else {
+                    ForEach(stashEntries) { entry in
+                        HStack(spacing: 6) {
+                            Image(systemName: "tray")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                            Text(entry.message)
+                                .font(.system(size: 11))
+                                .lineLimit(1)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Button {
+                                Task { await applyStash(entry) }
+                            } label: {
+                                Text("Apply")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                Task { await dropStash(entry) }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.red.opacity(0.7))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 3)
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadStashes() async {
+        guard let cwd = workspacePath else { return }
+        do {
+            let output = try await runGit(["stash", "list", "--format=%gd|%gs"], cwd: cwd)
+            let entries = output.components(separatedBy: "\n")
+                .filter { !$0.isEmpty }
+                .compactMap { line -> StashEntry? in
+                    let parts = line.split(separator: "|", maxSplits: 1)
+                    guard let ref = parts.first else { return nil }
+                    let message = parts.count > 1 ? String(parts[1]) : String(ref)
+                    return StashEntry(ref: String(ref), message: message)
+                }
+            await MainActor.run { stashEntries = entries }
+        } catch {
+            logger.warning("Failed to load stashes: \(error)")
+        }
+    }
+
+    private func stashChanges() async {
+        guard let cwd = workspacePath else { return }
+        do {
+            _ = try await runGit(["stash", "push", "-m", "Stashed from MagnetarStudio"], cwd: cwd)
+            await refreshStatus()
+            await loadStashes()
+        } catch {
+            logger.error("Stash failed: \(error)")
+        }
+    }
+
+    private func applyStash(_ entry: StashEntry) async {
+        guard let cwd = workspacePath else { return }
+        do {
+            _ = try await runGit(["stash", "apply", entry.ref], cwd: cwd)
+            await refreshStatus()
+        } catch {
+            logger.error("Stash apply failed: \(error)")
+            await MainActor.run { errorMessage = "Apply failed: \(error.localizedDescription)" }
+        }
+    }
+
+    private func dropStash(_ entry: StashEntry) async {
+        guard let cwd = workspacePath else { return }
+        do {
+            _ = try await runGit(["stash", "drop", entry.ref], cwd: cwd)
+            await loadStashes()
+        } catch {
+            logger.error("Stash drop failed: \(error)")
+        }
     }
 
     // MARK: - Git Operations
@@ -639,6 +785,12 @@ struct CodeSourceControlPanel: View {
 }
 
 // MARK: - Models
+
+struct StashEntry: Identifiable, Sendable {
+    let id = UUID()
+    let ref: String    // e.g. "stash@{0}"
+    let message: String
+}
 
 struct GitFileStatus: Identifiable, Sendable {
     let id = UUID()

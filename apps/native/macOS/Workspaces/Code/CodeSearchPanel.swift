@@ -16,6 +16,9 @@ struct CodeSearchPanel: View {
     let onOpenFile: (String, Int) -> Void
 
     @State private var searchQuery: String = ""
+    @State private var replaceQuery: String = ""
+    @State private var showReplace: Bool = false
+    @State private var useRegex: Bool = false
     @State private var fileTypeFilter: FileTypeFilter = .all
     @State private var results: [SearchResultGroup] = []
     @State private var isSearching: Bool = false
@@ -31,6 +34,30 @@ struct CodeSearchPanel: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
+
+                // Regex toggle
+                Toggle(isOn: $useRegex) {
+                    Text(".*")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                }
+                .toggleStyle(.button)
+                .controlSize(.mini)
+                .help("Regular Expression")
+                .onChange(of: useRegex) { _, _ in debounceSearch() }
+
+                // Replace toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showReplace.toggle()
+                    }
+                } label: {
+                    Image(systemName: showReplace ? "arrow.up.arrow.down.square.fill" : "arrow.up.arrow.down.square")
+                        .font(.system(size: 12))
+                        .foregroundStyle(showReplace ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Replace")
+
                 if isSearching {
                     ProgressView()
                         .scaleEffect(0.6)
@@ -66,6 +93,23 @@ struct CodeSearchPanel: View {
             .padding(8)
             .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.04)))
             .padding(.horizontal, 12)
+
+            // Replace input
+            if showReplace {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.2.squarepath")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+
+                    TextField("Replace...", text: $replaceQuery)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.04)))
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+            }
 
             // File type filter
             HStack {
@@ -132,7 +176,14 @@ struct CodeSearchPanel: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(results) { group in
-                            SearchFileGroup(group: group, onOpenFile: onOpenFile)
+                            SearchFileGroup(
+                                group: group,
+                                onOpenFile: onOpenFile,
+                                showReplace: showReplace,
+                                onReplaceInFile: {
+                                    replaceInFile(group: group)
+                                }
+                            )
                         }
                     }
                     .padding(.vertical, 4)
@@ -245,6 +296,30 @@ struct CodeSearchPanel: View {
         return (groups, lines.count)
     }
 
+    private func replaceInFile(group: SearchResultGroup) {
+        guard let first = group.items.first else { return }
+        let filePath = first.filePath
+
+        do {
+            var content = try String(contentsOfFile: filePath, encoding: .utf8)
+            if useRegex {
+                guard let regex = try? NSRegularExpression(pattern: searchQuery) else { return }
+                content = regex.stringByReplacingMatches(
+                    in: content,
+                    range: NSRange(content.startIndex..., in: content),
+                    withTemplate: replaceQuery
+                )
+            } else {
+                content = content.replacingOccurrences(of: searchQuery, with: replaceQuery)
+            }
+            try content.write(toFile: filePath, atomically: true, encoding: .utf8)
+            // Re-run search to update results
+            executeSearch()
+        } catch {
+            logger.error("Replace in file failed: \(error)")
+        }
+    }
+
     private func runCommand(_ args: [String], cwd: String) async throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -338,49 +413,67 @@ private enum SearchError: LocalizedError {
 private struct SearchFileGroup: View {
     let group: SearchResultGroup
     let onOpenFile: (String, Int) -> Void
+    var showReplace: Bool = false
+    var onReplaceInFile: (() -> Void)?
     @State private var isExpanded = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // File header
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) { isExpanded.toggle() }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.tertiary)
-                        .frame(width: 10)
+            HStack(spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { isExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 10)
 
-                    Image(systemName: "doc")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        Image(systemName: "doc")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
 
-                    Text(group.fileName)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+                        Text(group.fileName)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
 
-                    Text(group.relativePath)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    Spacer()
-
-                    Text("\(group.items.count)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(0.05)))
+                        Text(group.relativePath)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                if showReplace {
+                    Button {
+                        onReplaceInFile?()
+                    } label: {
+                        Text("Replace")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.accentColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(RoundedRectangle(cornerRadius: 3).fill(Color.accentColor.opacity(0.1)))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Text("\(group.items.count)")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(0.05)))
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
 
             if isExpanded {
                 ForEach(group.items) { item in
