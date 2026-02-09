@@ -20,6 +20,7 @@ struct KanbanWorkspace: View {
     @State private var taskToDelete: KanbanTask? = nil
     @State private var newBoardName = ""
     @State private var newTaskTitle = ""
+    @State private var dropTargetStatus: TaskStatus?
 
     // Managers (Phase 6.20)
     @State private var dataManager = KanbanDataManager()
@@ -148,19 +149,32 @@ struct KanbanWorkspace: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(dataManager.tasks) { task in
-                            TaskRow(
-                                task: task,
-                                isSelected: selectedTask?.id == task.id,
-                                onDelete: {
-                                    taskToDelete = task
-                                },
-                                onStatusChange: { newStatus in
-                                    updateTaskStatus(task, to: newStatus)
+                        ForEach(TaskStatus.allCases, id: \.self) { status in
+                            let sectionTasks = dataManager.tasks.filter { $0.status == status }
+
+                            statusSectionHeader(status, count: sectionTasks.count)
+                                .dropDestination(for: String.self) { items, _ in
+                                    handleTaskDrop(items, to: status)
+                                    return true
+                                } isTargeted: { targeted in
+                                    dropTargetStatus = targeted ? status : nil
                                 }
-                            )
-                            .onTapGesture {
-                                selectedTask = task
+
+                            ForEach(sectionTasks) { task in
+                                TaskRow(
+                                    task: task,
+                                    isSelected: selectedTask?.id == task.id,
+                                    onDelete: {
+                                        taskToDelete = task
+                                    },
+                                    onStatusChange: { newStatus in
+                                        updateTaskStatus(task, to: newStatus)
+                                    }
+                                )
+                                .draggable(task.id.uuidString)
+                                .onTapGesture {
+                                    selectedTask = task
+                                }
                             }
                         }
                     }
@@ -277,6 +291,46 @@ struct KanbanWorkspace: View {
                     logger.warning("Failed to sync task status to backend: \(error.localizedDescription)")
                 }
             }
+        }
+    }
+
+    // MARK: - Drag & Drop
+
+    private func statusSectionHeader(_ status: TaskStatus, count: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: status.icon)
+                .font(.system(size: 12))
+                .foregroundStyle(status.color)
+            Text(status.rawValue)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.gray.opacity(0.15)))
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(dropTargetStatus == status ? status.color.opacity(0.1) : Color.clear)
+        .overlay {
+            if dropTargetStatus == status {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(status.color, lineWidth: 2)
+            }
+        }
+        .accessibilityLabel("\(status.rawValue) section, \(count) tasks")
+        .accessibilityHint("Drop task here to change status")
+    }
+
+    private func handleTaskDrop(_ items: [String], to status: TaskStatus) {
+        for idString in items {
+            guard let uuid = UUID(uuidString: idString),
+                  let task = dataManager.tasks.first(where: { $0.id == uuid }),
+                  task.status != status else { continue }
+            updateTaskStatus(task, to: status)
         }
     }
 
