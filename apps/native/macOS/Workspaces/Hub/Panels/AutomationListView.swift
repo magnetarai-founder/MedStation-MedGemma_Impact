@@ -72,6 +72,14 @@ struct AutomationListView: View {
         .sheet(isPresented: $showLog) {
             AutomationLogView(onDismiss: { showLog = false })
         }
+        .alert("Automation Error", isPresented: Binding(
+            get: { automationStore.lastExecutionError != nil },
+            set: { if !$0 { automationStore.lastExecutionError = nil } }
+        )) {
+            Button("OK") { automationStore.lastExecutionError = nil }
+        } message: {
+            Text(automationStore.lastExecutionError ?? "Unknown error")
+        }
     }
 
     // MARK: - Toolbar

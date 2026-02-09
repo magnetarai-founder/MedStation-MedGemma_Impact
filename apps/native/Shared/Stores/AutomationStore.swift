@@ -19,6 +19,7 @@ final class AutomationStore {
     var rules: [AutomationRule] = []
     var logEntries: [AutomationLogEntry] = []
     var isLoading = true
+    var lastExecutionError: String?
 
     private init() {}
 
@@ -192,6 +193,7 @@ final class AutomationStore {
                 duration: Date().timeIntervalSince(start)
             )
             appendLogEntry(entry)
+            lastExecutionError = "Rule '\(rule.name)' failed: \(error.localizedDescription)"
             logger.error("Rule '\(rule.name)' failed: \(error.localizedDescription)")
         }
     }

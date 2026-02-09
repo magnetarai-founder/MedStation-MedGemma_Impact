@@ -28,6 +28,7 @@ struct VoicePanel: View {
     @StateObject private var recorder = VoiceRecorderManager()
     @State private var recordingToDelete: VoiceRecording?
     @State private var saveError: String?
+    @State private var recordingError: String?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -66,6 +67,11 @@ struct VoicePanel: View {
             Button("OK") { saveError = nil }
         } message: {
             Text(saveError ?? "Unknown error")
+        }
+        .alert("Recording Error", isPresented: Binding(get: { recordingError != nil }, set: { if !$0 { recordingError = nil } })) {
+            Button("OK") { recordingError = nil }
+        } message: {
+            Text(recordingError ?? "Unknown error")
         }
         .onDisappear {
             recorder.stopRecording()
@@ -380,6 +386,7 @@ struct VoicePanel: View {
             }
         } catch {
             isRecording = false
+            recordingError = "Could not start recording: \(error.localizedDescription)"
             logger.error("Failed to start recording: \(error.localizedDescription)")
         }
     }
