@@ -286,7 +286,10 @@ final class TeamWorkspaceV2Tests: XCTestCase {
     // MARK: - TeamMemberDetailView Tests
 
     func testDetailViewInitialization() {
-        let mockMember = createMockTeamMembers().first!
+        guard let mockMember = createMockTeamMembers().first else {
+            XCTFail("Mock team members should not be empty")
+            return
+        }
 
         let detailView = TeamMemberDetail(member: mockMember)
 

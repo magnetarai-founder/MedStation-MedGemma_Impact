@@ -109,10 +109,12 @@ final class ApiClient {
                 return try decoder.decode(T.self, from: data)
             }
         } catch {
-            // Log raw response for debugging
+            #if DEBUG
             if let rawResponse = String(data: data, encoding: .utf8) {
-                logger.error("APIClient decode error - Raw response: \(rawResponse.prefix(200))")
+                logger.debug("APIClient decode error - Raw response: \(rawResponse.prefix(200))")
             }
+            #endif
+            logger.error("APIClient decode error: \(error.localizedDescription)")
             throw ApiError.decodingError(error)
         }
     }

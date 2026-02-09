@@ -357,7 +357,10 @@ final class HotSlotSettingsTests: XCTestCase {
     }
 
     func testModelPickerRowInitialization() {
-        let mockModel = createMockOllamaModels().first!
+        guard let mockModel = createMockOllamaModels().first else {
+            XCTFail("Mock models should not be empty")
+            return
+        }
 
         let row = ModelPickerRow(
             model: mockModel,
@@ -368,7 +371,10 @@ final class HotSlotSettingsTests: XCTestCase {
     }
 
     func testModelPickerRowSelectAction() {
-        let mockModel = createMockOllamaModels().first!
+        guard let mockModel = createMockOllamaModels().first else {
+            XCTFail("Mock models should not be empty")
+            return
+        }
         var selectWasCalled = false
 
         let row = ModelPickerRow(

@@ -327,7 +327,8 @@ struct CodeTextView: NSViewRepresentable {
             for offset in [0, -1] {
                 let pos = cursorPos + offset
                 guard pos >= 0, pos < nsText.length else { continue }
-                let char = Character(UnicodeScalar(nsText.character(at: pos))!)
+                guard let scalar = UnicodeScalar(nsText.character(at: pos)) else { continue }
+                let char = Character(scalar)
 
                 if openBrackets.contains(char) {
                     // Find matching close bracket forward
@@ -349,8 +350,7 @@ struct CodeTextView: NSViewRepresentable {
 
         private func findMatchingBracket(in text: NSString, from pos: Int, open: Character, close: Character, forward: Bool) -> Int? {
             var depth = 0
-            let openVal = open.asciiValue!
-            let closeVal = close.asciiValue!
+            guard let openVal = open.asciiValue, let closeVal = close.asciiValue else { return nil }
             let step = forward ? 1 : -1
             var i = pos
 
@@ -726,7 +726,10 @@ final class LineNumberRulerView: NSRulerView {
 
     init(textView: NSTextView) {
         self.textView = textView
-        super.init(scrollView: textView.enclosingScrollView!, orientation: .verticalRuler)
+        if textView.enclosingScrollView == nil {
+            assertionFailure("CodeTextView must have an enclosingScrollView for line numbers")
+        }
+        super.init(scrollView: textView.enclosingScrollView ?? NSScrollView(), orientation: .verticalRuler)
         self.clientView = textView
         self.ruleThickness = max(44, (textView.font?.pointSize ?? 14) * 3.6)
     }
@@ -748,7 +751,8 @@ final class LineNumberRulerView: NSRulerView {
         }
 
         let localPoint = convert(event.locationInWindow, from: nil)
-        let visibleRect = scrollView!.contentView.bounds
+        guard let scrollView else { return }
+        let visibleRect = scrollView.contentView.bounds
         let containerOrigin = textView.textContainerOrigin
 
         // Determine which line was clicked
@@ -829,7 +833,8 @@ final class LineNumberRulerView: NSRulerView {
         let foldableLines = coordinator?.detectFoldableLines() ?? []
 
         // Get the visible rect in text view coordinates
-        let visibleRect = scrollView!.contentView.bounds
+        guard let scrollView else { return }
+        let visibleRect = scrollView.contentView.bounds
         let containerOrigin = textView.textContainerOrigin
 
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
