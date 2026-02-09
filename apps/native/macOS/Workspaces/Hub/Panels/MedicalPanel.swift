@@ -137,6 +137,7 @@ struct MedicalPanel: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
                 TextField("Search cases...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
@@ -149,6 +150,7 @@ struct MedicalPanel: View {
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 12)
@@ -164,6 +166,7 @@ struct MedicalPanel: View {
                     Image(systemName: "cross.case")
                         .font(.system(size: 40))
                         .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                     Text("No Cases")
                         .font(.headline)
                         .foregroundStyle(.secondary)
@@ -492,6 +495,7 @@ private struct MedicalCaseDetailView: View {
             Image(systemName: "cross.case.fill")
                 .font(.title)
                 .foregroundStyle(LinearGradient.magnetarGradient)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Patient: \(medicalCase.intake.patientId.isEmpty ? "Anonymous" : medicalCase.intake.patientId)")
@@ -530,6 +534,7 @@ private struct MedicalCaseDetailView: View {
                 .accessibilityLabel("Export medical report")
 
                 triageBadge(result.triageLevel)
+                    .accessibilityLabel("Triage level: \(result.triageLevel.rawValue)")
             }
         }
     }
@@ -592,6 +597,7 @@ private struct MedicalCaseDetailView: View {
                                         .overlay {
                                             Image(systemName: "photo")
                                                 .foregroundStyle(.tertiary)
+                                                .accessibilityHidden(true)
                                         }
                                 }
                             }
@@ -641,6 +647,7 @@ private struct MedicalCaseDetailView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
                         Text("Model error: \(msg)")
                             .font(.caption)
                     }
@@ -666,6 +673,7 @@ private struct MedicalCaseDetailView: View {
                                 Text("Download Ollama")
                                     .font(.caption.weight(.medium))
                             }
+                            .accessibilityLabel("Download Ollama application")
 
                             Button {
                                 Task { await aiService.ensureModelReady() }
@@ -673,6 +681,7 @@ private struct MedicalCaseDetailView: View {
                                 Label("Retry Connection", systemImage: "arrow.clockwise")
                                     .font(.caption)
                             }
+                            .accessibilityLabel("Retry Ollama connection")
                         }
                     }
                     .padding(8)
@@ -687,6 +696,7 @@ private struct MedicalCaseDetailView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.down.circle")
                             .foregroundStyle(.blue)
+                            .accessibilityHidden(true)
                         Text("MedGemma model not yet downloaded")
                             .font(.caption)
                     }
@@ -704,6 +714,7 @@ private struct MedicalCaseDetailView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
+                            .accessibilityHidden(true)
                         Text("Error: \(error)")
                             .font(.caption)
                         Spacer()
@@ -777,6 +788,7 @@ private struct MedicalCaseDetailView: View {
             HStack {
                 Image(systemName: "hand.thumbsup")
                     .foregroundStyle(.green)
+                    .accessibilityHidden(true)
                 Text("Triage Feedback")
                     .font(.headline)
             }
@@ -785,6 +797,7 @@ private struct MedicalCaseDetailView: View {
                 HStack(spacing: 8) {
                     Image(systemName: feedback.rating == .accurate ? "checkmark.circle.fill" : feedback.rating == .incorrect ? "xmark.circle.fill" : "minus.circle.fill")
                         .foregroundStyle(feedback.rating == .accurate ? Color.green : feedback.rating == .incorrect ? Color.red : Color.orange)
+                        .accessibilityHidden(true)
                     Text("Rated: \(feedback.rating.rawValue)")
                         .font(.subheadline)
                     if !feedback.notes.isEmpty {
@@ -817,12 +830,14 @@ private struct MedicalCaseDetailView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Rate as \(rating.rawValue)")
                     }
                 }
 
                 TextField("Optional notes...", text: $feedbackNotes)
                     .textFieldStyle(.roundedBorder)
                     .font(.caption)
+                    .accessibilityLabel("Feedback notes")
             }
         }
         .padding()
@@ -849,6 +864,7 @@ private struct MedicalCaseDetailView: View {
             HStack {
                 Image(systemName: "bubble.left.and.bubble.right")
                     .foregroundStyle(.purple)
+                    .accessibilityHidden(true)
                 Text("Ask Follow-Up Questions")
                     .font(.headline)
                 Spacer()
@@ -873,6 +889,7 @@ private struct MedicalCaseDetailView: View {
                             Image(systemName: msg.role == "user" ? "person.circle.fill" : "cross.case.circle.fill")
                                 .foregroundStyle(msg.role == "user" ? Color.blue : Color.purple)
                                 .font(.system(size: 16))
+                                .accessibilityHidden(true)
 
                             Text(msg.content)
                                 .font(.caption)
@@ -881,6 +898,8 @@ private struct MedicalCaseDetailView: View {
                         .padding(8)
                         .background(msg.role == "user" ? Color.blue.opacity(0.05) : Color.purple.opacity(0.05))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(msg.role == "user" ? "You" : "MedGemma"): \(msg.content)")
                     }
                 }
             }
@@ -890,6 +909,7 @@ private struct MedicalCaseDetailView: View {
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { Task { await sendChatMessage() } }
                     .disabled(isChatStreaming)
+                    .accessibilityLabel("Follow-up question")
 
                 Button {
                     Task { await sendChatMessage() }
@@ -1012,6 +1032,7 @@ private struct MedicalCaseDetailView: View {
                     .padding(10)
                     .background(Color(NSColor.controlBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .accessibilityElement(children: .combine)
                 }
             }
 
@@ -1025,6 +1046,7 @@ private struct MedicalCaseDetailView: View {
                         Circle()
                             .fill(priorityColor(action.priority))
                             .frame(width: 8, height: 8)
+                            .accessibilityHidden(true)
                         Text(action.action)
                             .font(.subheadline)
                         Spacer()
@@ -1035,6 +1057,7 @@ private struct MedicalCaseDetailView: View {
                     .padding(10)
                     .background(Color(NSColor.controlBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .accessibilityElement(children: .combine)
                 }
             }
 
@@ -1120,6 +1143,7 @@ private struct MedicalCaseDetailView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text("Medical Disclaimer")
                         .font(.headline)
                         .foregroundStyle(.orange)
@@ -1211,6 +1235,7 @@ private struct MedicalCaseDetailView: View {
             HStack {
                 Image(systemName: "cpu")
                     .foregroundStyle(.blue)
+                    .accessibilityHidden(true)
                 Text("Edge AI Performance")
                     .font(.headline)
                 Spacer()
@@ -1310,6 +1335,7 @@ private struct MedicalCaseDetailView: View {
             Image(systemName: icon)
                 .font(.system(size: 14))
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
             Text(value)
                 .font(.system(size: 13, weight: .semibold).monospaced())
             Text(title)
@@ -1320,6 +1346,8 @@ private struct MedicalCaseDetailView: View {
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 
     private func formatDuration(_ ms: Double) -> String {
@@ -1372,6 +1400,7 @@ private struct MedicalCaseDetailView: View {
         HStack {
             Image(systemName: "shield.checkered")
                 .foregroundStyle(.red)
+                .accessibilityHidden(true)
             Text("Safety Alerts")
                 .font(.headline)
             Spacer()
@@ -1436,6 +1465,7 @@ private struct MedicalCaseDetailView: View {
             HStack(spacing: 4) {
                 Image(systemName: isCritical ? "phone.fill" : "arrow.right.circle.fill")
                     .font(.caption2)
+                    .accessibilityHidden(true)
                 Text(label)
                     .font(.caption.weight(.semibold))
             }
@@ -1446,6 +1476,7 @@ private struct MedicalCaseDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func alertIcon(_ severity: SafetyAlert.Severity) -> String {
@@ -1884,10 +1915,12 @@ private struct NewCaseSheet: View {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(.orange)
                                     .font(.caption2)
+                                    .accessibilityHidden(true)
                                 Text(warning)
                                     .font(.caption)
                                     .foregroundStyle(.orange)
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -1927,6 +1960,7 @@ private struct NewCaseSheet: View {
                                                 .overlay {
                                                     Image(systemName: "photo")
                                                         .foregroundStyle(.tertiary)
+                                                        .accessibilityHidden(true)
                                                 }
                                         }
 
@@ -2108,6 +2142,7 @@ private struct BenchmarkSheet: View {
             Image(systemName: "chart.bar.doc.horizontal")
                 .font(.system(size: 48))
                 .foregroundStyle(.teal)
+                .accessibilityHidden(true)
             Text("MedGemma Evaluation Benchmark")
                 .font(.title2.weight(.semibold))
             Text("Runs 10 clinically validated vignettes through the full 5-step\nagentic workflow and scores against expected outcomes.")
@@ -2137,6 +2172,7 @@ private struct BenchmarkSheet: View {
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
             .tint(.teal)
+            .accessibilityHint("Runs 10 clinical vignettes through the full workflow. Takes 5-10 minutes.")
 
             if let error = harness.error {
                 Text("Error: \(error)")
@@ -2172,6 +2208,7 @@ private struct BenchmarkSheet: View {
                 harness.cancel()
             }
             .controlSize(.small)
+            .accessibilityLabel("Cancel benchmark")
             Spacer()
         }
         .padding(30)
@@ -2224,6 +2261,7 @@ private struct BenchmarkSheet: View {
                         Label("Run Again", systemImage: "arrow.clockwise")
                     }
                     .controlSize(.small)
+                    .accessibilityLabel("Run benchmark again")
                 }
 
                 // Timestamp
@@ -2250,6 +2288,8 @@ private struct BenchmarkSheet: View {
         .padding(.vertical, 12)
         .background(color.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(String(format: "%.0f%%", score * 100))")
     }
 
     private func metricCard(_ title: String, _ value: String) -> some View {
@@ -2264,6 +2304,8 @@ private struct BenchmarkSheet: View {
         .padding(.vertical, 8)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 
     // MARK: - Vignette Row
@@ -2273,6 +2315,7 @@ private struct BenchmarkSheet: View {
             HStack {
                 Image(systemName: result.passed ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .foregroundStyle(result.passed ? .green : .red)
+                    .accessibilityHidden(true)
                 Text(result.vignetteName)
                     .font(.system(size: 13, weight: .medium))
                 Text(result.vignetteCategory)
@@ -2299,6 +2342,8 @@ private struct BenchmarkSheet: View {
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(result.vignetteName), \(result.passed ? "passed" : "failed"), \(String(format: "%.0f%%", result.compositeScore * 100)) score")
     }
 
     private func vignetteMetric(_ label: String, _ score: Double?, detail: String) -> some View {
@@ -2379,11 +2424,13 @@ private struct BenchmarkSheet: View {
             Image(systemName: "checkmark.circle")
                 .foregroundStyle(.teal)
                 .font(.system(size: 12))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 12, weight: .semibold))
                 Text(description).font(.system(size: 11)).foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func triageCompare(_ result: BenchmarkVignetteResult) -> String {
