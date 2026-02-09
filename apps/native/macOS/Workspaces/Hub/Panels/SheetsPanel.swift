@@ -26,6 +26,7 @@ struct SheetsPanel: View {
     @State private var collaborators: [CollaboratorPresence] = []
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
     @State private var sheetToDelete: SpreadsheetDocument?
+    @State private var saveError: String?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -127,6 +128,11 @@ struct SheetsPanel: View {
             }
         } message: { sheet in
             Text("Are you sure you want to delete '\(sheet.title)'?")
+        }
+        .alert("Save Error", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "Unknown error")
         }
     }
 
@@ -300,7 +306,12 @@ struct SheetsPanel: View {
         guard let cell = selectedCell else { return }
         let oldValue = spreadsheets[sheetIndex].cell(at: cell).rawValue
         spreadsheets[sheetIndex].setCell(at: cell, value: formulaText)
-        saveSheetToDisk(spreadsheets[sheetIndex])
+        let file = Self.storageDir.appendingPathComponent("\(spreadsheets[sheetIndex].id.uuidString).json")
+        do {
+            try PersistenceHelpers.trySave(spreadsheets[sheetIndex], to: file, label: "spreadsheet '\(spreadsheets[sheetIndex].title)'")
+        } catch {
+            saveError = "Could not save spreadsheet: \(error.localizedDescription)"
+        }
 
         // Fire automation trigger
         AutomationTriggerService.shared.sheetCellChanged(

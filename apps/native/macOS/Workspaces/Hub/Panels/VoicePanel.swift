@@ -27,6 +27,7 @@ struct VoicePanel: View {
     @State private var aiService = WorkspaceAIService.shared
     @StateObject private var recorder = VoiceRecorderManager()
     @State private var recordingToDelete: VoiceRecording?
+    @State private var saveError: String?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -60,6 +61,11 @@ struct VoicePanel: View {
             }
         } message: { rec in
             Text("Are you sure you want to delete '\(rec.title)'?")
+        }
+        .alert("Save Error", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "Unknown error")
         }
         .onDisappear {
             recorder.stopRecording()
@@ -498,7 +504,11 @@ struct VoicePanel: View {
     }
 
     private func saveMetadata() {
-        PersistenceHelpers.save(recordings, to: Self.metadataFile, label: "voice recordings")
+        do {
+            try PersistenceHelpers.trySave(recordings, to: Self.metadataFile, label: "voice recordings")
+        } catch {
+            saveError = "Could not save recordings: \(error.localizedDescription)"
+        }
     }
 
     // MARK: - Formatting

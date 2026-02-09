@@ -22,6 +22,7 @@ struct DocsPanel: View {
     @State private var collaborators: [CollaboratorPresence] = []
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
     @State private var docToDelete: WorkspaceDocument?
+    @State private var saveError: String?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -89,6 +90,11 @@ struct DocsPanel: View {
             }
         } message: { doc in
             Text("Are you sure you want to delete '\(doc.title)'?")
+        }
+        .alert("Save Error", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "Unknown error")
         }
     }
 
@@ -279,7 +285,12 @@ struct DocsPanel: View {
     private func saveDocument(at index: Int, content: String) {
         guard documents.indices.contains(index) else { return }
         documents[index].updateContent(content)
-        saveDocToDisk(documents[index])
+        let file = Self.storageDir.appendingPathComponent("\(documents[index].id.uuidString).json")
+        do {
+            try PersistenceHelpers.trySave(documents[index], to: file, label: "document '\(documents[index].title)'")
+        } catch {
+            saveError = "Could not save document: \(error.localizedDescription)"
+        }
 
         // Fire automation trigger
         AutomationTriggerService.shared.documentSaved(title: documents[index].title, content: content)

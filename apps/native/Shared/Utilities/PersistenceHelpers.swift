@@ -23,6 +23,12 @@ enum PersistenceHelpers {
         }
     }
 
+    /// Encode and write atomically, throwing on failure for callers that need error visibility.
+    static func trySave<T: Encodable>(_ value: T, to url: URL, label: String) throws {
+        let data = try JSONEncoder().encode(value)
+        try data.write(to: url, options: .atomic)
+    }
+
     /// Decode from file, returning nil with log on failure.
     static func load<T: Decodable>(_ type: T.Type, from url: URL, label: String) -> T? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }

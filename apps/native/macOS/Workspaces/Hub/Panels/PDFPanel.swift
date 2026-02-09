@@ -22,6 +22,7 @@ struct PDFPanel: View {
     @State private var showThumbnails = true
     @State private var currentPage = 0
     @State private var pdfToDelete: PDFDocumentInfo?
+    @State private var saveError: String?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -77,6 +78,11 @@ struct PDFPanel: View {
             }
         } message: { pdf in
             Text("Are you sure you want to delete '\(pdf.title)'?")
+        }
+        .alert("Save Error", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "Unknown error")
         }
     }
 
@@ -358,7 +364,11 @@ struct PDFPanel: View {
     }
 
     private func saveMetadata() {
-        PersistenceHelpers.save(pdfDocuments, to: Self.metadataFile, label: "pdf metadata")
+        do {
+            try PersistenceHelpers.trySave(pdfDocuments, to: Self.metadataFile, label: "pdf metadata")
+        } catch {
+            saveError = "Could not save PDF metadata: \(error.localizedDescription)"
+        }
     }
 
     private func formatFileSize(_ bytes: Int64) -> String {

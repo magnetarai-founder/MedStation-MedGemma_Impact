@@ -54,6 +54,7 @@ struct NotesPanel: View {
     @State private var showTemplatePicker = false
     @State private var selectedTemplate: WorkspaceTemplate?
     @State private var noteToDelete: WorkspaceNote?
+    @State private var saveError: String?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -121,6 +122,11 @@ struct NotesPanel: View {
             }
         } message: { note in
             Text("Are you sure you want to delete '\(note.title)'?")
+        }
+        .alert("Save Error", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "Unknown error")
         }
     }
 
@@ -292,7 +298,12 @@ struct NotesPanel: View {
             notes[index].title = String(firstLine.prefix(60))
         }
 
-        saveNoteToDisk(notes[index])
+        let file = Self.storageDir.appendingPathComponent("\(notes[index].id.uuidString).json")
+        do {
+            try PersistenceHelpers.trySave(notes[index], to: file, label: "note '\(notes[index].title)'")
+        } catch {
+            saveError = "Could not save note: \(error.localizedDescription)"
+        }
 
         // Fire automation trigger
         AutomationTriggerService.shared.documentSaved(title: notes[index].title, content: content)
