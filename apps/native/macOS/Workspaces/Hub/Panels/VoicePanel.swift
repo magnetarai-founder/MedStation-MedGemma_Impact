@@ -73,8 +73,14 @@ struct VoicePanel: View {
         } message: {
             Text(recordingError ?? "Unknown error")
         }
+        .onChange(of: selectedRecordingID) { _, _ in
+            recorder.stopPlayback()
+            isPlaying = false
+            playbackProgress = 0
+        }
         .onDisappear {
             recorder.stopRecording()
+            recorder.stopPlayback()
         }
     }
 
@@ -155,15 +161,35 @@ struct VoicePanel: View {
 
                 // Playback controls
                 HStack(spacing: 24) {
-                    Button {} label: {
+                    Button { recorder.seek(by: -15) } label: {
                         Image(systemName: "gobackward.15")
                             .font(.system(size: 20))
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!recorder.isPlaybackActive)
                     .accessibilityLabel("Rewind 15 seconds")
 
-                    Button {} label: {
+                    Button {
+                        if isPlaying {
+                            recorder.pausePlayback()
+                            isPlaying = false
+                        } else if recorder.isPlaybackActive {
+                            recorder.resumePlayback()
+                            isPlaying = true
+                        } else {
+                            do {
+                                try recorder.startPlayback(
+                                    url: recording.fileURL,
+                                    onProgress: { playbackProgress = $0 },
+                                    onComplete: { isPlaying = false; playbackProgress = 0 }
+                                )
+                                isPlaying = true
+                            } catch {
+                                logger.error("Playback failed: \(error.localizedDescription)")
+                            }
+                        }
+                    } label: {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 48))
                             .foregroundStyle(Color.magnetarPrimary)
@@ -171,12 +197,13 @@ struct VoicePanel: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-                    Button {} label: {
+                    Button { recorder.seek(by: 15) } label: {
                         Image(systemName: "goforward.15")
                             .font(.system(size: 20))
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!recorder.isPlaybackActive)
                     .accessibilityLabel("Forward 15 seconds")
                 }
             }
@@ -567,7 +594,15 @@ class VoiceRecorderManager: ObservableObject {
     private var timer: Timer?
     var currentURL: URL?
 
-    deinit { stopRecording() }
+    // Playback
+    private var audioPlayer: AVAudioPlayer?
+    private var playbackTimer: Timer?
+    var isPlaybackActive: Bool { audioPlayer != nil }
+
+    deinit {
+        stopRecording()
+        stopPlayback()
+    }
 
     func startRecording(to url: URL, onLevel: @escaping (Float) -> Void) throws {
         currentURL = url
@@ -599,6 +634,48 @@ class VoiceRecorderManager: ObservableObject {
         audioRecorder = nil
         timer?.invalidate()
         timer = nil
+    }
+
+    // MARK: - Playback
+
+    func startPlayback(url: URL, onProgress: @escaping (Double) -> Void, onComplete: @escaping () -> Void) throws {
+        stopPlayback()
+        audioPlayer = try AVAudioPlayer(contentsOf: url)
+        audioPlayer?.play()
+
+        playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let player = self?.audioPlayer else { return }
+            if player.isPlaying {
+                let progress = player.duration > 0 ? player.currentTime / player.duration : 0
+                DispatchQueue.main.async { onProgress(progress) }
+            } else {
+                self?.stopPlayback()
+                DispatchQueue.main.async {
+                    onProgress(0)
+                    onComplete()
+                }
+            }
+        }
+    }
+
+    func pausePlayback() {
+        audioPlayer?.pause()
+    }
+
+    func resumePlayback() {
+        audioPlayer?.play()
+    }
+
+    func seek(by seconds: TimeInterval) {
+        guard let player = audioPlayer else { return }
+        player.currentTime = max(0, min(player.duration, player.currentTime + seconds))
+    }
+
+    func stopPlayback() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        playbackTimer?.invalidate()
+        playbackTimer = nil
     }
 }
 
