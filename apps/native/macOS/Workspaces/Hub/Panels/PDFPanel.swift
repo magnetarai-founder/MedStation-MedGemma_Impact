@@ -21,6 +21,7 @@ struct PDFPanel: View {
     @State private var isLoading = true
     @State private var showThumbnails = true
     @State private var currentPage = 0
+    @State private var pdfToDelete: PDFDocumentInfo?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -67,6 +68,15 @@ struct PDFPanel: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
             isSearchFocused = true
+        }
+        .alert("Delete PDF", isPresented: .constant(pdfToDelete != nil), presenting: pdfToDelete) { pdf in
+            Button("Cancel", role: .cancel) { pdfToDelete = nil }
+            Button("Delete", role: .destructive) {
+                deletePDF(pdf)
+                pdfToDelete = nil
+            }
+        } message: { pdf in
+            Text("Are you sure you want to delete '\(pdf.title)'?")
         }
     }
 
@@ -243,7 +253,7 @@ struct PDFPanel: View {
                                 document: doc,
                                 isSelected: selectedPDFID == doc.id,
                                 onSelect: { selectPDF(doc) },
-                                onDelete: { deletePDF(doc) }
+                                onDelete: { pdfToDelete = doc }
                             )
                         }
                     }

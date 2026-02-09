@@ -26,6 +26,7 @@ struct VoicePanel: View {
     @State private var transcriptionService = TranscriptionService.shared
     @State private var aiService = WorkspaceAIService.shared
     @StateObject private var recorder = VoiceRecorderManager()
+    @State private var recordingToDelete: VoiceRecording?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -50,6 +51,15 @@ struct VoicePanel: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
             isSearchFocused = true
+        }
+        .alert("Delete Recording", isPresented: .constant(recordingToDelete != nil), presenting: recordingToDelete) { rec in
+            Button("Cancel", role: .cancel) { recordingToDelete = nil }
+            Button("Delete", role: .destructive) {
+                deleteRecording(rec)
+                recordingToDelete = nil
+            }
+        } message: { rec in
+            Text("Are you sure you want to delete '\(rec.title)'?")
         }
         .onDisappear {
             recorder.stopRecording()
@@ -304,7 +314,7 @@ struct VoicePanel: View {
                                 recording: rec,
                                 isSelected: selectedRecordingID == rec.id,
                                 onSelect: { selectedRecordingID = rec.id },
-                                onDelete: { deleteRecording(rec) }
+                                onDelete: { recordingToDelete = rec }
                             )
                         }
                     }

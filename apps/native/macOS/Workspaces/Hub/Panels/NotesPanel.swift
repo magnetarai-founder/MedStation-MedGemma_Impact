@@ -53,6 +53,8 @@ struct NotesPanel: View {
     @State private var isLoading = true
     @State private var showTemplatePicker = false
     @State private var selectedTemplate: WorkspaceTemplate?
+    @State private var noteToDelete: WorkspaceNote?
+
     var body: some View {
         HStack(spacing: 0) {
             // Notes list
@@ -110,6 +112,15 @@ struct NotesPanel: View {
                 },
                 onCancel: { selectedTemplate = nil }
             )
+        }
+        .alert("Delete Note", isPresented: .constant(noteToDelete != nil), presenting: noteToDelete) { note in
+            Button("Cancel", role: .cancel) { noteToDelete = nil }
+            Button("Delete", role: .destructive) {
+                deleteNote(note)
+                noteToDelete = nil
+            }
+        } message: { note in
+            Text("Are you sure you want to delete '\(note.title)'?")
         }
     }
 
@@ -186,7 +197,7 @@ struct NotesPanel: View {
                                     isSelected: selectedNoteID == note.id,
                                     onSelect: { selectNote(note) },
                                     onPin: { togglePin(note) },
-                                    onDelete: { deleteNote(note) }
+                                    onDelete: { noteToDelete = note }
                                 )
                             }
                         }
@@ -203,7 +214,7 @@ struct NotesPanel: View {
                                     isSelected: selectedNoteID == note.id,
                                     onSelect: { selectNote(note) },
                                     onPin: { togglePin(note) },
-                                    onDelete: { deleteNote(note) }
+                                    onDelete: { noteToDelete = note }
                                 )
                             }
                         }

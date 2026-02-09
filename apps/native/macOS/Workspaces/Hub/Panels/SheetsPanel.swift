@@ -25,6 +25,7 @@ struct SheetsPanel: View {
     @State private var selectedTemplate: WorkspaceTemplate?
     @State private var collaborators: [CollaboratorPresence] = []
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
+    @State private var sheetToDelete: SpreadsheetDocument?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -117,6 +118,15 @@ struct SheetsPanel: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
             isSearchFocused = true
+        }
+        .alert("Delete Spreadsheet", isPresented: .constant(sheetToDelete != nil), presenting: sheetToDelete) { sheet in
+            Button("Cancel", role: .cancel) { sheetToDelete = nil }
+            Button("Delete", role: .destructive) {
+                deleteSpreadsheet(sheet)
+                sheetToDelete = nil
+            }
+        } message: { sheet in
+            Text("Are you sure you want to delete '\(sheet.title)'?")
         }
     }
 
@@ -236,7 +246,7 @@ struct SheetsPanel: View {
                                 sheet: sheet,
                                 isSelected: selectedSheetID == sheet.id,
                                 onSelect: { selectSheet(sheet) },
-                                onDelete: { deleteSpreadsheet(sheet) }
+                                onDelete: { sheetToDelete = sheet }
                             )
                         }
                     }

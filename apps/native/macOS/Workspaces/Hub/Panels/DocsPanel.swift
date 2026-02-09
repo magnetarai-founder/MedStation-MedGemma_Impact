@@ -21,6 +21,7 @@ struct DocsPanel: View {
     @State private var showDocsList = true
     @State private var collaborators: [CollaboratorPresence] = []
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
+    @State private var docToDelete: WorkspaceDocument?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -79,6 +80,15 @@ struct DocsPanel: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
             isSearchFocused = true
+        }
+        .alert("Delete Document", isPresented: .constant(docToDelete != nil), presenting: docToDelete) { doc in
+            Button("Cancel", role: .cancel) { docToDelete = nil }
+            Button("Delete", role: .destructive) {
+                deleteDocument(doc)
+                docToDelete = nil
+            }
+        } message: { doc in
+            Text("Are you sure you want to delete '\(doc.title)'?")
         }
     }
 
@@ -184,7 +194,7 @@ struct DocsPanel: View {
                                     isSelected: selectedDocID == doc.id,
                                     onSelect: { selectDocument(doc) },
                                     onStar: { toggleStar(doc) },
-                                    onDelete: { deleteDocument(doc) }
+                                    onDelete: { docToDelete = doc }
                                 )
                             }
                         }
@@ -201,7 +211,7 @@ struct DocsPanel: View {
                                     isSelected: selectedDocID == doc.id,
                                     onSelect: { selectDocument(doc) },
                                     onStar: { toggleStar(doc) },
-                                    onDelete: { deleteDocument(doc) }
+                                    onDelete: { docToDelete = doc }
                                 )
                             }
                         }
