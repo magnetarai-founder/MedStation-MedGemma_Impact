@@ -248,6 +248,7 @@ struct CodeWorkspace: View {
             }
             .buttonStyle(.plain)
             .help("AI Assistant (⇧⌘P)")
+            .accessibilityLabel("AI Assistant")
 
             // Toggle embedded terminal (primary), external terminal (context menu)
             Button {
@@ -260,6 +261,7 @@ struct CodeWorkspace: View {
             }
             .buttonStyle(.plain)
             .help("Toggle Terminal")
+            .accessibilityLabel("Toggle Terminal")
             .contextMenu {
                 Button {
                     Task { await spawnTerminal() }
@@ -312,6 +314,7 @@ struct CodeWorkspace: View {
             }
             .buttonStyle(.plain)
             .help("Toggle Sidebar (⌘B)")
+            .accessibilityLabel("Toggle Sidebar")
             .keyboardShortcut("b", modifiers: .command)
             .padding(.horizontal, 6)
 
@@ -865,6 +868,7 @@ private struct ActivityBarButton: View {
             }
         }
         .help(item.isImplemented ? item.label : "\(item.label) — Coming soon")
+        .accessibilityLabel(item.label)
     }
 }
 

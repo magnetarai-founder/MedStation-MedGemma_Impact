@@ -29,6 +29,7 @@ struct DocsToolbar: View {
             .buttonStyle(.plain)
             .frame(width: 28, height: 28)
             .help(showDocsList ? "Hide sidebar" : "Show sidebar")
+            .accessibilityLabel(showDocsList ? "Hide document list" : "Show document list")
 
             Divider().frame(height: 16)
 
@@ -78,6 +79,7 @@ struct DocsToolbar: View {
             }
             .buttonStyle(.plain)
             .help("AI Assist (⌘⇧I)")
+            .accessibilityLabel("AI Assist")
             .popover(isPresented: $showAIAssist) {
                 AIAssistPopover(
                     inputText: document.content,
@@ -111,6 +113,7 @@ struct DocsToolbar: View {
             }
             .buttonStyle(.plain)
             .help(document.isStarred ? "Unstar" : "Star")
+            .accessibilityLabel(document.isStarred ? "Unstar document" : "Star document")
 
             // Export
             Button {
@@ -123,6 +126,7 @@ struct DocsToolbar: View {
             }
             .buttonStyle(.plain)
             .help("Export (⌘E)")
+            .accessibilityLabel("Export document")
 
             // More options
             Menu {
@@ -138,6 +142,7 @@ struct DocsToolbar: View {
             .buttonStyle(.plain)
             .menuStyle(.borderlessButton)
             .frame(width: 28)
+            .accessibilityLabel("More options")
         }
         .padding(.horizontal, 12)
         .frame(height: HubLayout.headerHeight)
@@ -159,5 +164,6 @@ struct DocsToolbar: View {
         }
         .buttonStyle(.plain)
         .help(help)
+        .accessibilityLabel(help)
     }
 }

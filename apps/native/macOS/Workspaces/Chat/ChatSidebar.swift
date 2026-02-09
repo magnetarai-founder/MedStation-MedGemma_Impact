@@ -53,6 +53,7 @@ struct ChatSidebar: View {
                     }
                     .buttonStyle(.plain)
                     .help("New Chat")
+                    .accessibilityLabel("New Chat")
                 }
 
                 // Filter dropdown button - macOS 26 Messages style

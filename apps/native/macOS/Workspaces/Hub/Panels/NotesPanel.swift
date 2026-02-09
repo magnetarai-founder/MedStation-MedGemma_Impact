@@ -134,6 +134,7 @@ struct NotesPanel: View {
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
                 .help("New Note")
+                .accessibilityLabel("New Note")
             }
             .padding(.horizontal, 12)
             .frame(height: HubLayout.headerHeight)

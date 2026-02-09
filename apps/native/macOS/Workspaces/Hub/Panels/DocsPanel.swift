@@ -131,6 +131,7 @@ struct DocsPanel: View {
                 }
                 .buttonStyle(.plain)
                 .help("New Document")
+                .accessibilityLabel("New Document")
             }
             .padding(.horizontal, 12)
             .frame(height: HubLayout.headerHeight)

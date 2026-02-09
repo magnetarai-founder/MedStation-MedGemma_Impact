@@ -65,6 +65,7 @@ struct AdminWindow: View {
             .buttonStyle(.plain)
             .disabled(isLoading)
             .help("Refresh")
+            .accessibilityLabel("Refresh current tab")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -209,6 +210,7 @@ struct AdminWindow: View {
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 12)

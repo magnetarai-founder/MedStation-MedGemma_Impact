@@ -54,6 +54,7 @@ struct SheetsToolbar: View {
             }
             .buttonStyle(.plain)
             .help("Formula AI")
+            .accessibilityLabel("Formula AI")
             .popover(isPresented: $showFormulaAI) {
                 FormulaAIPopover(
                     selectedCell: selectedCell,
@@ -79,6 +80,7 @@ struct SheetsToolbar: View {
             }
             .buttonStyle(.plain)
             .help("Insert Chart")
+            .accessibilityLabel("Insert Chart")
             .sheet(isPresented: $showChartBuilder) {
                 SheetsChartSheet(
                     document: document,
@@ -120,5 +122,6 @@ struct SheetsToolbar: View {
         }
         .buttonStyle(.plain)
         .help(help)
+        .accessibilityLabel(help)
     }
 }

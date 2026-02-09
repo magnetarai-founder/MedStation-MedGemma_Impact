@@ -84,6 +84,7 @@ struct VoicePanel: View {
             }
             .buttonStyle(.plain)
             .help("Stop Recording")
+            .accessibilityLabel("Stop Recording")
 
             Text("Recording...")
                 .font(.system(size: 13))
@@ -134,6 +135,7 @@ struct VoicePanel: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Rewind 15 seconds")
 
                     Button {} label: {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
@@ -141,6 +143,7 @@ struct VoicePanel: View {
                             .foregroundStyle(Color.magnetarPrimary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
                     Button {} label: {
                         Image(systemName: "goforward.15")
@@ -148,6 +151,7 @@ struct VoicePanel: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Forward 15 seconds")
                 }
             }
             .padding(.vertical, 24)

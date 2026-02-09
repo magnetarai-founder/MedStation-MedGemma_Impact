@@ -284,6 +284,7 @@ struct TeamNotesPanel: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Add \(title.lowercased())")
             }
         }
         .padding(.horizontal, 14)

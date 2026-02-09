@@ -93,6 +93,7 @@ struct ChatMessageRow: View {
                         }
                         .buttonStyle(.plain)
                         .help("Copy message")
+                        .accessibilityLabel(showCopied ? "Copied" : "Copy message")
 
                         // Regenerate button (only for last assistant message)
                         if message.role == .assistant, let onRetry {
@@ -106,6 +107,7 @@ struct ChatMessageRow: View {
                             }
                             .buttonStyle(.plain)
                             .help("Regenerate response")
+                            .accessibilityLabel("Regenerate response")
                         }
                     }
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))

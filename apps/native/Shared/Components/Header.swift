@@ -70,6 +70,7 @@ struct Header: View {
                     }
                     .buttonStyle(.plain)
                     .help("Control Center")
+                    .accessibilityLabel("Control Center")
 
                     Button {
                         showVaultAdmin = true
@@ -80,6 +81,7 @@ struct Header: View {
                     }
                     .buttonStyle(.plain)
                     .help("Vault Admin")
+                    .accessibilityLabel("Vault Admin")
 
                     AIToggleButton()
 

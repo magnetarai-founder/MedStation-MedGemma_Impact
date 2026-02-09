@@ -38,6 +38,8 @@ struct PanicButton: View {
             handlePanicButtonClick()
         }
         .help("Panic Mode (Double-click) / Emergency Mode (Triple-click)")
+        .accessibilityLabel("Panic Mode")
+        .accessibilityHint("Double-click for Panic Mode, triple-click for Emergency Mode")
     }
 
     private func handlePanicButtonClick() {
@@ -384,6 +386,7 @@ struct WorkspaceTab: View {
             }
         }
         .help("\(workspace.displayName) (⌘\(workspace.keyboardShortcut))")
+        .accessibilityLabel(workspace.displayName)
     }
 }
 
@@ -499,6 +502,7 @@ struct QuickActionButton: View {
             }
         }
         .help("Create new or open workspace (⇧⌘N)")
+        .accessibilityLabel("Quick Actions")
     }
 
     private func openSpawnableWorkspace(_ workspace: Workspace) {
@@ -533,6 +537,7 @@ struct AIToggleButton: View {
             WindowOpener.shared.openAIAssistant()
         }
         .help("Open AI Assistant (⇧⌘P)")
+        .accessibilityLabel("Open AI Assistant")
         .keyboardShortcut("p", modifiers: [.command, .shift])
     }
 }

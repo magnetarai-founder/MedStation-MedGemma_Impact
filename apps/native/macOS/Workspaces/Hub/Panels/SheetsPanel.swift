@@ -131,6 +131,7 @@ struct SheetsPanel: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Toggle sheet list")
 
             Text(spreadsheets[index].title)
                 .font(.system(size: 11, weight: .medium))
@@ -154,6 +155,7 @@ struct SheetsPanel: View {
             }
             .buttonStyle(.plain)
             .help("Export Spreadsheet")
+            .accessibilityLabel("Export Spreadsheet")
 
             if let cell = selectedCell {
                 Text("Cell: \(cell.description)")
@@ -189,6 +191,7 @@ struct SheetsPanel: View {
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
                 .help("New Spreadsheet")
+                .accessibilityLabel("New Spreadsheet")
             }
             .padding(.horizontal, 12)
             .frame(height: HubLayout.headerHeight)

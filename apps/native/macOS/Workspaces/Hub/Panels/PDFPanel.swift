@@ -78,6 +78,7 @@ struct PDFPanel: View {
                     .foregroundStyle(showThumbnails ? .primary : .secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Toggle PDF thumbnails")
 
             Divider().frame(height: 16)
 
@@ -89,6 +90,7 @@ struct PDFPanel: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Zoom out")
 
             Button {
             } label: {
@@ -97,6 +99,7 @@ struct PDFPanel: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Zoom in")
 
             Divider().frame(height: 16)
 
@@ -132,6 +135,7 @@ struct PDFPanel: View {
             .buttonStyle(.plain)
             .menuStyle(.borderlessButton)
             .frame(width: 28)
+            .accessibilityLabel("More PDF options")
         }
         .padding(.horizontal, 12)
         .frame(height: HubLayout.headerHeight)
@@ -147,6 +151,7 @@ struct PDFPanel: View {
         }
         .buttonStyle(.plain)
         .help(help)
+        .accessibilityLabel(help)
     }
 
     // MARK: - Status Bar
@@ -192,6 +197,7 @@ struct PDFPanel: View {
                 .buttonStyle(.plain)
                 .frame(width: 24)
                 .help("Import PDF")
+                .accessibilityLabel("Import PDF")
             }
             .padding(.horizontal, 12)
             .frame(height: HubLayout.headerHeight)

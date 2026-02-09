@@ -45,6 +45,7 @@ struct ChatWindow: View {
                     }
                     .buttonStyle(.plain)
                     .help("Session Timeline")
+                    .accessibilityLabel("Session Timeline")
 
                     // Model Selector (Phase 2: Intelligent routing)
                     ModelSelectorMenu(
@@ -289,6 +290,7 @@ struct ChatInputArea: View {
             }
             .buttonStyle(.plain)
             .disabled(messageInput.isEmpty || isLoading)
+            .accessibilityLabel("Send message")
         }
     }
 }
