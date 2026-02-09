@@ -241,4 +241,20 @@ enum Workspace: String, CaseIterable, Identifiable, Hashable {
     static var bottomRailWorkspaces: [Workspace] {
         allCases.filter { $0.railPosition == .bottom }
     }
+
+    /// Map to ANE WorkspaceType for cross-workspace learning
+    var workspaceType: WorkspaceType? {
+        switch self {
+        case .chat: return .chat
+        case .files: return .docs
+        case .workspace: return .hub
+        case .code: return .code
+        case .database: return .data
+        case .kanban: return .kanban
+        case .insights: return .insights
+        case .trust: return .vault
+        case .magnetarHub: return .hub
+        case .team: return .team
+        }
+    }
 }

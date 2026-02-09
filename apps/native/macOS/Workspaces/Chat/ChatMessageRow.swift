@@ -12,6 +12,7 @@ struct ChatMessageRow: View {
     let message: ChatMessage
     var onRetry: (() -> Void)?  // Optional retry callback for incomplete messages
     var isStreaming: Bool = false  // True if this message is currently streaming
+    var onBranch: (() -> Void)?  // Optional callback to branch conversation from this message
 
     @State private var isHovered: Bool = false
     @State private var showCopied: Bool = false
@@ -153,6 +154,19 @@ struct ChatMessageRow: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
+            }
+        }
+        .contextMenu {
+            Button {
+                copyToClipboard(message.content)
+            } label: {
+                Label("Copy Message", systemImage: "doc.on.doc")
+            }
+
+            if let onBranch {
+                Button(action: onBranch) {
+                    Label("Branch from Here", systemImage: "arrow.triangle.branch")
+                }
             }
         }
     }

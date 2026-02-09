@@ -113,6 +113,9 @@ struct ChatWindow: View {
                     },
                     onRegenerate: {
                         await chatStore.regenerateLastResponse()
+                    },
+                    onBranch: { message in
+                        branchFromMessage(message)
                     }
                 )
             }
@@ -125,13 +128,24 @@ struct ChatWindow: View {
                 isLoading: chatStore.isLoading,
                 onSend: {
                     sendMessage()
-                }
+                },
+                contextDisplay: contextDisplay
             )
             .padding(16)
         }
         .sheet(isPresented: $showTimeline) {
             ChatTimelineSheet(session: chatStore.currentSession, messages: chatStore.messages)
         }
+    }
+
+    /// Virtual context display for the current session and model
+    private var contextDisplay: VirtualContextDisplay? {
+        guard let session = chatStore.currentSession else { return nil }
+        return VirtualContextDisplay.forModel(
+            chatStore.selectedModelId,
+            conversationId: session.id,
+            storageService: .shared
+        )
     }
 
     private func sendMessage() {
@@ -141,6 +155,24 @@ struct ChatWindow: View {
         Task {
             messageInput = ""
             await chatStore.sendMessage(text)
+        }
+    }
+
+    /// Create a conversation branch from a specific message
+    private func branchFromMessage(_ message: ChatMessage) {
+        guard let session = chatStore.currentSession else { return }
+
+        // Get messages up to and including the branched message
+        let messagesUpToBranch = chatStore.messages.prefix(while: { $0.id != message.id }) + [message]
+        let topic = String(message.content.prefix(50))
+
+        Task {
+            _ = await SessionBranchManager.shared.createBranch(
+                from: session.id,
+                name: "Branch from \(message.role.displayName)",
+                topic: topic,
+                currentMessages: Array(messagesUpToBranch)
+            )
         }
     }
 
@@ -220,6 +252,7 @@ struct ChatMessageList: View {
     var isStreaming: Bool = false  // True when AI is generating a response
     var onRetryIncomplete: (() async -> Void)?  // Callback to retry incomplete messages
     var onRegenerate: (() async -> Void)?  // Callback to regenerate last response
+    var onBranch: ((ChatMessage) -> Void)?  // Callback to branch from a message
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -240,7 +273,8 @@ struct ChatMessageList: View {
                                     await onRegenerate?()
                                 }
                             } : nil),
-                            isStreaming: isLastMessage && isStreaming && message.role == .assistant
+                            isStreaming: isLastMessage && isStreaming && message.role == .assistant,
+                            onBranch: onBranch != nil ? { onBranch?(message) } : nil
                         )
                         .id(message.id)
                     }
@@ -270,27 +304,52 @@ struct ChatInputArea: View {
     @Binding var messageInput: String
     let isLoading: Bool
     let onSend: () -> Void
+    var contextDisplay: VirtualContextDisplay?
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("Message...", text: $messageInput, axis: .vertical)
-                .textFieldStyle(.plain)
-                .padding(10)
-                .background(Color.surfaceSecondary)
-                .cornerRadius(10)
-                .lineLimit(1...8)
-                .onSubmit {
-                    onSend()
-                }
+        VStack(spacing: 6) {
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("Message...", text: $messageInput, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .padding(10)
+                    .background(Color.surfaceSecondary)
+                    .cornerRadius(10)
+                    .lineLimit(1...8)
+                    .onSubmit {
+                        onSend()
+                    }
 
-            Button(action: onSend) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(messageInput.isEmpty ? AnyShapeStyle(Color.secondary) : AnyShapeStyle(LinearGradient.magnetarGradient))
+                Button(action: onSend) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(messageInput.isEmpty ? AnyShapeStyle(Color.secondary) : AnyShapeStyle(LinearGradient.magnetarGradient))
+                }
+                .buttonStyle(.plain)
+                .disabled(messageInput.isEmpty || isLoading)
+                .accessibilityLabel("Send message")
             }
-            .buttonStyle(.plain)
-            .disabled(messageInput.isEmpty || isLoading)
-            .accessibilityLabel("Send message")
+
+            // Context usage indicator
+            if let display = contextDisplay {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(contextColor(for: display.usageLevel))
+                        .frame(width: 6, height: 6)
+                    Text(display.shortDisplayString)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    private func contextColor(for level: VirtualContextDisplay.UsageLevel) -> Color {
+        switch level {
+        case .low: return .green
+        case .medium: return .yellow
+        case .high: return .orange
+        case .critical: return .red
         }
     }
 }

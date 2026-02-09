@@ -2,8 +2,8 @@
 //  SessionBranchManager.swift
 //  MagnetarStudio
 //
-//  STUB: Not currently wired — future session branching/topic-shift detection.
 //  Manages session branching for topic-based context isolation.
+//  Wired: ChatMessageRow context menu "Branch from Here" calls createBranch via ChatWindow.
 //  Addresses Gap 3: Session branching with topic shift detection.
 //
 

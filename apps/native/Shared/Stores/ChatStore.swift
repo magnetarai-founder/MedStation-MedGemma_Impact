@@ -1279,6 +1279,18 @@ final class ChatStore {
         }
     }
 
+    /// Analyze an image and return context string for AI prompts.
+    /// Call this before sending a message when the user attaches an image.
+    func analyzeImageForContext(_ image: PlatformImage) async -> String? {
+        do {
+            let result = try await ImageAnalysisService.shared.analyze(image)
+            return result.generateAIContext()
+        } catch {
+            logger.warning("Image analysis failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     func regenerateLastResponse() async {
         // Remove last assistant message
         if let lastIndex = messages.lastIndex(where: { $0.role == .assistant }) {

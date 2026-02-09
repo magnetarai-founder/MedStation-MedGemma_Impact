@@ -147,9 +147,23 @@ struct MainAppView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .onChange(of: navigationStore.activeWorkspace) { _, _ in
+            .onChange(of: navigationStore.activeWorkspace) { oldValue, newValue in
                 // Clear error when switching workspaces
                 workspaceError = nil
+
+                // Track workspace transition for ANE cross-workspace learning
+                if let from = oldValue.workspaceType, let to = newValue.workspaceType {
+                    let context = TransitionContext(
+                        activeSessionId: chatStore.currentSession?.id
+                    )
+                    Task {
+                        await CrossWorkspaceLearning.shared.trackTransition(
+                            from: from,
+                            to: to,
+                            context: context
+                        )
+                    }
+                }
             }
 
             // CRITICAL: File permission modal overlay (Phase 3)

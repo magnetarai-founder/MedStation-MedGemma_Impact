@@ -152,6 +152,15 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         // Stop scheduled automation timers
         SchedulerService.shared.stop()
 
+        // Trigger ANE training from collected behavior data (best-effort on shutdown)
+        Task { @MainActor in
+            let trainer = ANETrainingManager.shared
+            if trainer.exampleCount >= 50 && !trainer.isTraining {
+                logger.info("Triggering ANE training on app terminate (\(trainer.exampleCount) examples)")
+                await trainer.trainModel()
+            }
+        }
+
         // Unregister network firewall protocol
         URLProtocol.unregisterClass(NetworkFirewallProtocol.self)
 

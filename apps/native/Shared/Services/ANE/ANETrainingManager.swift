@@ -2,8 +2,8 @@
 //  ANETrainingManager.swift
 //  MagnetarStudio
 //
-//  STUB: Not currently wired — future on-device ML training infrastructure.
 //  Real on-device CoreML training using CreateML.
+//  Wired: AppLifecycleManager.applicationWillTerminate triggers trainModel() when ≥50 examples.
 //  Addresses Gap 4: MLUpdateTask for incremental model updates.
 //
 
