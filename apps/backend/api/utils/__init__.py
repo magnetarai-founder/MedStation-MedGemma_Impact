@@ -51,6 +51,16 @@ from .structured_logging import (
     log_error,
     log_execution,
 )
+from .helpers import (
+    file_lock,
+    file_lock_nonblocking,
+    get_user_id,
+    get_user_role,
+    get_user_team_id,
+    get_username,
+    sanitize_filename,
+    sanitize_for_log,
+)
 
 __all__ = [
     # Circuit breakers
@@ -102,4 +112,13 @@ __all__ = [
     # Path security
     "validate_workspace_path",
     "with_timeout",
+    # Helpers (from former api/utils.py)
+    "file_lock",
+    "file_lock_nonblocking",
+    "get_user_id",
+    "get_user_role",
+    "get_user_team_id",
+    "get_username",
+    "sanitize_filename",
+    "sanitize_for_log",
 ]
