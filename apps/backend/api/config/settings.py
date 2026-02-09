@@ -513,14 +513,14 @@ class ElohimOSSettings(BaseSettings):
     @property
     def temp_uploads_dir(self) -> Path:
         """Temporary uploads directory"""
-        path = Path(__file__).parent / "temp_uploads"
+        path = Path(__file__).parent.parent / "temp_uploads"
         path.mkdir(exist_ok=True)
         return path
 
     @property
     def temp_exports_dir(self) -> Path:
         """Temporary exports directory"""
-        path = Path(__file__).parent / "temp_exports"
+        path = Path(__file__).parent.parent / "temp_exports"
         path.mkdir(exist_ok=True)
         return path
 

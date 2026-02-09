@@ -4,6 +4,13 @@ Configuration module for MagnetarCode API.
 Centralized configuration constants to avoid magic numbers.
 """
 
+from .settings import (
+    ElohimOSSettings,
+    PATHS,
+    get_settings,
+    is_airgap_mode,
+    is_offline_mode,
+)
 from .constants import (
     AGENT_EXECUTION_RATE_LIMIT,
     AUTH_FAILURE_RATE_LIMIT,
@@ -55,4 +62,10 @@ __all__ = [
     "JWT_REFRESH_TOKEN_EXPIRE_DAYS",
     # Utilities
     "get_config_summary",
+    # Settings (from former api/config.py)
+    "ElohimOSSettings",
+    "PATHS",
+    "get_settings",
+    "is_airgap_mode",
+    "is_offline_mode",
 ]
