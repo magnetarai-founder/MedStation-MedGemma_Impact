@@ -283,7 +283,7 @@ struct MedicalWorkflowEngine {
             }
 
             do {
-                let result = try await ImageAnalysisService().analyze(nsImage)
+                let result = try await ImageAnalysisService.shared.analyze(nsImage)
                 let aiContext = result.generateAIContext()
 
                 if !aiContext.isEmpty {

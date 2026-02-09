@@ -325,6 +325,8 @@ struct DetachedAIWindow: View {
             return "Get help with transcriptions, summaries,\nor voice content analysis."
         case .general:
             return "Ask anything — code questions, writing help,\ndata analysis, or general knowledge."
+        case .medical:
+            return "Ask about symptoms, triage, differential diagnosis,\nor get evidence-based medical information."
         }
     }
 

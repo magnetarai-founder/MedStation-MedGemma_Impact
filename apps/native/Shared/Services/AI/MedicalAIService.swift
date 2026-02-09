@@ -286,10 +286,6 @@ private struct OllamaStreamRequest: Encodable, Sendable {
     }
 }
 
-private struct OllamaModelInfo: Codable, Sendable {
-    let name: String
-}
-
 // MARK: - Errors
 
 enum MedicalAIError: LocalizedError {
