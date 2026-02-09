@@ -80,6 +80,7 @@
 		2FEAFF1961277C3A3F6405E9 /* AIAssistPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD68A66CF84393ABF6EB49A7 /* AIAssistPopover.swift */; };
 		30E6B090620F723E11A7B080 /* WindowOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31982E5E50E81F3365DA8EFF /* WindowOpener.swift */; };
 		311286F505ACCA18869ECC9B /* FileAccessPermissionModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60FE2AEB42BDC3B5833B4175 /* FileAccessPermissionModal.swift */; };
+		31348DC1F126C1731C7ABB0D /* MedicalBenchmarkHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54F86CA1675C85DFD119DAC /* MedicalBenchmarkHarness.swift */; };
 		314B422ABBCD81E205613B8A /* TeamChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D079105DB0D10E5088D7EF /* TeamChatComponents.swift */; };
 		33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */; };
 		345D4A29767E47D4B56BA1BA /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAC96FBA4503E0D6E14CD2 /* SchedulerService.swift */; };
@@ -739,6 +740,7 @@
 		D2F57669A2A1DFB938D99E88 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		D4A6607FA9F35B0AE8AC199B /* WorkflowQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowQueueView.swift; sourceTree = "<group>"; };
 		D4AFB12BDA29214D6DFFE2AA /* EmergencyModeService+SelfUninstall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmergencyModeService+SelfUninstall.swift"; sourceTree = "<group>"; };
+		D54F86CA1675C85DFD119DAC /* MedicalBenchmarkHarness.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalBenchmarkHarness.swift; sourceTree = "<group>"; };
 		D70C62EC568E7BD7BEFC459C /* TeamModals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamModals.swift; sourceTree = "<group>"; };
 		D7D7794B64D12FFC4D22C633 /* HotSlotCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotSlotCard.swift; sourceTree = "<group>"; };
 		D867624BC0B01BE42A217B20 /* ChatMessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageRow.swift; sourceTree = "<group>"; };
@@ -1166,6 +1168,7 @@
 				CB7EE6AB926CC9931B4A3194 /* MedicalWorkflowEngine.swift */,
 				C4C948AB23F32185398E0FB5 /* MedicalSafetyGuard.swift */,
 				C20783086988DF8E1B36FBBA /* MedicalAuditLogger.swift */,
+				D54F86CA1675C85DFD119DAC /* MedicalBenchmarkHarness.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -2340,6 +2343,7 @@
 				70250E6DFA91423A9D8A0E80 /* MedicalSafetyGuard.swift in Sources */,
 				CC78264695601C8523F8C86A /* MedicalAuditLogger.swift in Sources */,
 				1F6EAB9F28E04038A882AD5B /* MedicalPanel.swift in Sources */,
+				31348DC1F126C1731C7ABB0D /* MedicalBenchmarkHarness.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

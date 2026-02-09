@@ -24,6 +24,8 @@ struct MedicalPanel: View {
     @State private var searchText = ""
     @AppStorage("medical.onboarding.shown") private var hasShownOnboarding = false
     @State private var showOnboarding = false
+    @State private var showBenchmark = false
+    @State private var benchmarkHarness = MedicalBenchmarkHarness()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -50,18 +52,30 @@ struct MedicalPanel: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showNewCaseSheet = true
-                } label: {
-                    Label("New Case", systemImage: "plus.circle.fill")
+                HStack(spacing: 8) {
+                    Button {
+                        showBenchmark = true
+                    } label: {
+                        Label("Benchmark", systemImage: "chart.bar.doc.horizontal")
+                    }
+                    .accessibilityLabel("Run evaluation benchmark")
+
+                    Button {
+                        showNewCaseSheet = true
+                    } label: {
+                        Label("New Case", systemImage: "plus.circle.fill")
+                    }
+                    .accessibilityLabel("Create new medical case")
                 }
-                .accessibilityLabel("Create new medical case")
             }
         }
         .sheet(isPresented: $showNewCaseSheet) {
             NewCaseSheet { intake in
                 createNewCase(intake: intake)
             }
+        }
+        .sheet(isPresented: $showBenchmark) {
+            BenchmarkSheet(harness: benchmarkHarness)
         }
         .task {
             await loadCases()
@@ -2041,6 +2055,372 @@ private struct NewCaseSheet: View {
 
         let newPaths = panel.urls.map(\.path)
         attachedImagePaths.append(contentsOf: newPaths)
+    }
+}
+
+// MARK: - Benchmark Sheet
+
+private struct BenchmarkSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var harness: MedicalBenchmarkHarness
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if harness.isRunning {
+                    benchmarkProgressView
+                } else if let report = harness.report {
+                    benchmarkReportView(report)
+                } else {
+                    benchmarkStartView
+                }
+            }
+            .navigationTitle("Evaluation Benchmark")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+                if let report = harness.report, !harness.isRunning {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            exportBenchmarkReport(report)
+                        } label: {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                        .accessibilityLabel("Export benchmark report")
+                    }
+                }
+            }
+        }
+        .frame(width: 700, height: 600)
+        .onAppear {
+            if harness.report == nil {
+                harness.report = MedicalBenchmarkHarness.loadLatestReport()
+            }
+        }
+    }
+
+    // MARK: - Start View
+
+    private var benchmarkStartView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "chart.bar.doc.horizontal")
+                .font(.system(size: 48))
+                .foregroundStyle(.teal)
+            Text("MedGemma Evaluation Benchmark")
+                .font(.title2.weight(.semibold))
+            Text("Runs 10 clinically validated vignettes through the full 5-step\nagentic workflow and scores against expected outcomes.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            VStack(alignment: .leading, spacing: 8) {
+                benchmarkInfoRow("Triage Accuracy", "Exact match + partial credit for adjacent levels")
+                benchmarkInfoRow("Diagnosis Recall", "Keyword overlap with expected differential")
+                benchmarkInfoRow("Safety Coverage", "Required safety alert categories triggered")
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Text("Requires MedGemma model loaded via Ollama. Each vignette takes ~30-60s.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            Button {
+                harness.run()
+            } label: {
+                Label("Run Benchmark", systemImage: "play.fill")
+                    .frame(width: 180)
+            }
+            .controlSize(.large)
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+
+            if let error = harness.error {
+                Text("Error: \(error)")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            Spacer()
+        }
+        .padding(30)
+    }
+
+    // MARK: - Progress View
+
+    private var benchmarkProgressView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            ProgressView(value: Double(harness.currentVignetteIndex), total: 10)
+                .progressViewStyle(.linear)
+                .frame(width: 300)
+
+            Text("Running vignette \(harness.currentVignetteIndex + 1) of 10")
+                .font(.headline)
+
+            Text(harness.currentVignetteName)
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            ProgressView()
+                .controlSize(.small)
+
+            Button("Cancel") {
+                harness.cancel()
+            }
+            .controlSize(.small)
+            Spacer()
+        }
+        .padding(30)
+    }
+
+    // MARK: - Report View
+
+    private func benchmarkReportView(_ report: BenchmarkReport) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Aggregate scores
+                HStack(spacing: 16) {
+                    scoreCard("Composite", report.meanCompositeScore, .teal)
+                    scoreCard("Triage", report.triageAccuracy, triageScoreColor(report.triageAccuracy))
+                    scoreCard("Diagnosis", report.meanDiagnosisRecall, recallScoreColor(report.meanDiagnosisRecall))
+                    scoreCard("Safety", report.meanSafetyCoverage, recallScoreColor(report.meanSafetyCoverage))
+                }
+
+                HStack(spacing: 16) {
+                    metricCard("Pass Rate", String(format: "%.0f%%", report.passRate * 100))
+                    metricCard("Avg Workflow", String(format: "%.1fs", report.meanWorkflowMs / 1000))
+                    metricCard("Total Time", String(format: "%.1fs", report.totalDurationMs / 1000))
+                    metricCard("Vignettes", "\(report.vignetteCount)")
+                }
+
+                Divider()
+
+                // Per-vignette results
+                Text("Per-Vignette Results")
+                    .font(.headline)
+
+                ForEach(report.results) { result in
+                    vignetteResultRow(result)
+                }
+
+                Divider()
+
+                // Confusion matrix
+                Text("Triage Confusion Matrix")
+                    .font(.headline)
+
+                confusionMatrixView(report.triageConfusion)
+
+                // Run again button
+                HStack {
+                    Spacer()
+                    Button {
+                        harness.run()
+                    } label: {
+                        Label("Run Again", systemImage: "arrow.clockwise")
+                    }
+                    .controlSize(.small)
+                }
+
+                // Timestamp
+                Text("Benchmark run: \(report.timestamp.formatted(date: .abbreviated, time: .shortened)) — \(report.modelName)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(20)
+        }
+    }
+
+    // MARK: - Score Cards
+
+    private func scoreCard(_ title: String, _ score: Double, _ color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(String(format: "%.0f%%", score * 100))
+                .font(.system(size: 24, weight: .bold).monospaced())
+                .foregroundStyle(color)
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(color.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func metricCard(_ title: String, _ value: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 16, weight: .semibold).monospaced())
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    // MARK: - Vignette Row
+
+    private func vignetteResultRow(_ result: BenchmarkVignetteResult) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: result.passed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundStyle(result.passed ? .green : .red)
+                Text(result.vignetteName)
+                    .font(.system(size: 13, weight: .medium))
+                Text(result.vignetteCategory)
+                    .font(.system(size: 10))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.teal.opacity(0.15))
+                    .foregroundStyle(.teal)
+                    .clipShape(Capsule())
+                Spacer()
+                Text(String(format: "%.0f%%", result.compositeScore * 100))
+                    .font(.system(size: 13, weight: .bold).monospaced())
+                    .foregroundStyle(result.passed ? .green : .red)
+            }
+
+            HStack(spacing: 16) {
+                vignetteMetric("Triage", result.triageScore, detail: triageCompare(result))
+                vignetteMetric("Dx Recall", result.diagnosisRecall, detail: "\(result.matchedKeywords.count)/\(result.expectedKeywords.count)")
+                vignetteMetric("Safety", result.safetyCoverage, detail: "\(result.triggeredSafetyCategories.count) alerts")
+                vignetteMetric("Time", nil, detail: String(format: "%.1fs", result.workflowDurationMs / 1000))
+            }
+            .font(.system(size: 11))
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func vignetteMetric(_ label: String, _ score: Double?, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .foregroundStyle(.tertiary)
+                .font(.system(size: 10))
+            if let score {
+                Text(String(format: "%.0f%%", score * 100))
+                    .font(.system(size: 11, weight: .semibold).monospaced())
+                    .foregroundStyle(score >= 0.8 ? .green : score >= 0.5 ? .orange : .red)
+            }
+            Text(detail)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Confusion Matrix
+
+    private static let confusionLevels = [
+        "Emergency (Call 911)", "Urgent (Seek care within 2-4 hours)",
+        "Semi-Urgent (See doctor within 24 hours)", "Non-Urgent (Schedule appointment)",
+        "Self-Care (Monitor at home)"
+    ]
+    private static let confusionLabels = ["EMG", "URG", "S-URG", "NON", "SELF"]
+
+    private func confusionMatrixView(_ matrix: [String: [String: Int]]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            confusionHeaderRow
+            ForEach(Array(Self.confusionLabels.enumerated()), id: \.offset) { idx, label in
+                confusionDataRow(label: label, level: Self.confusionLevels[idx], matrix: matrix)
+            }
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var confusionHeaderRow: some View {
+        HStack(spacing: 0) {
+            Text("Expected ↓  Actual →")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+                .frame(width: 120, alignment: .leading)
+            ForEach(Array(Self.confusionLabels.enumerated()), id: \.offset) { _, label in
+                Text(label)
+                    .font(.system(size: 9, weight: .semibold))
+                    .frame(width: 50)
+            }
+        }
+    }
+
+    private func confusionDataRow(label: String, level: String, matrix: [String: [String: Int]]) -> some View {
+        HStack(spacing: 0) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .frame(width: 120, alignment: .leading)
+            ForEach(Array(Self.confusionLevels.enumerated()), id: \.offset) { idx, actualLevel in
+                confusionCell(count: matrix[level]?[actualLevel] ?? 0, isDiagonal: Self.confusionLevels[idx] == level)
+            }
+        }
+    }
+
+    private func confusionCell(count: Int, isDiagonal: Bool) -> some View {
+        let weight: Font.Weight = count > 0 ? .bold : .regular
+        let color: Color = isDiagonal ? .green : .red
+        return Text(count > 0 ? "\(count)" : "·")
+            .font(.system(size: 11, weight: weight).monospaced())
+            .foregroundStyle(count > 0 ? AnyShapeStyle(color) : AnyShapeStyle(.quaternary))
+            .frame(width: 50)
+    }
+
+    // MARK: - Helpers
+
+    private func benchmarkInfoRow(_ title: String, _ description: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark.circle")
+                .foregroundStyle(.teal)
+                .font(.system(size: 12))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 12, weight: .semibold))
+                Text(description).font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func triageCompare(_ result: BenchmarkVignetteResult) -> String {
+        if result.triageScore >= 1.0 { return "Exact match" }
+        if result.triageScore >= 0.5 { return "Adjacent" }
+        return "Mismatch"
+    }
+
+    private func triageScoreColor(_ score: Double) -> Color {
+        score >= 0.8 ? .green : score >= 0.6 ? .orange : .red
+    }
+
+    private func recallScoreColor(_ score: Double) -> Color {
+        score >= 0.7 ? .green : score >= 0.4 ? .orange : .red
+    }
+
+    private func exportBenchmarkReport(_ report: BenchmarkReport) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+
+        guard let data = try? encoder.encode(report) else {
+            logger.error("Failed to encode benchmark report")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "MedGemma-Benchmark-\(report.timestamp.formatted(date: .numeric, time: .omitted)).json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            try data.write(to: url)
+            logger.info("Exported benchmark report to \(url.lastPathComponent)")
+        } catch {
+            logger.error("Failed to export benchmark: \(error.localizedDescription)")
+        }
     }
 }
 
