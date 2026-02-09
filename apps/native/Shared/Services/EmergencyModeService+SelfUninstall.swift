@@ -107,6 +107,9 @@ extension EmergencyModeService {
     func scheduleAppDeletion(bundlePath: String) throws {
         logger.debug("Scheduling app bundle deletion...")
 
+        // Shell-escape the bundle path to prevent injection via metacharacters
+        let escapedBundlePath = bundlePath.replacingOccurrences(of: "'", with: "'\\''")
+
         let scriptContent = """
         #!/bin/bash
         # MagnetarStudio Self-Uninstall Script
@@ -116,7 +119,7 @@ extension EmergencyModeService {
         sleep 2
 
         # Get the app bundle path
-        APP_PATH="\(bundlePath)"
+        APP_PATH='\(escapedBundlePath)'
 
         # Delete the app bundle
         if [ -d "$APP_PATH" ]; then
@@ -129,15 +132,12 @@ extension EmergencyModeService {
         rm -f "$0"
         """
 
-        let scriptPath = "/tmp/magnetar_uninstall_\(UUID().uuidString).sh"
+        // Use NSTemporaryDirectory (per-user, not world-writable /tmp)
+        let scriptPath = NSTemporaryDirectory() + "magnetar_uninstall_\(UUID().uuidString).sh"
         try scriptContent.write(toFile: scriptPath, atomically: true, encoding: .utf8)
 
-        // Make script executable
-        let chmod = Process()
-        chmod.launchPath = "/bin/chmod"
-        chmod.arguments = ["+x", scriptPath]
-        chmod.launch()
-        chmod.waitUntilExit()
+        // Restrict permissions to owner only (700)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: scriptPath)
 
         // Launch script in background — intentionally no waitUntilExit() because
         // the script deletes the app bundle; the app must exit before it completes

@@ -542,6 +542,25 @@ actor TerminalBridgeService {
         }
     }
 
+    // MARK: - AppleScript Escaping
+
+    /// Escape a string for safe interpolation into AppleScript.
+    /// Replaces backslashes, double quotes, and strips control characters.
+    private func escapeForAppleScript(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .filter { !$0.isNewline && $0 != "\r" }
+    }
+
+    /// Escape a path for safe use inside single-quoted shell arguments in AppleScript.
+    /// Replaces single quotes with the shell escape sequence '\'' and strips control characters.
+    private func escapePathForShell(_ path: String) -> String {
+        path
+            .replacingOccurrences(of: "'", with: "'\\''")
+            .filter { !$0.isNewline && $0 != "\r" }
+    }
+
     // MARK: - Warp Scripts
 
     private func warpSpawnScript(cwd: String?) -> String {
@@ -557,7 +576,7 @@ actor TerminalBridgeService {
                     end tell
                 end tell
             end tell
-            do shell script "open -a Warp '\(cwd)'"
+            do shell script "open -a Warp '\(escapePathForShell(cwd))'"
             """
         } else {
             return """
@@ -575,7 +594,7 @@ actor TerminalBridgeService {
     }
 
     private func warpExecuteScript(command: String) -> String {
-        let escapedCommand = command.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedCommand = escapeForAppleScript(command)
         return """
         tell application "Warp"
             activate
@@ -599,7 +618,7 @@ actor TerminalBridgeService {
                 activate
                 create window with default profile
                 tell current session of current window
-                    write text "cd '\(cwd)'"
+                    write text "cd '\(escapePathForShell(cwd))'"
                 end tell
             end tell
             """
@@ -614,7 +633,7 @@ actor TerminalBridgeService {
     }
 
     private func itermExecuteScript(command: String) -> String {
-        let escapedCommand = command.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedCommand = escapeForAppleScript(command)
         return """
         tell application "iTerm"
             tell current session of current window
@@ -641,7 +660,7 @@ actor TerminalBridgeService {
             return """
             tell application "Terminal"
                 activate
-                do script "cd '\(cwd)'"
+                do script "cd '\(escapePathForShell(cwd))'"
             end tell
             """
         } else {
@@ -655,7 +674,7 @@ actor TerminalBridgeService {
     }
 
     private func terminalAppExecuteScript(command: String) -> String {
-        let escapedCommand = command.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedCommand = escapeForAppleScript(command)
         return """
         tell application "Terminal"
             tell front window

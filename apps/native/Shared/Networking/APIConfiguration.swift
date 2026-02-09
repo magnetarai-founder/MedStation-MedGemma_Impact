@@ -17,7 +17,8 @@ final class APIConfiguration {
     /// Base API URL with HTTPS enforcement for non-localhost
     /// Priority: env var > UserDefaults (Settings UI) > default localhost
     var baseURL: String {
-        if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"] {
+        if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
+           URL(string: envURL) != nil {
             return envURL
         }
         if let userURL = UserDefaults.standard.string(forKey: "apiBaseURL"),
@@ -99,7 +100,8 @@ final class APIConfiguration {
 
     private init() {
         // Ollama URL (always local, no remote option)
-        if let envOllamaURL = ProcessInfo.processInfo.environment["OLLAMA_URL"] {
+        if let envOllamaURL = ProcessInfo.processInfo.environment["OLLAMA_URL"],
+           URL(string: envOllamaURL) != nil {
             self.ollamaURL = envOllamaURL
         } else {
             self.ollamaURL = "http://localhost:11434"

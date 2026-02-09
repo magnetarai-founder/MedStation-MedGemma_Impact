@@ -219,18 +219,7 @@ final class BackendManager {
     private func findProjectRoot() -> URL? {
         // CRITICAL: This must ALWAYS find the project root for backend auto-start
 
-        // Method 1: Hardcoded development path (HIGHEST PRIORITY)
-        // For development, we KNOW where the project is - don't waste time searching
-        let devPath = URL(fileURLWithPath: "/Users/indiedevhipps/Documents/MagnetarStudio")
-        let devVenv = devPath.appendingPathComponent("venv/bin/python")
-        let devBackend = devPath.appendingPathComponent("apps/backend")
-
-        if FileManager.default.fileExists(atPath: devVenv.path) &&
-           FileManager.default.fileExists(atPath: devBackend.path) {
-            return devPath
-        }
-
-        // Method 2: Walk up from bundle (for production/release builds)
+        // Method 1: Walk up from bundle (works in both dev and production)
         var current = Bundle.main.bundleURL
 
         for _ in 0..<15 {
@@ -245,11 +234,10 @@ final class BackendManager {
             current = current.deletingLastPathComponent()
         }
 
-        // Method 3: Check common locations
+        // Method 2: Check common locations
         let commonPaths = [
-            "/Users/indiedevhipps/Documents/MagnetarStudio",
-            "/Applications/MagnetarStudio.app/Contents/Resources",
-            NSHomeDirectory() + "/Documents/MagnetarStudio"
+            NSHomeDirectory() + "/Documents/MagnetarStudio",
+            "/Applications/MagnetarStudio.app/Contents/Resources"
         ]
 
         for path in commonPaths {
