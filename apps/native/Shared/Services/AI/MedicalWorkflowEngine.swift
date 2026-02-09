@@ -243,6 +243,26 @@ struct MedicalWorkflowEngine {
         Severity: \(intake.severity.rawValue)
         """
 
+        if let age = intake.age {
+            var ageNote = "\nAge: \(age) years"
+            if age < 2 {
+                ageNote += " (Neonate/Infant — use pediatric-specific differentials and dosing)"
+            } else if age < 18 {
+                ageNote += " (Pediatric — consider age-appropriate differentials, vital sign ranges differ)"
+            } else if age > 65 {
+                ageNote += " (Geriatric — consider polypharmacy, atypical presentations, frailty)"
+            }
+            context += ageNote
+        }
+
+        if let sex = intake.sex {
+            context += "\nBiological Sex: \(sex.rawValue)"
+        }
+
+        if intake.isPregnant {
+            context += "\n⚠️ PREGNANT — Consider pregnancy complications (eclampsia, ectopic, abruption), medication contraindications, and trimester-specific risks"
+        }
+
         if !intake.symptoms.isEmpty {
             context += "\nSymptoms: \(intake.symptoms.joined(separator: ", "))"
         }

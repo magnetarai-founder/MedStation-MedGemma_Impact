@@ -13,6 +13,9 @@ import Foundation
 struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
     let id: UUID
     var patientId: String
+    var age: Int?
+    var sex: BiologicalSex?
+    var isPregnant: Bool
     var chiefComplaint: String
     var symptoms: [String]
     var onsetTime: String
@@ -35,6 +38,9 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
     init(
         id: UUID = UUID(),
         patientId: String = "",
+        age: Int? = nil,
+        sex: BiologicalSex? = nil,
+        isPregnant: Bool = false,
         chiefComplaint: String = "",
         symptoms: [String] = [],
         onsetTime: String = "",
@@ -49,6 +55,9 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
     ) {
         self.id = id
         self.patientId = patientId
+        self.age = age
+        self.sex = sex
+        self.isPregnant = isPregnant
         self.chiefComplaint = chiefComplaint
         self.symptoms = symptoms
         self.onsetTime = onsetTime
@@ -61,6 +70,12 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+}
+
+enum BiologicalSex: String, Codable, CaseIterable, Sendable {
+    case male = "Male"
+    case female = "Female"
+    case other = "Other"
 }
 
 // MARK: - Vital Signs
@@ -184,6 +199,8 @@ struct MedicalCase: Identifiable, Codable, Equatable, Sendable {
     var intake: PatientIntake
     var result: MedicalWorkflowResult?
     var status: CaseStatus
+    var feedback: TriageFeedback?
+    var followUpMessages: [FollowUpMessage]
     var createdAt: Date
     var updatedAt: Date
 
@@ -199,6 +216,8 @@ struct MedicalCase: Identifiable, Codable, Equatable, Sendable {
         intake: PatientIntake,
         result: MedicalWorkflowResult? = nil,
         status: CaseStatus = .pending,
+        feedback: TriageFeedback? = nil,
+        followUpMessages: [FollowUpMessage] = [],
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -206,9 +225,38 @@ struct MedicalCase: Identifiable, Codable, Equatable, Sendable {
         self.intake = intake
         self.result = result
         self.status = status
+        self.feedback = feedback
+        self.followUpMessages = followUpMessages
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+}
+
+// MARK: - Triage Feedback (HAI-DEF user feedback loop)
+
+struct TriageFeedback: Codable, Equatable, Sendable {
+    var rating: FeedbackRating
+    var notes: String
+    var submittedAt: Date
+
+    enum FeedbackRating: String, Codable, CaseIterable, Sendable {
+        case accurate = "Accurate"
+        case partiallyHelpful = "Partially Helpful"
+        case incorrect = "Incorrect"
+    }
+
+    init(rating: FeedbackRating, notes: String = "", submittedAt: Date = Date()) {
+        self.rating = rating
+        self.notes = notes
+        self.submittedAt = submittedAt
+    }
+}
+
+// MARK: - Follow-Up Chat Message
+
+struct FollowUpMessage: Codable, Equatable, Sendable {
+    let role: String
+    let content: String
 }
 
 // MARK: - Edge AI Performance Metrics

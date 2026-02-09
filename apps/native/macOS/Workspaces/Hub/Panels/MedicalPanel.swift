@@ -21,6 +21,9 @@ struct MedicalPanel: View {
     @State private var selectedCaseID: UUID?
     @State private var isLoading = true
     @State private var showNewCaseSheet = false
+    @State private var searchText = ""
+    @AppStorage("medical.onboarding.shown") private var hasShownOnboarding = false
+    @State private var showOnboarding = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -62,10 +65,39 @@ struct MedicalPanel: View {
         }
         .task {
             await loadCases()
+            if !hasShownOnboarding {
+                try? await Task.sleep(for: .seconds(0.5))
+                showOnboarding = true
+            }
+        }
+        .alert("MedGemma Medical Assistant", isPresented: $showOnboarding) {
+            Button("Get Started") { hasShownOnboarding = true }
+        } message: {
+            Text("""
+            Welcome to the AI-powered medical triage assistant.
+
+            \u{2022} Enter patient symptoms and vital signs
+            \u{2022} AI performs 5-step clinical reasoning (MedGemma 4B)
+            \u{2022} Outputs triage level, differential diagnoses, and recommendations
+            \u{2022} HAI-DEF compliant safety validation and audit logging
+            \u{2022} 100% on-device inference — no patient data leaves your Mac
+
+            Try the demo case to see the full workflow in action.
+            """)
         }
     }
 
     // MARK: - Sidebar
+
+    private var filteredCases: [MedicalCase] {
+        guard !searchText.isEmpty else { return cases }
+        let query = searchText.lowercased()
+        return cases.filter {
+            $0.intake.patientId.lowercased().contains(query) ||
+            $0.intake.chiefComplaint.lowercased().contains(query) ||
+            $0.intake.symptoms.contains(where: { $0.lowercased().contains(query) })
+        }
+    }
 
     private var casesSidebar: some View {
         VStack(spacing: 0) {
@@ -79,6 +111,28 @@ struct MedicalPanel: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                TextField("Search cases...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
 
             Divider()
 
@@ -101,7 +155,7 @@ struct MedicalPanel: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
-                        ForEach(cases) { medicalCase in
+                        ForEach(filteredCases) { medicalCase in
                             CaseListItem(
                                 medicalCase: medicalCase,
                                 isSelected: selectedCaseID == medicalCase.id,
@@ -111,8 +165,60 @@ struct MedicalPanel: View {
                     }
                 }
             }
+
+            // Impact Analytics
+            if !cases.isEmpty {
+                Divider()
+                impactAnalyticsSection
+            }
         }
         .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    // MARK: - Impact Analytics
+
+    private var impactAnalyticsSection: some View {
+        let completedCases = cases.filter { $0.result != nil }
+        let emergencyCount = completedCases.filter { $0.result?.triageLevel == .emergency }.count
+        let avgTriageMs: Double = {
+            let times = completedCases.compactMap { $0.result?.performanceMetrics?.totalWorkflowMs }
+            guard !times.isEmpty else { return 0 }
+            return times.reduce(0, +) / Double(times.count)
+        }()
+        let feedbackCases = cases.compactMap(\.feedback)
+        let accuracyPct: Double = {
+            guard !feedbackCases.isEmpty else { return 0 }
+            let accurate = feedbackCases.filter { $0.rating == .accurate }.count
+            return Double(accurate) / Double(feedbackCases.count) * 100
+        }()
+
+        return DisclosureGroup("Impact Analytics") {
+            VStack(spacing: 6) {
+                analyticsRow("Cases Analyzed", "\(completedCases.count)")
+                analyticsRow("Emergency Detected", "\(emergencyCount)")
+                analyticsRow("Avg Triage Time", avgTriageMs > 0 ? String(format: "%.1fs", avgTriageMs / 1000) : "—")
+                if !feedbackCases.isEmpty {
+                    analyticsRow("Feedback Accuracy", String(format: "%.0f%%", accuracyPct))
+                }
+            }
+            .padding(.top, 4)
+        }
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func analyticsRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 10, weight: .semibold).monospaced())
+                .foregroundStyle(.secondary)
+        }
     }
 
     // MARK: - Data
@@ -135,6 +241,32 @@ struct MedicalPanel: View {
             if let mc = PersistenceHelpers.load(MedicalCase.self, from: file, label: "medical case") {
                 loaded.append(mc)
             }
+        }
+
+        if loaded.isEmpty {
+            let demoIntake = PatientIntake(
+                patientId: "DEMO-001",
+                age: 58,
+                sex: .male,
+                chiefComplaint: "Severe chest pain radiating to left arm, onset 20 minutes ago",
+                symptoms: ["chest pain", "shortness of breath", "nausea", "diaphoresis"],
+                onsetTime: "20 minutes ago",
+                severity: .severe,
+                vitalSigns: VitalSigns(
+                    heartRate: 110,
+                    bloodPressure: "150/95",
+                    temperature: 98.6,
+                    respiratoryRate: 22,
+                    oxygenSaturation: 94
+                ),
+                medicalHistory: ["Hypertension", "Type 2 Diabetes"],
+                currentMedications: ["Metformin", "Lisinopril"],
+                allergies: ["Penicillin"]
+            )
+            let demoCase = MedicalCase(intake: demoIntake)
+            loaded.append(demoCase)
+            saveCaseToFile(demoCase)
+            logger.info("Created demo medical case for first launch")
         }
 
         cases = loaded.sorted { $0.updatedAt > $1.updatedAt }
@@ -258,8 +390,8 @@ private struct MedicalCaseDetailView: View {
     @State private var workflowError: String?
     @State private var showDisclaimerConfirm = false
 
-    // Follow-up Q&A chat
-    @State private var chatMessages: [(role: String, content: String)] = []
+    // Follow-up Q&A chat (persisted via MedicalCase.followUpMessages)
+    @State private var chatMessages: [FollowUpMessage] = []
     @State private var chatInput = ""
     @State private var isChatStreaming = false
 
@@ -284,10 +416,15 @@ private struct MedicalCaseDetailView: View {
                     Divider()
                     resultsSection(result)
                     Divider()
+                    feedbackSection
+                    Divider()
                     followUpChatSection
                 }
             }
             .padding(20)
+        }
+        .onAppear {
+            chatMessages = medicalCase.followUpMessages
         }
         .alert("Medical Disclaimer", isPresented: $showDisclaimerConfirm) {
             Button("I Understand — Run Analysis") {
@@ -319,13 +456,24 @@ private struct MedicalCaseDetailView: View {
             Spacer()
 
             if let result = medicalCase.result {
-                Button {
-                    exportMedicalReport(result)
+                Menu {
+                    Button {
+                        exportMedicalReport(result)
+                    } label: {
+                        Label("Export as Text Report", systemImage: "doc.plaintext")
+                    }
+                    Button {
+                        exportClinicalJSON(result)
+                    } label: {
+                        Label("Export as Clinical JSON", systemImage: "curlybraces")
+                    }
                 } label: {
-                    Label("Export Report", systemImage: "arrow.up.doc")
+                    Label("Export", systemImage: "arrow.up.doc")
                         .font(.caption)
                 }
-                .accessibilityLabel("Export medical report as text file")
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityLabel("Export medical report")
 
                 triageBadge(result.triageLevel)
             }
@@ -447,11 +595,29 @@ private struct MedicalCaseDetailView: View {
             }
 
             if let error = workflowError {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    Text("Error: \(error)")
-                        .font(.caption)
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text("Error: \(error)")
+                            .font(.caption)
+                        Spacer()
+                    }
+
+                    Button {
+                        workflowError = nil
+                        Task { await runWorkflow() }
+                    } label: {
+                        Label("Retry Analysis", systemImage: "arrow.clockwise")
+                            .font(.caption)
+                            .frame(maxWidth: .infinity)
+                            .padding(6)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundStyle(.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Retry medical analysis")
                 }
                 .padding(8)
                 .background(Color.red.opacity(0.1))
@@ -493,6 +659,82 @@ private struct MedicalCaseDetailView: View {
         .padding()
         .background(Color.blue.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Follow-Up Chat
+
+    // MARK: - Feedback (HAI-DEF user feedback loop)
+
+    @State private var feedbackNotes = ""
+
+    private var feedbackSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "hand.thumbsup")
+                    .foregroundStyle(.green)
+                Text("Triage Feedback")
+                    .font(.headline)
+            }
+
+            if let feedback = medicalCase.feedback {
+                HStack(spacing: 8) {
+                    Image(systemName: feedback.rating == .accurate ? "checkmark.circle.fill" : feedback.rating == .incorrect ? "xmark.circle.fill" : "minus.circle.fill")
+                        .foregroundStyle(feedback.rating == .accurate ? Color.green : feedback.rating == .incorrect ? Color.red : Color.orange)
+                    Text("Rated: \(feedback.rating.rawValue)")
+                        .font(.subheadline)
+                    if !feedback.notes.isEmpty {
+                        Text("— \(feedback.notes)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("Thank you for your feedback")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            } else {
+                Text("Was this triage assessment helpful? Your feedback improves future accuracy.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    ForEach(TriageFeedback.FeedbackRating.allCases, id: \.self) { rating in
+                        Button {
+                            medicalCase.feedback = TriageFeedback(rating: rating, notes: feedbackNotes)
+                            onUpdate(medicalCase)
+                        } label: {
+                            Text(rating.rawValue)
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(feedbackColor(rating).opacity(0.1))
+                                .foregroundStyle(feedbackColor(rating))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                TextField("Optional notes...", text: $feedbackNotes)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+            }
+        }
+        .padding()
+        .background(Color.green.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.green.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private func feedbackColor(_ rating: TriageFeedback.FeedbackRating) -> Color {
+        switch rating {
+        case .accurate: return .green
+        case .partiallyHelpful: return .orange
+        case .incorrect: return .red
+        }
     }
 
     // MARK: - Follow-Up Chat
@@ -566,7 +808,7 @@ private struct MedicalCaseDetailView: View {
         guard !question.isEmpty else { return }
 
         chatInput = ""
-        chatMessages.append((role: "user", content: question))
+        chatMessages.append(FollowUpMessage(role: "user", content: question))
 
         // Build context from the case result
         var context = ""
@@ -579,7 +821,8 @@ private struct MedicalCaseDetailView: View {
         }
 
         isChatStreaming = true
-        chatMessages.append((role: "assistant", content: ""))
+        var streamedContent = ""
+        chatMessages.append(FollowUpMessage(role: "assistant", content: ""))
         let responseIndex = chatMessages.count - 1
 
         do {
@@ -588,20 +831,25 @@ private struct MedicalCaseDetailView: View {
                 patientContext: context,
                 onToken: { token in
                     Task { @MainActor in
+                        streamedContent += token
                         if responseIndex < chatMessages.count {
-                            chatMessages[responseIndex].content += token
+                            chatMessages[responseIndex] = FollowUpMessage(role: "assistant", content: streamedContent)
                         }
                     }
                 },
                 onDone: {
                     Task { @MainActor in
                         isChatStreaming = false
+                        medicalCase.followUpMessages = chatMessages
+                        onUpdate(medicalCase)
                     }
                 }
             )
         } catch {
-            chatMessages[responseIndex].content = "Error: \(error.localizedDescription)"
+            chatMessages[responseIndex] = FollowUpMessage(role: "assistant", content: "Error: \(error.localizedDescription)")
             isChatStreaming = false
+            medicalCase.followUpMessages = chatMessages
+            onUpdate(medicalCase)
         }
     }
 
@@ -1144,6 +1392,39 @@ private struct MedicalCaseDetailView: View {
         }
     }
 
+    private func exportClinicalJSON(_ result: MedicalWorkflowResult) {
+        let export = ClinicalExport(
+            exportVersion: "1.0",
+            generatedAt: Date(),
+            intake: medicalCase.intake,
+            result: result,
+            safetyAlerts: result.safetyAlerts,
+            feedback: medicalCase.feedback,
+            auditEntry: MedicalAuditLogger.loadAuditEntry(for: result.intakeId)
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+
+        guard let data = try? encoder.encode(export) else {
+            logger.error("Failed to encode clinical export JSON")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "ClinicalExport-\(medicalCase.id.uuidString.prefix(8)).json"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url)
+            logger.info("Exported clinical JSON to \(url.lastPathComponent)")
+        } catch {
+            logger.error("Failed to export clinical JSON: \(error.localizedDescription)")
+        }
+    }
+
     private func priorityColor(_ priority: RecommendedAction.ActionPriority) -> Color {
         switch priority {
         case .immediate: return .red
@@ -1161,6 +1442,9 @@ private struct NewCaseSheet: View {
     let onCreate: (PatientIntake) -> Void
 
     @State private var patientId = ""
+    @State private var age = ""
+    @State private var sex: BiologicalSex? = nil
+    @State private var isPregnant = false
     @State private var chiefComplaint = ""
     @State private var onsetTime = ""
     @State private var severity: PatientIntake.Severity = .moderate
@@ -1192,6 +1476,23 @@ private struct NewCaseSheet: View {
                     }
                 }
 
+                Section("Demographics") {
+                    HStack(spacing: 12) {
+                        TextField("Age", text: $age)
+                            .frame(width: 60)
+                        Picker("Biological Sex", selection: $sex) {
+                            Text("Not specified").tag(nil as BiologicalSex?)
+                            ForEach(BiologicalSex.allCases, id: \.self) { s in
+                                Text(s.rawValue).tag(s as BiologicalSex?)
+                            }
+                        }
+                        .frame(width: 180)
+                    }
+                    if sex == .female {
+                        Toggle("Currently Pregnant", isOn: $isPregnant)
+                    }
+                }
+
                 Section("Symptoms") {
                     TextField("Symptoms (comma-separated)", text: $symptomsText, axis: .vertical)
                         .lineLimit(2...4)
@@ -1206,6 +1507,18 @@ private struct NewCaseSheet: View {
                         TextField("Temperature (°F)", text: $temperature)
                         TextField("Respiratory Rate (per min)", text: $respiratoryRate)
                         TextField("SpO2 (%)", text: $oxygenSaturation)
+
+                        // Inline validation warnings
+                        ForEach(vitalValidationWarnings, id: \.self) { warning in
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                    .font(.caption2)
+                                Text(warning)
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
                     }
                 }
 
@@ -1282,6 +1595,25 @@ private struct NewCaseSheet: View {
         .frame(width: 600, height: 700)
     }
 
+    private var vitalValidationWarnings: [String] {
+        guard includeVitals else { return [] }
+        var warnings: [String] = []
+        if let hr = Int(heartRate) {
+            if hr < 20 || hr > 300 { warnings.append("Heart rate \(hr) is outside physiologic range (20-300)") }
+        }
+        if let spo2 = Int(oxygenSaturation) {
+            if spo2 > 100 { warnings.append("SpO2 cannot exceed 100%") }
+            if spo2 < 0 { warnings.append("SpO2 cannot be negative") }
+        }
+        if let temp = Double(temperature) {
+            if temp < 80 || temp > 115 { warnings.append("Temperature \(String(format: "%.1f", temp))°F is outside expected range") }
+        }
+        if let rr = Int(respiratoryRate) {
+            if rr < 4 || rr > 60 { warnings.append("Respiratory rate \(rr) is outside expected range (4-60)") }
+        }
+        return warnings
+    }
+
     private func createIntake() {
         let symptoms = symptomsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let history = medicalHistoryText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -1301,6 +1633,9 @@ private struct NewCaseSheet: View {
 
         let intake = PatientIntake(
             patientId: patientId,
+            age: Int(age),
+            sex: sex,
+            isPregnant: isPregnant,
             chiefComplaint: chiefComplaint,
             symptoms: symptoms,
             onsetTime: onsetTime,
@@ -1328,6 +1663,18 @@ private struct NewCaseSheet: View {
         let newPaths = panel.urls.map(\.path)
         attachedImagePaths.append(contentsOf: newPaths)
     }
+}
+
+// MARK: - Clinical Export Model
+
+private struct ClinicalExport: Codable {
+    let exportVersion: String
+    let generatedAt: Date
+    let intake: PatientIntake
+    let result: MedicalWorkflowResult
+    let safetyAlerts: [SafetyAlert]
+    let feedback: TriageFeedback?
+    let auditEntry: AuditEntry?
 }
 
 // MARK: - Triage Helpers

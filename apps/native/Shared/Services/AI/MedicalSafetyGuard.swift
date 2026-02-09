@@ -33,9 +33,9 @@ struct MedicalSafetyGuard {
         // 2. Red flag symptoms
         alerts.append(contentsOf: checkRedFlagSymptoms(intake))
 
-        // 3. Vital sign critical values
+        // 3. Vital sign critical values (age-contextualized)
         if let vitals = intake.vitalSigns {
-            alerts.append(contentsOf: checkCriticalVitals(vitals))
+            alerts.append(contentsOf: checkCriticalVitals(vitals, age: intake.age))
         }
 
         // 4. High-risk medication interactions
@@ -45,6 +45,17 @@ struct MedicalSafetyGuard {
 
         // 5. Confidence calibration warnings
         alerts.append(contentsOf: checkConfidenceCalibration(result))
+
+        // 6. Demographic bias detection (HAI-DEF fairness)
+        alerts.append(contentsOf: checkDemographicBias(result, intake: intake))
+
+        // 7. Pregnancy-specific risk checks
+        if intake.isPregnant {
+            alerts.append(contentsOf: checkPregnancyRisks(intake))
+        }
+
+        // 8. Input robustness validation
+        alerts.append(contentsOf: checkInputRobustness(intake))
 
         if !alerts.isEmpty {
             logger.info("Safety guard generated \(alerts.count) alerts for case \(result.intakeId)")
@@ -127,24 +138,31 @@ struct MedicalSafetyGuard {
 
     // MARK: - Critical Vitals
 
-    private static func checkCriticalVitals(_ vitals: VitalSigns) -> [SafetyAlert] {
+    private static func checkCriticalVitals(_ vitals: VitalSigns, age: Int? = nil) -> [SafetyAlert] {
         var alerts: [SafetyAlert] = []
 
+        // Age-contextualized heart rate ranges
+        let hrCriticalHigh = (age ?? 30) < 18 ? 180 : 150
+        let hrCriticalLow = (age ?? 30) < 18 ? 60 : 40
+        let hrWarningHigh = (age ?? 30) < 18 ? 150 : 120
+        let hrWarningLow = (age ?? 30) < 18 ? 70 : 50
+        let hrContext = (age ?? 30) < 18 ? "pediatric" : ((age ?? 30) > 65 ? "geriatric" : "adult")
+
         if let hr = vitals.heartRate {
-            if hr > 150 || hr < 40 {
+            if hr > hrCriticalHigh || hr < hrCriticalLow {
                 alerts.append(SafetyAlert(
                     severity: .critical,
                     category: .criticalVital,
                     title: "Critical Heart Rate: \(hr) bpm",
-                    message: hr > 150 ? "Tachycardia >150 bpm may indicate cardiac emergency" : "Bradycardia <40 bpm may indicate heart block",
+                    message: hr > hrCriticalHigh ? "Tachycardia >\(hrCriticalHigh) bpm (\(hrContext)) may indicate cardiac emergency" : "Bradycardia <\(hrCriticalLow) bpm (\(hrContext)) may indicate heart block",
                     actionLabel: nil
                 ))
-            } else if hr > 120 || hr < 50 {
+            } else if hr > hrWarningHigh || hr < hrWarningLow {
                 alerts.append(SafetyAlert(
                     severity: .warning,
                     category: .criticalVital,
                     title: "Abnormal Heart Rate: \(hr) bpm",
-                    message: "Heart rate outside normal range (60-100 bpm). Clinical correlation recommended.",
+                    message: "Heart rate outside normal \(hrContext) range. Clinical correlation recommended.",
                     actionLabel: nil
                 ))
             }
@@ -280,6 +298,180 @@ struct MedicalSafetyGuard {
 
         return alerts
     }
+
+    // MARK: - Demographic Bias Detection (HAI-DEF Fairness)
+
+    private static func checkDemographicBias(_ result: MedicalWorkflowResult, intake: PatientIntake) -> [SafetyAlert] {
+        var alerts: [SafetyAlert] = []
+        let conditions = result.differentialDiagnoses.map { $0.condition.lowercased() }
+
+        // Sex-condition mismatch check
+        if let sex = intake.sex {
+            let femaleOnlyConditions = ["ovarian", "endometriosis", "ectopic pregnancy", "eclampsia", "preeclampsia"]
+            let maleOnlyConditions = ["testicular", "prostate"]
+
+            if sex == .male && conditions.contains(where: { cond in femaleOnlyConditions.contains(where: { cond.contains($0) }) }) {
+                alerts.append(SafetyAlert(
+                    severity: .warning,
+                    category: .demographicBias,
+                    title: "Potential Sex-Condition Mismatch",
+                    message: "Some diagnoses may not apply to this patient's biological sex. Review differential carefully.",
+                    actionLabel: nil
+                ))
+            }
+            if sex == .female && conditions.contains(where: { cond in maleOnlyConditions.contains(where: { cond.contains($0) }) }) {
+                alerts.append(SafetyAlert(
+                    severity: .warning,
+                    category: .demographicBias,
+                    title: "Potential Sex-Condition Mismatch",
+                    message: "Some diagnoses may not apply to this patient's biological sex. Review differential carefully.",
+                    actionLabel: nil
+                ))
+            }
+
+            // Known clinical bias: chest pain in women is often under-triaged for cardiac causes
+            if sex == .female && result.triageLevel != .emergency {
+                let symptomsLower = (intake.symptoms + [intake.chiefComplaint]).joined(separator: " ").lowercased()
+                if symptomsLower.contains("chest pain") {
+                    alerts.append(SafetyAlert(
+                        severity: .info,
+                        category: .demographicBias,
+                        title: "Clinical Bias Awareness: Chest Pain in Women",
+                        message: "Chest pain in women may present atypically and is historically under-triaged for cardiac causes. Ensure cardiac evaluation is considered.",
+                        actionLabel: nil
+                    ))
+                }
+            }
+        }
+
+        // Age-condition mismatch check
+        if let age = intake.age {
+            let geriatricConditions = ["alzheimer", "dementia", "osteoarthritis", "age-related macular"]
+            let pediatricConditions = ["croup", "kawasaki", "intussusception"]
+
+            if age < 18 && conditions.contains(where: { cond in geriatricConditions.contains(where: { cond.contains($0) }) }) {
+                alerts.append(SafetyAlert(
+                    severity: .info,
+                    category: .demographicBias,
+                    title: "Age-Condition Consideration",
+                    message: "Some conditions in the differential are uncommon in pediatric populations. Consider age-appropriate alternatives.",
+                    actionLabel: nil
+                ))
+            }
+            if age > 65 && conditions.contains(where: { cond in pediatricConditions.contains(where: { cond.contains($0) }) }) {
+                alerts.append(SafetyAlert(
+                    severity: .info,
+                    category: .demographicBias,
+                    title: "Age-Condition Consideration",
+                    message: "Some conditions in the differential are typically pediatric. Consider age-appropriate alternatives.",
+                    actionLabel: nil
+                ))
+            }
+        }
+
+        return alerts
+    }
+
+    // MARK: - Pregnancy-Specific Risk Checks
+
+    private static func checkPregnancyRisks(_ intake: PatientIntake) -> [SafetyAlert] {
+        var alerts: [SafetyAlert] = []
+        let symptomsLower = (intake.symptoms + [intake.chiefComplaint]).joined(separator: " ").lowercased()
+
+        // Preeclampsia: hypertension + headache/vision changes
+        if let bp = intake.vitalSigns?.bloodPressure {
+            let systolic = Int(bp.components(separatedBy: "/").first ?? "") ?? 0
+            if systolic >= 140 {
+                alerts.append(SafetyAlert(
+                    severity: .critical,
+                    category: .pregnancyRisk,
+                    title: "Pregnancy + Hypertension: Preeclampsia Risk",
+                    message: "Elevated blood pressure (\(bp)) during pregnancy may indicate preeclampsia. Seek immediate obstetric evaluation.",
+                    actionLabel: "Seek Emergency Care"
+                ))
+
+                if symptomsLower.contains("headache") || symptomsLower.contains("vision") || symptomsLower.contains("blurred") {
+                    alerts.append(SafetyAlert(
+                        severity: .critical,
+                        category: .pregnancyRisk,
+                        title: "Eclampsia Warning Signs",
+                        message: "Hypertension with headache or vision changes during pregnancy is a medical emergency. Risk of seizures (eclampsia).",
+                        actionLabel: "Call 911"
+                    ))
+                }
+            }
+        }
+
+        // Abdominal pain in pregnancy
+        if symptomsLower.contains("abdominal pain") || symptomsLower.contains("pelvic pain") {
+            alerts.append(SafetyAlert(
+                severity: .warning,
+                category: .pregnancyRisk,
+                title: "Pregnancy + Abdominal Pain",
+                message: "Abdominal or pelvic pain during pregnancy warrants evaluation for ectopic pregnancy, placental abruption, or preterm labor.",
+                actionLabel: nil
+            ))
+        }
+
+        // Vaginal bleeding in pregnancy
+        if symptomsLower.contains("bleeding") || symptomsLower.contains("spotting") {
+            alerts.append(SafetyAlert(
+                severity: .warning,
+                category: .pregnancyRisk,
+                title: "Pregnancy + Bleeding",
+                message: "Vaginal bleeding during pregnancy requires prompt obstetric evaluation to rule out miscarriage, placenta previa, or abruption.",
+                actionLabel: nil
+            ))
+        }
+
+        return alerts
+    }
+
+    // MARK: - Input Robustness Validation
+
+    private static func checkInputRobustness(_ intake: PatientIntake) -> [SafetyAlert] {
+        var alerts: [SafetyAlert] = []
+
+        // Excessive symptom count — likely noise or spam
+        if intake.symptoms.count > 20 {
+            alerts.append(SafetyAlert(
+                severity: .info,
+                category: .inputRobustness,
+                title: "High Symptom Count (\(intake.symptoms.count))",
+                message: "A large number of symptoms may reduce diagnostic accuracy. Consider listing only primary and most relevant symptoms.",
+                actionLabel: nil
+            ))
+        }
+
+        // Contradictory vitals pattern
+        if let vitals = intake.vitalSigns {
+            // High HR + normal SpO2 + low RR is physiologically unusual
+            if let hr = vitals.heartRate, let spo2 = vitals.oxygenSaturation, let rr = vitals.respiratoryRate {
+                if hr > 150 && spo2 > 97 && rr < 12 {
+                    alerts.append(SafetyAlert(
+                        severity: .info,
+                        category: .inputRobustness,
+                        title: "Unusual Vital Sign Combination",
+                        message: "Severe tachycardia with normal oxygen saturation and low respiratory rate is an uncommon pattern. Verify vital sign accuracy.",
+                        actionLabel: nil
+                    ))
+                }
+            }
+        }
+
+        // Chief complaint is very short or vague
+        if intake.chiefComplaint.count < 5 && !intake.chiefComplaint.isEmpty {
+            alerts.append(SafetyAlert(
+                severity: .info,
+                category: .inputRobustness,
+                title: "Brief Chief Complaint",
+                message: "A more detailed chief complaint helps improve diagnostic accuracy. Consider adding onset, location, and characteristics.",
+                actionLabel: nil
+            ))
+        }
+
+        return alerts
+    }
 }
 
 // MARK: - Safety Alert Model
@@ -316,6 +508,9 @@ struct SafetyAlert: Identifiable, Codable, Equatable, Sendable {
         case criticalVital = "Vital Sign"
         case medicationInteraction = "Medication"
         case confidenceCalibration = "Confidence"
+        case demographicBias = "Demographic"
+        case pregnancyRisk = "Pregnancy"
+        case inputRobustness = "Input Quality"
     }
 
     init(
