@@ -2,7 +2,7 @@
 //  SheetsToolbar.swift
 //  MagnetarStudio
 //
-//  Toolbar for the spreadsheet panel — formula bar, formatting controls.
+//  Toolbar for the spreadsheet panel — cell address, formula bar, AI, chart.
 //
 
 import SwiftUI
@@ -92,36 +92,10 @@ struct SheetsToolbar: View {
             }
 
             Spacer()
-
-            // Formatting buttons
-            Group {
-                formatButton(icon: "bold", help: "Bold")
-                formatButton(icon: "italic", help: "Italic")
-            }
-
-            Divider().frame(height: 16)
-
-            // Alignment
-            Group {
-                formatButton(icon: "text.alignleft", help: "Align Left")
-                formatButton(icon: "text.aligncenter", help: "Center")
-                formatButton(icon: "text.alignright", help: "Align Right")
-            }
         }
         .padding(.horizontal, 12)
         .frame(height: HubLayout.headerHeight)
         .background(Color.surfaceTertiary.opacity(0.5))
     }
 
-    private func formatButton(icon: String, help: String) -> some View {
-        Button {} label: {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .frame(width: 24, height: 24)
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .accessibilityLabel(help)
-    }
 }

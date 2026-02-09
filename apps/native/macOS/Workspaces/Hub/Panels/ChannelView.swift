@@ -307,21 +307,6 @@ struct TeamMessageBubble: View {
             }
 
             Spacer()
-
-            // Hover actions
-            if isHovered {
-                HStack(spacing: 2) {
-                    messageActionButton("face.smiling")
-                    messageActionButton("arrowshape.turn.up.left")
-                    messageActionButton("doc.on.doc")
-                }
-                .padding(2)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.surfaceTertiary)
-                        .shadow(color: .black.opacity(0.1), radius: 2, y: 1)
-                )
-            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -330,16 +315,6 @@ struct TeamMessageBubble: View {
                 .fill(isHovered ? Color.white.opacity(0.03) : Color.clear)
         )
         .onHover { isHovered = $0 }
-    }
-
-    private func messageActionButton(_ icon: String) -> some View {
-        Button {} label: {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .frame(width: 26, height: 26)
-        }
-        .buttonStyle(.plain)
     }
 
     private var avatarColor: Color {

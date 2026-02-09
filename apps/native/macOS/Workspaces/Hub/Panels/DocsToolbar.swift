@@ -2,8 +2,8 @@
 //  DocsToolbar.swift
 //  MagnetarStudio
 //
-//  Rich text formatting toolbar for the Docs panel.
-//  Provides formatting controls above the document editor.
+//  Toolbar for the Docs panel.
+//  Sidebar toggle, AI assist, star, export, and more options.
 //
 
 import SwiftUI
@@ -30,41 +30,6 @@ struct DocsToolbar: View {
             .frame(width: 28, height: 28)
             .help(showDocsList ? "Hide sidebar" : "Show sidebar")
             .accessibilityLabel(showDocsList ? "Hide document list" : "Show document list")
-
-            Divider().frame(height: 16)
-
-            // Text formatting group
-            Group {
-                toolbarButton(icon: "bold", help: "Bold (⌘B)")
-                toolbarButton(icon: "italic", help: "Italic (⌘I)")
-                toolbarButton(icon: "underline", help: "Underline (⌘U)")
-                toolbarButton(icon: "strikethrough", help: "Strikethrough")
-            }
-
-            Divider().frame(height: 16)
-
-            // Alignment group
-            Group {
-                toolbarButton(icon: "text.alignleft", help: "Align Left")
-                toolbarButton(icon: "text.aligncenter", help: "Center")
-                toolbarButton(icon: "text.alignright", help: "Align Right")
-            }
-
-            Divider().frame(height: 16)
-
-            // Insert group
-            Group {
-                toolbarButton(icon: "list.bullet", help: "Bullet List")
-                toolbarButton(icon: "list.number", help: "Numbered List")
-                toolbarButton(icon: "checklist", help: "Checklist")
-                toolbarButton(icon: "tablecells", help: "Insert Table")
-            }
-
-            Divider().frame(height: 16)
-
-            // Media
-            toolbarButton(icon: "photo", help: "Insert Image")
-            toolbarButton(icon: "link", help: "Insert Link")
 
             Divider().frame(height: 16)
 
@@ -131,8 +96,6 @@ struct DocsToolbar: View {
             // More options
             Menu {
                 Button("Export...") { showExport = true }
-                Divider()
-                Button("Document Info...") {}
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 13))
@@ -155,15 +118,4 @@ struct DocsToolbar: View {
         }
     }
 
-    private func toolbarButton(icon: String, help: String) -> some View {
-        Button {} label: {
-            Image(systemName: icon)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .frame(width: 26, height: 26)
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .accessibilityLabel(help)
-    }
 }
