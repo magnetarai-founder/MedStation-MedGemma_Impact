@@ -8,9 +8,5 @@
 
 import Foundation
 
-extension Notification.Name {
-    // Deprecated: Use DatabaseStore.shared.clearWorkspace() instead (MEDIUM-H3)
-    // Kept for backwards compatibility - can be removed in next major version
-    @available(*, deprecated, message: "Use DatabaseStore.clearWorkspace() instead")
-    static let clearWorkspace = Notification.Name("DatabaseWorkspaceClearWorkspace")
-}
+// All notification names have been migrated to direct store method calls.
+// This file is kept in the project to avoid Xcode reference errors.

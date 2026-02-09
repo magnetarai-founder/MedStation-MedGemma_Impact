@@ -131,10 +131,7 @@ struct PanicModeSheet: View {
                 // 2. Lock all vaults locally
                 vaultStore.lock()
 
-                // 3. Clear database sessions
-                NotificationCenter.default.post(name: .init("DatabaseWorkspaceClearWorkspace"), object: nil)
-
-                // 4. Logout (clears token and sensitive data)
+                // 3. Logout (clears token and sensitive data)
                 await authStore.logout()
 
                 // 5. Quit app if requested
