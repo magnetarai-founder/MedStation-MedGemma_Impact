@@ -13,6 +13,7 @@ enum WorkspaceAIContext: String, CaseIterable, Identifiable, Codable, Sendable {
     case writing
     case sheets
     case voice
+    case medical
     case general
 
     var id: String { rawValue }
@@ -23,6 +24,7 @@ enum WorkspaceAIContext: String, CaseIterable, Identifiable, Codable, Sendable {
         case .writing: return "Writing"
         case .sheets: return "Sheets"
         case .voice: return "Voice"
+        case .medical: return "Medical"
         case .general: return "General"
         }
     }
@@ -33,6 +35,7 @@ enum WorkspaceAIContext: String, CaseIterable, Identifiable, Codable, Sendable {
         case .writing: return "doc.text"
         case .sheets: return "tablecells"
         case .voice: return "waveform"
+        case .medical: return "cross.case"
         case .general: return "sparkles"
         }
     }
@@ -48,6 +51,8 @@ enum WorkspaceAIContext: String, CaseIterable, Identifiable, Codable, Sendable {
             return "You are a spreadsheet and data assistant. Help with formulas, data analysis, calculations, and data transformation. Use formula syntax when applicable."
         case .voice:
             return "You are a voice and transcription assistant. Help with cleaning up transcriptions, summarizing audio content, and extracting key points."
+        case .medical:
+            return "You are a medical AI assistant powered by MedGemma. Help with medical triage, symptom analysis, differential diagnosis, and clinical reasoning. Always include appropriate medical disclaimers. This is for educational and informational purposes only — not a substitute for professional medical advice."
         case .general:
             return nil  // No additional context — use global system prompt only
         }

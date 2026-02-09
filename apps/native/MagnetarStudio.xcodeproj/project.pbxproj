@@ -19,6 +19,7 @@
 		0A745BC78E374D99F7F130F1 /* TeamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50DB38FFB9089E6ED7986033 /* TeamStore.swift */; };
 		0BBCD5A0B4FA034FB4D9333A /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F83291E7D2A37D69928B1302 /* WorkflowModels.swift */; };
 		0C1B4145613E0D27A0C2171E /* VaultComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20C2F108F6D64FC6BC4FEBC /* VaultComponents.swift */; };
+		0C608810156789DC761B2211 /* MedicalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343340C69179C2D1795055F6 /* MedicalPanel.swift */; };
 		0C7C85D224376FC10A00DA2C /* AutomationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9D4C4E17377B09B6814A3B /* AutomationEngine.swift */; };
 		0D6F62E4A20310F8DCA88F48 /* KanbanWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */; };
 		0DB858E8CA7EF3F2CB538E8D /* SheetsChartSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917757AB4EC343B8A21CA282 /* SheetsChartSheet.swift */; };
@@ -82,6 +83,7 @@
 		345D4A29767E47D4B56BA1BA /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAC96FBA4503E0D6E14CD2 /* SchedulerService.swift */; };
 		34AE0F1EE47081CBB1ED32CC /* CompactService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46374927C531449FCCB85C27 /* CompactService.swift */; };
 		34D17A8C6A575E21E799C789 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13E0C99BC6B5DA99C7E736F9 /* FeatureFlags.swift */; };
+		354D0BAACE7A31BA459DDC42 /* MedicalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7054A7E2FE208DFF3C43356A /* MedicalModels.swift */; };
 		35F607EB03B251654118A8C8 /* ConversationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D973E83C2DE0F8B935070D /* ConversationModels.swift */; };
 		368B40BB0A556C5BAA0E6461 /* EmergencyModeService+FileIdentification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8FA57D928B6F1B35DAD9E1 /* EmergencyModeService+FileIdentification.swift */; };
 		36D397E7D6F92BC3F7817B73 /* WorkspaceAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03FAB5DF50A87A041A5DC217 /* WorkspaceAIService.swift */; };
@@ -134,6 +136,7 @@
 		5435CA809D3345B256FDF41D /* VaultAuditLogTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0313108C6F4CBEE13201CAB0 /* VaultAuditLogTab.swift */; };
 		545ED6485BA02E2FD4220493 /* AgentAssistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA09FBED8F9FCBD188473D0 /* AgentAssistCard.swift */; };
 		5576B3E94B6EDF3164EC3B96 /* NewDocumentModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6D18ADE59DFC811C4F0A6D /* NewDocumentModal.swift */; };
+		56BB7A489F5194421E35D3B7 /* MedicalWorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24B598702FBEC6A8B12B82F /* MedicalWorkflowEngine.swift */; };
 		58406D5069A95C23B20F976A /* FileRelevanceScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165E79A76CA454E03971AC81 /* FileRelevanceScorer.swift */; };
 		58FA5F3FFEA1AE3B14764B41 /* TeamNotesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3DD210046B75952771558B /* TeamNotesPanel.swift */; };
 		594D0496E39261E56B55AF8B /* NotificationExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D708E64D8DABC00596F492C /* NotificationExtensions.swift */; };
@@ -283,6 +286,7 @@
 		B5A09CD807DA1921A778CE87 /* TemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5946D20CA28421FB3C3A0C47 /* TemplateEditorView.swift */; };
 		B60C8BC609EEA87DD9AC268C /* HubDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D561366A387331FF620DDD2 /* HubDataManager.swift */; };
 		B64BDA375B00040180CE49A6 /* TeamWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA14AC49CC3C7EE3D89EE05 /* TeamWorkspace.swift */; };
+		B76CB2D620C45F6E0B36BB37 /* MedicalAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B7728748C14E480BBD09A7 /* MedicalAIService.swift */; };
 		B7E413A9969A829FF9CC6260 /* ModelDetailModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8421FD73DAC17D6A99A5A8 /* ModelDetailModal.swift */; };
 		B81C9D91CAEF69518ED0291E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8B619E4AE4B641261F346C7F /* Assets.xcassets */; };
 		B96BCC87F8F7C833469241B3 /* NotesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830945F0B9C498C35B51354D /* NotesPanel.swift */; };
@@ -480,6 +484,7 @@
 		32BE72D00BCE2D692DE2A086 /* SessionGraphBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionGraphBuilder.swift; sourceTree = "<group>"; };
 		32D5D64AE5F480A5C9D52430 /* TrustModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustModels.swift; sourceTree = "<group>"; };
 		332063FCD003E6BB34FFD26A /* PluginSettingsView.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; includeInIndex = 1; path = PluginSettingsView.swift; sourceTree = "<group>"; };
+		343340C69179C2D1795055F6 /* MedicalPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicalPanel.swift; path = macOS/Workspaces/Hub/Panels/MedicalPanel.swift; sourceTree = "<group>"; };
 		34971DD3BC58DDBE4BA4514A /* HubEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubEmptyState.swift; sourceTree = "<group>"; };
 		35274F6042C71F0C46FAC1B0 /* WorkspaceSettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSettingsWindow.swift; sourceTree = "<group>"; };
 		354E4437D249910758AB145C /* DocsDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsDataManager.swift; sourceTree = "<group>"; };
@@ -551,6 +556,7 @@
 		60F2EFFDC51E7848B0765684 /* CodeEditorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditorService.swift; sourceTree = "<group>"; };
 		60FE2AEB42BDC3B5833B4175 /* FileAccessPermissionModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileAccessPermissionModal.swift; sourceTree = "<group>"; };
 		631645832FE0A3F22C57DF96 /* UnifiedModelsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedModelsStore.swift; sourceTree = "<group>"; };
+		63B7728748C14E480BBD09A7 /* MedicalAIService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicalAIService.swift; path = Shared/Services/AI/MedicalAIService.swift; sourceTree = "<group>"; };
 		63D8B193A40F2C6B86544A40 /* ImageAnalysisError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAnalysisError.swift; sourceTree = "<group>"; };
 		643C288F1706921E6C7C6CAB /* TeamMemberSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamMemberSidebar.swift; sourceTree = "<group>"; };
 		65ECD7052797AFE3084C513A /* EditorMinimap.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EditorMinimap.swift; sourceTree = "<group>"; };
@@ -572,6 +578,7 @@
 		6F44E90AD921208206A4691B /* OllamaAPIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaAPIModels.swift; sourceTree = "<group>"; };
 		6F4FDE474463FFFA74D74601 /* DocsSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsSidebarView.swift; sourceTree = "<group>"; };
 		6FB067C6415EB333DBFFC748 /* VaultToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultToolbar.swift; sourceTree = "<group>"; };
+		7054A7E2FE208DFF3C43356A /* MedicalModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicalModels.swift; path = Shared/Models/MedicalModels.swift; sourceTree = "<group>"; };
 		706B082205C7AC0CFE4BD746 /* DiagnosticsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiagnosticsStore.swift; sourceTree = "<group>"; };
 		709B442DE93FCEC788F7A192 /* TemplatePickerSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TemplatePickerSheet.swift; path = TemplatePickerSheet.swift; sourceTree = "<group>"; };
 		70B54FD70B9DB8BFDC3D026A /* NoteEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NoteEditorView.swift; sourceTree = "<group>"; };
@@ -751,6 +758,7 @@
 		E014FEC4CB9210E2DACC37B1 /* EmergencyModeService+LocalCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmergencyModeService+LocalCleanup.swift"; sourceTree = "<group>"; };
 		E0B5547ECD973EFF39678E79 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		E19FE6BE91D08CD3A4EF872C /* CodeSourceControlPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeSourceControlPanel.swift; sourceTree = "<group>"; };
+		E24B598702FBEC6A8B12B82F /* MedicalWorkflowEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicalWorkflowEngine.swift; path = Shared/Services/AI/MedicalWorkflowEngine.swift; sourceTree = "<group>"; };
 		E2CF7487F796A2786861BAE3 /* ModelDiscoveryDetailPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDiscoveryDetailPane.swift; sourceTree = "<group>"; };
 		E395A34A4D4FD874AD1C19C5 /* AutomationAIStrategy.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; includeInIndex = 1; path = AutomationAIStrategy.swift; sourceTree = "<group>"; };
 		E3A50B1BC362F489D15066B5 /* QueryLibraryModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryLibraryModal.swift; sourceTree = "<group>"; };
@@ -1150,6 +1158,8 @@
 				77673FEFF9923930B4DDB261 /* TranscriptionService.swift */,
 				0BC2E860878DF4219167D39F /* TemplateAIStrategy.swift */,
 				E395A34A4D4FD874AD1C19C5 /* AutomationAIStrategy.swift */,
+				63B7728748C14E480BBD09A7 /* MedicalAIService.swift */,
+				E24B598702FBEC6A8B12B82F /* MedicalWorkflowEngine.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -1262,6 +1272,7 @@
 				68CE30B4F767CE8935A8D708 /* AutomationLogView.swift */,
 				83DFE4954687BFC975587679 /* PluginManagerView.swift */,
 				332063FCD003E6BB34FFD26A /* PluginSettingsView.swift */,
+				343340C69179C2D1795055F6 /* MedicalPanel.swift */,
 			);
 			name = Panels;
 			path = Panels;
@@ -1525,6 +1536,7 @@
 				C12FED4B1BB6860D7EC19D27 /* ChartConfiguration.swift */,
 				1D8CE93DD4C4D1718628BE9A /* AutomationRule.swift */,
 				E00F333EA299B4551AB9BC16 /* WorkspaceAIContext.swift */,
+				7054A7E2FE208DFF3C43356A /* MedicalModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -2316,6 +2328,10 @@
 				FC3E51C0A519E91D3C72434E /* GitLogPanel.swift in Sources */,
 				10DA28F5DDD4165E2E2557EB /* InlineCompletionOverlay.swift in Sources */,
 				5BC69924FE33056EB24F71DC /* QuickOpenPanel.swift in Sources */,
+				354D0BAACE7A31BA459DDC42 /* MedicalModels.swift in Sources */,
+				B76CB2D620C45F6E0B36BB37 /* MedicalAIService.swift in Sources */,
+				56BB7A489F5194421E35D3B7 /* MedicalWorkflowEngine.swift in Sources */,
+				0C608810156789DC761B2211 /* MedicalPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

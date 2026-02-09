@@ -57,6 +57,8 @@ enum AutomationTrigger: Codable, Equatable, CaseIterable, Identifiable, Sendable
     case onRecordingStop
     case onSheetCellChange
     case onKanbanStatusChange
+    case onMedicalCaseCreated
+    case onMedicalAnalysisComplete
     case onSchedule(cron: String)
     case manual
 
@@ -73,6 +75,8 @@ enum AutomationTrigger: Codable, Equatable, CaseIterable, Identifiable, Sendable
         case .onRecordingStop: return "Recording Stopped"
         case .onSheetCellChange: return "Sheet Cell Changed"
         case .onKanbanStatusChange: return "Kanban Status Changed"
+        case .onMedicalCaseCreated: return "Medical Case Created"
+        case .onMedicalAnalysisComplete: return "Medical Analysis Complete"
         case .onSchedule: return "On Schedule"
         case .manual: return "Manual"
         }
@@ -84,6 +88,8 @@ enum AutomationTrigger: Codable, Equatable, CaseIterable, Identifiable, Sendable
         case .onRecordingStop: return "waveform.badge.mic"
         case .onSheetCellChange: return "tablecells.badge.ellipsis"
         case .onKanbanStatusChange: return "rectangle.3.group"
+        case .onMedicalCaseCreated: return "cross.case"
+        case .onMedicalAnalysisComplete: return "cross.case.circle"
         case .onSchedule: return "clock"
         case .manual: return "play.circle"
         }
@@ -91,12 +97,12 @@ enum AutomationTrigger: Codable, Equatable, CaseIterable, Identifiable, Sendable
 
     // CaseIterable conformance (excluding associated values)
     static var allCases: [AutomationTrigger] {
-        [.onDocumentSave, .onRecordingStop, .onSheetCellChange, .onKanbanStatusChange, .onSchedule(cron: "every 5m"), .manual]
+        [.onDocumentSave, .onRecordingStop, .onSheetCellChange, .onKanbanStatusChange, .onMedicalCaseCreated, .onMedicalAnalysisComplete, .onSchedule(cron: "every 5m"), .manual]
     }
 
     /// Trigger types for UI pickers — use this instead of allCases
     static var pickerCases: [AutomationTrigger] {
-        [.onDocumentSave, .onRecordingStop, .onSheetCellChange, .onKanbanStatusChange, .onSchedule(cron: "every 5m"), .manual]
+        [.onDocumentSave, .onRecordingStop, .onSheetCellChange, .onKanbanStatusChange, .onMedicalCaseCreated, .onMedicalAnalysisComplete, .onSchedule(cron: "every 5m"), .manual]
     }
 }
 

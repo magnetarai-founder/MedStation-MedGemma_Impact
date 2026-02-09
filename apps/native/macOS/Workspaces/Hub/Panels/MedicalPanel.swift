@@ -1,0 +1,774 @@
+//
+//  MedicalPanel.swift
+//  MagnetarStudio
+//
+//  Medical workspace panel for patient intake and MedGemma-powered agentic workflows.
+//  Displays case list, intake details, workflow progress, and structured results.
+//
+//  MedGemma Impact Challenge (Kaggle 2026).
+//
+
+import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalPanel")
+
+// MARK: - Medical Panel
+
+struct MedicalPanel: View {
+    @State private var cases: [MedicalCase] = []
+    @State private var selectedCaseID: UUID?
+    @State private var isLoading = true
+    @State private var showNewCaseSheet = false
+
+    var body: some View {
+        HStack(spacing: 0) {
+            casesSidebar
+                .frame(width: 280)
+
+            Divider()
+
+            if let caseID = selectedCaseID,
+               let caseIndex = cases.firstIndex(where: { $0.id == caseID }) {
+                MedicalCaseDetailView(
+                    medicalCase: $cases[caseIndex],
+                    onUpdate: { saveCaseToFile($0) }
+                )
+            } else {
+                EmptyState(
+                    icon: "cross.case",
+                    title: "Select a Case",
+                    message: "Choose a medical case from the sidebar or create a new one",
+                    action: { showNewCaseSheet = true },
+                    actionLabel: "New Case"
+                )
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showNewCaseSheet = true
+                } label: {
+                    Label("New Case", systemImage: "plus.circle.fill")
+                }
+                .accessibilityLabel("Create new medical case")
+            }
+        }
+        .sheet(isPresented: $showNewCaseSheet) {
+            NewCaseSheet { intake in
+                createNewCase(intake: intake)
+            }
+        }
+        .task {
+            await loadCases()
+        }
+    }
+
+    // MARK: - Sidebar
+
+    private var casesSidebar: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Medical Cases")
+                    .font(.headline)
+                Spacer()
+                Text("\(cases.count)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            if isLoading {
+                ProgressView()
+                    .frame(maxHeight: .infinity)
+            } else if cases.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "cross.case")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.tertiary)
+                    Text("No Cases")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Create your first medical case")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(cases) { medicalCase in
+                            CaseListItem(
+                                medicalCase: medicalCase,
+                                isSelected: selectedCaseID == medicalCase.id,
+                                onSelect: { selectedCaseID = medicalCase.id }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    // MARK: - Data
+
+    private func loadCases() async {
+        defer { isLoading = false }
+
+        let dir = Self.storageDirectory
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "json" }
+        } catch {
+            logger.error("Failed to list medical cases: \(error.localizedDescription)")
+            return
+        }
+
+        var loaded: [MedicalCase] = []
+        for file in files {
+            if let mc = PersistenceHelpers.load(MedicalCase.self, from: file, label: "medical case") {
+                loaded.append(mc)
+            }
+        }
+
+        cases = loaded.sorted { $0.updatedAt > $1.updatedAt }
+        logger.info("Loaded \(loaded.count) medical cases")
+    }
+
+    private func createNewCase(intake: PatientIntake) {
+        let newCase = MedicalCase(intake: intake)
+        cases.insert(newCase, at: 0)
+        selectedCaseID = newCase.id
+        saveCaseToFile(newCase)
+        showNewCaseSheet = false
+    }
+
+    private func saveCaseToFile(_ medicalCase: MedicalCase) {
+        var updated = medicalCase
+        updated.updatedAt = Date()
+
+        if let index = cases.firstIndex(where: { $0.id == medicalCase.id }) {
+            cases[index] = updated
+        }
+
+        let file = Self.storageDirectory.appendingPathComponent("\(medicalCase.id.uuidString).json")
+        PersistenceHelpers.save(updated, to: file, label: "medical case")
+    }
+
+    private static var storageDirectory: URL {
+        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
+            .appendingPathComponent("MagnetarStudio/workspace/medical", isDirectory: true)
+        PersistenceHelpers.ensureDirectory(at: dir, label: "medical cases storage")
+        return dir
+    }
+}
+
+// MARK: - Case List Item
+
+private struct CaseListItem: View {
+    let medicalCase: MedicalCase
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(medicalCase.intake.patientId.isEmpty ? "Anonymous" : medicalCase.intake.patientId)
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Text(medicalCase.status.rawValue)
+                        .font(.system(size: 9, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(statusColor.opacity(0.2))
+                        .foregroundStyle(statusColor)
+                        .clipShape(Capsule())
+                }
+
+                Text(medicalCase.intake.chiefComplaint)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                HStack {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 10))
+                    Text(medicalCase.createdAt, style: .date)
+                        .font(.system(size: 10))
+
+                    Spacer()
+
+                    if let result = medicalCase.result {
+                        triagePill(result.triageLevel)
+                    }
+                }
+                .foregroundStyle(.tertiary)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var statusColor: Color {
+        switch medicalCase.status {
+        case .pending: return .orange
+        case .analyzing: return .blue
+        case .completed: return .green
+        case .archived: return .gray
+        }
+    }
+
+    private func triagePill(_ level: MedicalWorkflowResult.TriageLevel) -> some View {
+        HStack(spacing: 3) {
+            Circle()
+                .fill(triageColor(level))
+                .frame(width: 6, height: 6)
+            Text(triageShort(level))
+                .font(.system(size: 9, weight: .medium))
+        }
+    }
+}
+
+// MARK: - Case Detail View
+
+private struct MedicalCaseDetailView: View {
+    @Binding var medicalCase: MedicalCase
+    let onUpdate: (MedicalCase) -> Void
+
+    @State private var aiService = MedicalAIService.shared
+    @State private var isRunningWorkflow = false
+    @State private var currentStep: ReasoningStep?
+    @State private var workflowError: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                headerSection
+                Divider()
+                intakeSection
+
+                if medicalCase.result == nil && !isRunningWorkflow {
+                    Divider()
+                    runWorkflowSection
+                }
+
+                if isRunningWorkflow {
+                    Divider()
+                    progressSection
+                }
+
+                if let result = medicalCase.result {
+                    Divider()
+                    resultsSection(result)
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    // MARK: - Header
+
+    private var headerSection: some View {
+        HStack {
+            Image(systemName: "cross.case.fill")
+                .font(.title)
+                .foregroundStyle(LinearGradient.magnetarGradient)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Patient: \(medicalCase.intake.patientId.isEmpty ? "Anonymous" : medicalCase.intake.patientId)")
+                    .font(.title2.weight(.semibold))
+
+                Text("Case \(medicalCase.id.uuidString.prefix(8))")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            if let result = medicalCase.result {
+                triageBadge(result.triageLevel)
+            }
+        }
+    }
+
+    // MARK: - Intake
+
+    private var intakeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Patient Intake")
+                .font(.headline)
+
+            infoRow("Chief Complaint", medicalCase.intake.chiefComplaint)
+            infoRow("Onset", medicalCase.intake.onsetTime)
+            infoRow("Severity", medicalCase.intake.severity.rawValue)
+
+            if !medicalCase.intake.symptoms.isEmpty {
+                infoRow("Symptoms", medicalCase.intake.symptoms.joined(separator: ", "))
+            }
+
+            if let vitals = medicalCase.intake.vitalSigns {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Vital Signs")
+                        .font(.subheadline.weight(.medium))
+                    if let hr = vitals.heartRate { infoRow("Heart Rate", "\(hr) bpm") }
+                    if let bp = vitals.bloodPressure { infoRow("Blood Pressure", bp) }
+                    if let temp = vitals.temperature { infoRow("Temperature", String(format: "%.1f°F", temp)) }
+                    if let rr = vitals.respiratoryRate { infoRow("Respiratory Rate", "\(rr)/min") }
+                    if let spo2 = vitals.oxygenSaturation { infoRow("SpO2", "\(spo2)%") }
+                }
+            }
+
+            if !medicalCase.intake.medicalHistory.isEmpty {
+                infoRow("Medical History", medicalCase.intake.medicalHistory.joined(separator: ", "))
+            }
+            if !medicalCase.intake.currentMedications.isEmpty {
+                infoRow("Medications", medicalCase.intake.currentMedications.joined(separator: ", "))
+            }
+            if !medicalCase.intake.allergies.isEmpty {
+                infoRow("Allergies", medicalCase.intake.allergies.joined(separator: ", "))
+            }
+        }
+        .padding()
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Run Workflow
+
+    private var runWorkflowSection: some View {
+        VStack(spacing: 12) {
+            Button {
+                Task { await runWorkflow() }
+            } label: {
+                HStack {
+                    Image(systemName: "wand.and.stars")
+                    Text("Run Medical Analysis")
+                        .font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(LinearGradient.magnetarGradient)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Run MedGemma medical analysis workflow")
+
+            if case .downloading(let progress) = aiService.modelStatus {
+                HStack(spacing: 8) {
+                    ProgressView(value: progress)
+                        .frame(width: 100)
+                    Text("Downloading MedGemma... \(Int(progress * 100))%")
+                        .font(.caption)
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else if case .failed(let msg) = aiService.modelStatus {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("Model error: \(msg)")
+                        .font(.caption)
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+
+            if let error = workflowError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text("Error: \(error)")
+                        .font(.caption)
+                }
+                .padding(8)
+                .background(Color.red.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+        }
+    }
+
+    // MARK: - Progress
+
+    private var progressSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Running Medical Analysis...")
+                    .font(.headline)
+            }
+
+            if let step = currentStep {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Step \(step.step) of 5:")
+                            .font(.caption.weight(.semibold))
+                        Text(step.title)
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+
+                    Text(String(step.content.prefix(300)))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(8)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+        }
+        .padding()
+        .background(Color.blue.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Results
+
+    private func resultsSection(_ result: MedicalWorkflowResult) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Triage
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Triage Assessment")
+                    .font(.headline)
+
+                Text(result.triageLevel.rawValue)
+                    .font(.title3.weight(.medium))
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(triageBackgroundColor(result.triageLevel))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            // Differential Diagnoses
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Differential Diagnosis")
+                    .font(.headline)
+
+                ForEach(result.differentialDiagnoses) { dx in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(dx.condition)
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text(String(format: "%.0f%%", dx.probability * 100))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        if !dx.rationale.isEmpty {
+                            Text(dx.rationale)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(10)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+            }
+
+            // Recommended Actions
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recommended Actions")
+                    .font(.headline)
+
+                ForEach(result.recommendedActions) { action in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(priorityColor(action.priority))
+                            .frame(width: 8, height: 8)
+                        Text(action.action)
+                            .font(.subheadline)
+                        Spacer()
+                        Text(action.priority.rawValue)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(10)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+            }
+
+            // Reasoning Steps
+            DisclosureGroup("Clinical Reasoning (\(result.reasoning.count) steps)") {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(result.reasoning) { step in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("Step \(step.step):")
+                                    .font(.caption.weight(.semibold))
+                                Text(step.title)
+                                    .font(.caption.weight(.medium))
+                                Spacer()
+                                Text(step.timestamp, style: .time)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Text(step.content)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(10)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .font(.headline)
+
+            // Disclaimer
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("Medical Disclaimer")
+                        .font(.headline)
+                        .foregroundStyle(.orange)
+                }
+                Text(result.disclaimer)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    // MARK: - Actions
+
+    private func runWorkflow() async {
+        isRunningWorkflow = true
+        workflowError = nil
+        medicalCase.status = .analyzing
+        onUpdate(medicalCase)
+
+        do {
+            let result = try await MedicalWorkflowEngine.executeWorkflow(
+                intake: medicalCase.intake,
+                onProgress: { step in
+                    Task { @MainActor in
+                        currentStep = step
+                    }
+                }
+            )
+
+            medicalCase.result = result
+            medicalCase.status = .completed
+            onUpdate(medicalCase)
+
+            // Fire automation trigger
+            await AutomationStore.shared.evaluate(
+                context: TriggerContext(
+                    trigger: .onMedicalAnalysisComplete,
+                    fields: [
+                        "caseId": medicalCase.id.uuidString,
+                        "patientId": medicalCase.intake.patientId,
+                        "triageLevel": result.triageLevel.rawValue
+                    ]
+                )
+            )
+
+        } catch {
+            logger.error("Workflow failed: \(error)")
+            workflowError = error.localizedDescription
+            medicalCase.status = .pending
+            onUpdate(medicalCase)
+        }
+
+        isRunningWorkflow = false
+        currentStep = nil
+    }
+
+    // MARK: - Helpers
+
+    private func infoRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(label + ":")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 120, alignment: .leading)
+            Text(value)
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func triageBadge(_ level: MedicalWorkflowResult.TriageLevel) -> some View {
+        Text(level.rawValue)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(triageBackgroundColor(level))
+            .clipShape(Capsule())
+    }
+
+    private func triageBackgroundColor(_ level: MedicalWorkflowResult.TriageLevel) -> Color {
+        switch level {
+        case .emergency: return .red.opacity(0.2)
+        case .urgent: return .orange.opacity(0.2)
+        case .semiUrgent: return .yellow.opacity(0.2)
+        case .nonUrgent: return .blue.opacity(0.2)
+        case .selfCare: return .green.opacity(0.2)
+        }
+    }
+
+    private func priorityColor(_ priority: RecommendedAction.ActionPriority) -> Color {
+        switch priority {
+        case .immediate: return .red
+        case .high: return .orange
+        case .medium: return .blue
+        case .low: return .green
+        }
+    }
+}
+
+// MARK: - New Case Sheet
+
+private struct NewCaseSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let onCreate: (PatientIntake) -> Void
+
+    @State private var patientId = ""
+    @State private var chiefComplaint = ""
+    @State private var onsetTime = ""
+    @State private var severity: PatientIntake.Severity = .moderate
+    @State private var symptomsText = ""
+    @State private var medicalHistoryText = ""
+    @State private var medicationsText = ""
+    @State private var allergiesText = ""
+
+    @State private var includeVitals = false
+    @State private var heartRate = ""
+    @State private var bloodPressure = ""
+    @State private var temperature = ""
+    @State private var respiratoryRate = ""
+    @State private var oxygenSaturation = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Patient Information") {
+                    TextField("Patient ID (optional)", text: $patientId)
+                    TextField("Chief Complaint", text: $chiefComplaint, axis: .vertical)
+                        .lineLimit(2...4)
+                    TextField("Onset (e.g., '2 hours ago', '3 days')", text: $onsetTime)
+                    Picker("Severity", selection: $severity) {
+                        ForEach(PatientIntake.Severity.allCases, id: \.self) { sev in
+                            Text(sev.rawValue).tag(sev)
+                        }
+                    }
+                }
+
+                Section("Symptoms") {
+                    TextField("Symptoms (comma-separated)", text: $symptomsText, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+
+                Section("Vital Signs") {
+                    Toggle("Include Vital Signs", isOn: $includeVitals)
+
+                    if includeVitals {
+                        TextField("Heart Rate (bpm)", text: $heartRate)
+                        TextField("Blood Pressure (e.g., 120/80)", text: $bloodPressure)
+                        TextField("Temperature (°F)", text: $temperature)
+                        TextField("Respiratory Rate (per min)", text: $respiratoryRate)
+                        TextField("SpO2 (%)", text: $oxygenSaturation)
+                    }
+                }
+
+                Section("Medical History") {
+                    TextField("Medical History (comma-separated)", text: $medicalHistoryText, axis: .vertical)
+                        .lineLimit(2...4)
+                    TextField("Current Medications (comma-separated)", text: $medicationsText, axis: .vertical)
+                        .lineLimit(2...4)
+                    TextField("Allergies (comma-separated)", text: $allergiesText, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("New Medical Case")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { createIntake() }
+                        .disabled(chiefComplaint.isEmpty)
+                }
+            }
+        }
+        .frame(width: 600, height: 700)
+    }
+
+    private func createIntake() {
+        let symptoms = symptomsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let history = medicalHistoryText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let meds = medicationsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let allergies = allergiesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+
+        var vitals: VitalSigns?
+        if includeVitals {
+            vitals = VitalSigns(
+                heartRate: Int(heartRate),
+                bloodPressure: bloodPressure.isEmpty ? nil : bloodPressure,
+                temperature: Double(temperature),
+                respiratoryRate: Int(respiratoryRate),
+                oxygenSaturation: Int(oxygenSaturation)
+            )
+        }
+
+        let intake = PatientIntake(
+            patientId: patientId,
+            chiefComplaint: chiefComplaint,
+            symptoms: symptoms,
+            onsetTime: onsetTime,
+            severity: severity,
+            vitalSigns: vitals,
+            medicalHistory: history,
+            currentMedications: meds,
+            allergies: allergies
+        )
+
+        onCreate(intake)
+        dismiss()
+    }
+}
+
+// MARK: - Triage Helpers
+
+private func triageColor(_ level: MedicalWorkflowResult.TriageLevel) -> Color {
+    switch level {
+    case .emergency: return .red
+    case .urgent: return .orange
+    case .semiUrgent: return .yellow
+    case .nonUrgent: return .blue
+    case .selfCare: return .green
+    }
+}
+
+private func triageShort(_ level: MedicalWorkflowResult.TriageLevel) -> String {
+    switch level {
+    case .emergency: return "EMG"
+    case .urgent: return "URG"
+    case .semiUrgent: return "S-URG"
+    case .nonUrgent: return "NON"
+    case .selfCare: return "SELF"
+    }
+}

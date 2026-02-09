@@ -53,6 +53,8 @@ struct WorkspaceHub: View {
             VoicePanel()
         case .team:
             TeamNotesPanel()
+        case .medical:
+            MedicalPanel()
         case .automations:
             AutomationListView()
         case .plugins:

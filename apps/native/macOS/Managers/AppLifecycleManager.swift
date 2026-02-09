@@ -149,6 +149,9 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         SchedulerService.shared.start()
         logger.debug("SchedulerService started")
 
+        await MedicalAIService.shared.ensureModelReady()
+        logger.debug("MedicalAIService initialized")
+
         logger.info("Workspace services initialization complete")
     }
 

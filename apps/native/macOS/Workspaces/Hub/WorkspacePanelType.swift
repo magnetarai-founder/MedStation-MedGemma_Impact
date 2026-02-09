@@ -14,6 +14,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
     case pdf
     case voice
     case team
+    case medical
     case automations
     case plugins
 
@@ -27,6 +28,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .pdf: return "PDFs"
         case .voice: return "Voice"
         case .team: return "Team"
+        case .medical: return "Medical"
         case .automations: return "Automations"
         case .plugins: return "Plugins"
         }
@@ -40,6 +42,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .pdf: return "doc.viewfinder"
         case .voice: return "waveform"
         case .team: return "bubble.left.and.text.bubble.right"
+        case .medical: return "cross.case"
         case .automations: return "gearshape.2"
         case .plugins: return "puzzlepiece.extension"
         }
@@ -49,7 +52,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
 
     /// Content creation panels (always shown)
     static var contentPanels: [WorkspacePanelType] {
-        [.notes, .docs, .sheets, .pdf, .voice]
+        [.notes, .docs, .sheets, .pdf, .voice, .medical]
     }
 
     /// Management/configuration panels
@@ -66,6 +69,7 @@ enum WorkspacePanelType: String, CaseIterable, Identifiable, Hashable {
         case .pdf: return "P"
         case .voice: return "V"
         case .team: return "T"
+        case .medical: return "M"
         case .automations: return "A"
         case .plugins: return "X"
         }
