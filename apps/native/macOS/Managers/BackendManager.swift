@@ -92,6 +92,13 @@ final class BackendManager {
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONUNBUFFERED"] = "1"
         environment["ELOHIM_ENV"] = "development"
+        // Add packages/ to PYTHONPATH so neutron_core is importable
+        let packagesPath = projectRoot.appendingPathComponent("packages").path
+        if let existing = environment["PYTHONPATH"] {
+            environment["PYTHONPATH"] = "\(packagesPath):\(existing)"
+        } else {
+            environment["PYTHONPATH"] = packagesPath
+        }
         task.environment = environment
 
         logger.info("All paths verified")
