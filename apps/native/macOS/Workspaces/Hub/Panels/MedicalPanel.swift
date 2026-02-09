@@ -85,6 +85,9 @@ struct MedicalPanel: View {
                 showOnboarding = true
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
         .alert("MedGemma Medical Assistant", isPresented: $showOnboarding) {
             Button("Get Started") {
                 hasShownOnboarding = true

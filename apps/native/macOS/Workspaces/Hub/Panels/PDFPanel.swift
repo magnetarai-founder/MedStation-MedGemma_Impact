@@ -65,6 +65,9 @@ struct PDFPanel: View {
         .task {
             await loadPDFs()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
     }
 
     // MARK: - PDF Toolbar

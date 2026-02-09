@@ -46,6 +46,9 @@ struct AutomationListView: View {
                 await automationStore.loadAll()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
         .sheet(isPresented: $showEditor) {
             AutomationEditorView(
                 rule: nil,

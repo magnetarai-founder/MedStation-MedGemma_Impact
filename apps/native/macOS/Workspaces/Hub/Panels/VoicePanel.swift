@@ -48,6 +48,9 @@ struct VoicePanel: View {
         .task {
             await loadRecordings()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
         .onDisappear {
             recorder.stopRecording()
         }

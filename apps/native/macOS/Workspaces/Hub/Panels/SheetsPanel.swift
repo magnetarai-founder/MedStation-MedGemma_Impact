@@ -115,6 +115,9 @@ struct SheetsPanel: View {
         .task {
             await loadSpreadsheets()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
     }
 
     // MARK: - Status Bar

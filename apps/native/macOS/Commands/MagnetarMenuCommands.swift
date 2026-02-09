@@ -10,6 +10,10 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+extension Notification.Name {
+    static let focusPanelSearch = Notification.Name("com.magnetar.studio.focusPanelSearch")
+}
+
 struct MagnetarMenuCommands: Commands {
     let navigationStore: NavigationStore
     let chatStore: ChatStore
@@ -48,7 +52,13 @@ struct MagnetarMenuCommands: Commands {
             .keyboardShortcut("e", modifiers: .command)
         }
 
-        // Edit menu (keep defaults)
+        // Edit menu — add Find in Panel
+        CommandGroup(after: .textEditing) {
+            Button("Find in Panel") {
+                NotificationCenter.default.post(name: .focusPanelSearch, object: nil)
+            }
+            .keyboardShortcut("f", modifiers: .command)
+        }
 
         // View menu - Core tabs ⌘1-4 + sidebar toggle
         CommandMenu("View") {

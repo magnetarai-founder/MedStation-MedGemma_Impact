@@ -77,6 +77,9 @@ struct NotesPanel: View {
         .task {
             await loadNotes()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
         .sheet(isPresented: $showTemplatePicker) {
             TemplatePickerSheet(
                 targetPanel: .note,

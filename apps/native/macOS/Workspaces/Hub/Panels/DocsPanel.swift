@@ -77,6 +77,9 @@ struct DocsPanel: View {
         .task {
             await loadDocuments()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
     }
 
     // MARK: - Document Title

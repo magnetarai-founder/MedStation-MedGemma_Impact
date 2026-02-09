@@ -58,6 +58,9 @@ struct PluginManagerView: View {
                 await pluginManager.loadAll()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPanelSearch)) { _ in
+            isSearchFocused = true
+        }
         .fileImporter(
             isPresented: $showInstallPanel,
             allowedContentTypes: [.folder],
