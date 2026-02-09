@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "DocsPanel")
@@ -23,6 +24,7 @@ struct DocsPanel: View {
     @AppStorage("workspace.teamEnabled") private var teamEnabled = false
     @State private var docToDelete: WorkspaceDocument?
     @State private var saveError: String?
+    @State private var isDragging = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -30,6 +32,18 @@ struct DocsPanel: View {
             if showDocsList {
                 docsList
                     .frame(width: 240)
+                    .onDrop(of: [.fileURL], isTargeted: $isDragging) { providers in
+                        handleFileDrop(providers: providers)
+                    }
+                    .overlay {
+                        if isDragging {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.magnetarPrimary, lineWidth: 2)
+                                .background(Color.magnetarPrimary.opacity(0.05))
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .accessibilityHint("Drop text files to create new documents")
                 Divider()
             }
 
@@ -308,6 +322,33 @@ struct DocsPanel: View {
             selectedDocID = documents.first?.id
         }
         deleteDocFromDisk(doc)
+    }
+
+    // MARK: - File Drop
+
+    private static let supportedDropTypes: Set<String> = ["txt", "md", "rtf", "html"]
+
+    private func handleFileDrop(providers: [NSItemProvider]) -> Bool {
+        var handled = false
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: "public.file-url") { data, _ in
+                guard let data = data as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil),
+                      Self.supportedDropTypes.contains(url.pathExtension.lowercased()) else { return }
+
+                let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                let title = url.deletingPathExtension().lastPathComponent
+
+                DispatchQueue.main.async {
+                    let doc = WorkspaceDocument(title: String(title.prefix(60)), content: content)
+                    documents.insert(doc, at: 0)
+                    selectDocument(doc)
+                    saveDocToDisk(doc)
+                }
+            }
+            handled = true
+        }
+        return handled
     }
 
     // MARK: - Persistence

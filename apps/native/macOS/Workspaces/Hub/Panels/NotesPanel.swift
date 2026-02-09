@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "NotesPanel")
@@ -55,12 +56,25 @@ struct NotesPanel: View {
     @State private var selectedTemplate: WorkspaceTemplate?
     @State private var noteToDelete: WorkspaceNote?
     @State private var saveError: String?
+    @State private var isDragging = false
 
     var body: some View {
         HStack(spacing: 0) {
             // Notes list
             notesList
                 .frame(width: 240)
+                .onDrop(of: [.fileURL], isTargeted: $isDragging) { providers in
+                    handleFileDrop(providers: providers)
+                }
+                .overlay {
+                    if isDragging {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.magnetarPrimary, lineWidth: 2)
+                            .background(Color.magnetarPrimary.opacity(0.05))
+                            .allowsHitTesting(false)
+                    }
+                }
+                .accessibilityHint("Drop text files to create new notes")
 
             Divider()
 
@@ -321,6 +335,33 @@ struct NotesPanel: View {
             selectedNoteID = notes.first?.id
         }
         deleteNoteFromDisk(note)
+    }
+
+    // MARK: - File Drop
+
+    private static let supportedDropTypes: Set<String> = ["txt", "md", "rtf", "html"]
+
+    private func handleFileDrop(providers: [NSItemProvider]) -> Bool {
+        var handled = false
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: "public.file-url") { data, _ in
+                guard let data = data as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil),
+                      Self.supportedDropTypes.contains(url.pathExtension.lowercased()) else { return }
+
+                let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                let title = url.deletingPathExtension().lastPathComponent
+
+                DispatchQueue.main.async {
+                    let note = WorkspaceNote(title: String(title.prefix(60)), content: content)
+                    notes.insert(note, at: 0)
+                    selectNote(note)
+                    saveNoteToDisk(note)
+                }
+            }
+            handled = true
+        }
+        return handled
     }
 
     // MARK: - Persistence
