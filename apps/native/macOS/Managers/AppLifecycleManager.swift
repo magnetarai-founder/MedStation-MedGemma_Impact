@@ -124,6 +124,10 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         let _ = RAGIntegrationBridge.shared
         logger.debug("RAGIntegrationBridge initialized")
 
+        // Initialize CoreML model manager (checks bundled/downloaded model availability)
+        let _ = CoreMLModelManager.shared
+        logger.debug("CoreMLModelManager initialized")
+
         logger.info("Context services initialization complete")
     }
 

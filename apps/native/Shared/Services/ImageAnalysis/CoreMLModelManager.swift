@@ -2,9 +2,8 @@
 //  CoreMLModelManager.swift
 //  MagnetarAI
 //
-//  STUB: Not currently wired — future CoreML model management infrastructure.
 //  Manages on-demand downloading and caching of CoreML models (YOLO11, MobileSAM, DepthAnything).
-//  Will be integrated when ImageAnalysisService is activated.
+//  Wired: Bootstrapped in AppLifecycleManager.initializeContextServices at app launch.
 //
 
 import Foundation
