@@ -293,5 +293,29 @@ enum FormulaError: LocalizedError, Sendable {
         }
     }
 
+    var hint: String {
+        switch self {
+        case .parseError: return "Formula syntax error"
+        case .invalidRange: return "A cell reference is invalid"
+        case .invalidArgs: return "Wrong type of value in formula"
+        case .divisionByZero: return "A formula is dividing by zero"
+        case .unknownFunction(let name): return "Unknown function: \(name)"
+        case .circularReference: return "Circular reference detected"
+        }
+    }
+
     var errorDescription: String? { displayString }
+
+    /// Look up a hint for a display string like "#DIV/0!" — returns nil for non-error values.
+    static func hintForDisplay(_ value: String) -> String? {
+        switch value {
+        case "#PARSE!": return FormulaError.parseError.hint
+        case "#REF!": return FormulaError.invalidRange.hint
+        case "#VALUE!": return FormulaError.invalidArgs.hint
+        case "#DIV/0!": return FormulaError.divisionByZero.hint
+        case "#NAME?": return FormulaError.unknownFunction("").hint
+        case "#CIRC!": return FormulaError.circularReference.hint
+        default: return nil
+        }
+    }
 }

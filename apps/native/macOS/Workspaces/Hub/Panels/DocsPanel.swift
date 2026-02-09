@@ -336,6 +336,10 @@ struct DocsPanel: View {
                       let url = URL(dataRepresentation: data, relativeTo: nil),
                       Self.supportedDropTypes.contains(url.pathExtension.lowercased()) else { return }
 
+                // Reject files larger than 5 MB
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+                guard fileSize < 5_000_000 else { return }
+
                 let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
                 let title = url.deletingPathExtension().lastPathComponent
 

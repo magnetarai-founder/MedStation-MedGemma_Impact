@@ -130,13 +130,16 @@ struct SpreadsheetGrid: View {
                     ? engine.evaluate(cell.rawValue)
                     : cell.rawValue
 
+                let errorHint = cell.isFormula ? FormulaError.hintForDisplay(displayValue) : nil
+
                 Text(displayValue)
                     .font(.system(size: 12, weight: cell.isBold ? .semibold : .regular))
                     .italic(cell.isItalic)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(errorHint != nil ? .red : .primary)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: alignment(for: cell))
                     .padding(.horizontal, 4)
+                    .help(errorHint ?? "")
             }
         }
         .frame(
