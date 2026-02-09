@@ -17,6 +17,7 @@ struct PDFPanel: View {
     @State private var selectedPDFID: UUID?
     @State private var pdfDocument: PDFDocument?
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var isLoading = true
     @State private var showThumbnails = true
     @State private var currentPage = 0
@@ -188,6 +189,17 @@ struct PDFPanel: View {
                 TextField("Search PDFs...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
+
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
 
                 Button(action: importPDF) {
                     Image(systemName: "doc.badge.plus")

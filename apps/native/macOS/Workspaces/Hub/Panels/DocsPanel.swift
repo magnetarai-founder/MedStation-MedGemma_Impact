@@ -16,6 +16,7 @@ struct DocsPanel: View {
     @State private var selectedDocID: UUID?
     @State private var editorContent = ""
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var isLoading = true
     @State private var showDocsList = true
     @State private var collaborators: [CollaboratorPresence] = []
@@ -124,6 +125,18 @@ struct DocsPanel: View {
                 TextField("Search docs...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
+
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+
                 Button(action: createDocument) {
                     Image(systemName: "doc.badge.plus")
                         .font(.system(size: 13))

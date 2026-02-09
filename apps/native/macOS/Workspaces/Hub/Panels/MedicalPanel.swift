@@ -22,6 +22,7 @@ struct MedicalPanel: View {
     @State private var isLoading = true
     @State private var showNewCaseSheet = false
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @AppStorage("medical.onboarding.shown") private var hasShownOnboarding = false
     @State private var showOnboarding = false
     @State private var showBenchmark = false
@@ -141,6 +142,7 @@ struct MedicalPanel: View {
                 TextField("Search cases...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
                 if !searchText.isEmpty {
                     Button {
                         searchText = ""

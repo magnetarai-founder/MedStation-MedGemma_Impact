@@ -49,6 +49,7 @@ struct NotesPanel: View {
     @State private var selectedNoteID: UUID?
     @State private var editorContent = ""
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var isLoading = true
     @State private var showTemplatePicker = false
     @State private var selectedTemplate: WorkspaceTemplate?
@@ -121,6 +122,17 @@ struct NotesPanel: View {
                 TextField("Search notes...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
+
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
 
                 Menu {
                     Button("Blank Note") { createNote() }

@@ -14,6 +14,7 @@ struct AutomationListView: View {
     @State private var editingRule: AutomationRule?
     @State private var showLog = false
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
 
     private var filteredRules: [AutomationRule] {
         if searchText.isEmpty { return automationStore.rules }
@@ -96,6 +97,16 @@ struct AutomationListView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
                     .frame(width: 120)
+                    .focused($isSearchFocused)
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)

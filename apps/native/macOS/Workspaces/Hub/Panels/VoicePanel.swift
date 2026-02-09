@@ -16,6 +16,7 @@ struct VoicePanel: View {
     @State private var recordings: [VoiceRecording] = []
     @State private var selectedRecordingID: UUID?
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var isRecording = false
     @State private var recordingDuration: TimeInterval = 0
     @State private var audioLevel: Float = 0
@@ -239,6 +240,17 @@ struct VoicePanel: View {
                 TextField("Search recordings...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
+
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
 
                 Button {
                     startRecording()

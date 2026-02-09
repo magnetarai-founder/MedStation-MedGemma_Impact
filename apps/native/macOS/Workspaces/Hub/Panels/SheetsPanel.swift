@@ -17,6 +17,7 @@ struct SheetsPanel: View {
     @State private var editingCell: CellAddress?
     @State private var formulaText = ""
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var isLoading = true
     @State private var showSheetsList = true
     @State private var showExport = false
@@ -179,6 +180,18 @@ struct SheetsPanel: View {
                 TextField("Search sheets...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
+
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+
                 Menu {
                     Button("Blank Spreadsheet") { createSpreadsheet() }
                     Button("From Template...") { showTemplatePicker = true }

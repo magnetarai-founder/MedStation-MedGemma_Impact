@@ -13,6 +13,7 @@ struct PluginManagerView: View {
     @State private var pluginManager = PluginManager.shared
     @State private var selectedPlugin: InstalledPlugin?
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var showInstallPanel = false
     @State private var installError: String?
 
@@ -108,6 +109,16 @@ struct PluginManagerView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
                     .frame(width: 120)
+                    .focused($isSearchFocused)
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
