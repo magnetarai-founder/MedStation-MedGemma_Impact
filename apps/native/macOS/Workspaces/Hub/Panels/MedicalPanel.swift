@@ -258,6 +258,11 @@ private struct MedicalCaseDetailView: View {
     @State private var workflowError: String?
     @State private var showDisclaimerConfirm = false
 
+    // Follow-up Q&A chat
+    @State private var chatMessages: [(role: String, content: String)] = []
+    @State private var chatInput = ""
+    @State private var isChatStreaming = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -278,6 +283,8 @@ private struct MedicalCaseDetailView: View {
                 if let result = medicalCase.result {
                     Divider()
                     resultsSection(result)
+                    Divider()
+                    followUpChatSection
                 }
             }
             .padding(20)
@@ -488,10 +495,125 @@ private struct MedicalCaseDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    // MARK: - Follow-Up Chat
+
+    private var followUpChatSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .foregroundStyle(.purple)
+                Text("Ask Follow-Up Questions")
+                    .font(.headline)
+                Spacer()
+                if isChatStreaming {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
+            }
+
+            if !chatMessages.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(chatMessages.enumerated()), id: \.offset) { _, msg in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: msg.role == "user" ? "person.circle.fill" : "cross.case.circle.fill")
+                                .foregroundStyle(msg.role == "user" ? Color.blue : Color.purple)
+                                .font(.system(size: 16))
+
+                            Text(msg.content)
+                                .font(.caption)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(8)
+                        .background(msg.role == "user" ? Color.blue.opacity(0.05) : Color.purple.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                TextField("Ask about the diagnosis, treatment options, or next steps...", text: $chatInput)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { Task { await sendChatMessage() } }
+                    .disabled(isChatStreaming)
+
+                Button {
+                    Task { await sendChatMessage() }
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.purple)
+                }
+                .buttonStyle(.plain)
+                .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty || isChatStreaming)
+                .accessibilityLabel("Send follow-up question")
+            }
+
+            Text("Responses use MedGemma on-device. Not medical advice.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .background(Color.purple.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.purple.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private func sendChatMessage() async {
+        let question = chatInput.trimmingCharacters(in: .whitespaces)
+        guard !question.isEmpty else { return }
+
+        chatInput = ""
+        chatMessages.append((role: "user", content: question))
+
+        // Build context from the case result
+        var context = ""
+        if let result = medicalCase.result {
+            context = """
+            Prior Analysis Summary:
+            Triage: \(result.triageLevel.rawValue)
+            Diagnoses: \(result.differentialDiagnoses.map(\.condition).joined(separator: ", "))
+            """
+        }
+
+        isChatStreaming = true
+        chatMessages.append((role: "assistant", content: ""))
+        let responseIndex = chatMessages.count - 1
+
+        do {
+            try await aiService.streamMedicalResponse(
+                prompt: question,
+                patientContext: context,
+                onToken: { token in
+                    Task { @MainActor in
+                        if responseIndex < chatMessages.count {
+                            chatMessages[responseIndex].content += token
+                        }
+                    }
+                },
+                onDone: {
+                    Task { @MainActor in
+                        isChatStreaming = false
+                    }
+                }
+            )
+        } catch {
+            chatMessages[responseIndex].content = "Error: \(error.localizedDescription)"
+            isChatStreaming = false
+        }
+    }
+
     // MARK: - Results
 
     private func resultsSection(_ result: MedicalWorkflowResult) -> some View {
         VStack(alignment: .leading, spacing: 16) {
+            // Safety Alerts (HAI-DEF compliance)
+            if !result.safetyAlerts.isEmpty {
+                safetyAlertsSection(result.safetyAlerts)
+            }
+
             // Triage
             VStack(alignment: .leading, spacing: 8) {
                 Text("Triage Assessment")
@@ -813,6 +935,84 @@ private struct MedicalCaseDetailView: View {
         case .semiUrgent: return .yellow.opacity(0.2)
         case .nonUrgent: return .blue.opacity(0.2)
         case .selfCare: return .green.opacity(0.2)
+        }
+    }
+
+    private func safetyAlertsSection(_ alerts: [SafetyAlert]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "shield.checkered")
+                    .foregroundStyle(.red)
+                Text("Safety Alerts")
+                    .font(.headline)
+                Spacer()
+                Text("HAI-DEF")
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.purple.opacity(0.15))
+                    .foregroundStyle(.purple)
+                    .clipShape(Capsule())
+            }
+
+            ForEach(alerts) { alert in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: alertIcon(alert.severity))
+                        .foregroundStyle(alertColor(alert.severity))
+                        .font(.system(size: 16))
+                        .frame(width: 20)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(alert.title)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(alert.category.rawValue)
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(alertColor(alert.severity).opacity(0.1))
+                                .foregroundStyle(alertColor(alert.severity))
+                                .clipShape(Capsule())
+                        }
+                        Text(alert.message)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(10)
+                .background(alertColor(alert.severity).opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(alertColor(alert.severity).opacity(0.3), lineWidth: 1)
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(alert.severity.rawValue) alert: \(alert.title). \(alert.message)")
+            }
+        }
+        .padding()
+        .background(Color.red.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.red.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private func alertIcon(_ severity: SafetyAlert.Severity) -> String {
+        switch severity {
+        case .critical: return "exclamationmark.octagon.fill"
+        case .warning: return "exclamationmark.triangle.fill"
+        case .info: return "info.circle.fill"
+        }
+    }
+
+    private func alertColor(_ severity: SafetyAlert.Severity) -> Color {
+        switch severity {
+        case .critical: return .red
+        case .warning: return .orange
+        case .info: return .blue
         }
     }
 

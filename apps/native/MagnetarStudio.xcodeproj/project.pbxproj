@@ -198,6 +198,7 @@
 		7F4285F51CFCC26CAB821E45 /* DetachedNoteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCF38BAED0DD197EFAA67EE /* DetachedNoteWindow.swift */; };
 		7F7F3B3F69C98C3A7CAF4D50 /* docs_templates.json in Resources */ = {isa = PBXBuildFile; fileRef = 04C008DAEAE303722E07770D /* docs_templates.json */; };
 		80A44875AA739040EDC89811 /* WorkflowDesignerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F09A6810574FEFD08FDA3C /* WorkflowDesignerView.swift */; };
+		81D2B44D9672167BD5002A9A /* MedicalSafetyGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE1841384BFCE269E3B8F0D /* MedicalSafetyGuard.swift */; };
 		81D5AC79B8EF8A94C013FE6E /* KanbanRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEBDB95F4489D4FEA9DE648 /* KanbanRows.swift */; };
 		821A87B1241CA57C83CD13D4 /* TerminalContextParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57494CF6EFBEFFE7CFEBB00C /* TerminalContextParser.swift */; };
 		8299C865C1CAB926A7BA9558 /* ModelDiscoveryDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C5C1AFE9A532BEEA423B11 /* ModelDiscoveryDataManager.swift */; };
@@ -504,6 +505,7 @@
 		3C5E980A8B0EC4BBA9596C5C /* KanbanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanService.swift; sourceTree = "<group>"; };
 		3D866B895AA748AFB7758693 /* ContextOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextOptimizer.swift; sourceTree = "<group>"; };
 		3DA14EC33AFDF3666CF71C33 /* EmergencyConfirmationModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyConfirmationModal.swift; sourceTree = "<group>"; };
+		3DE1841384BFCE269E3B8F0D /* MedicalSafetyGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicalSafetyGuard.swift; path = Shared/Services/AI/MedicalSafetyGuard.swift; sourceTree = "<group>"; };
 		3F2E0BD7DD7CECEF35CB5C88 /* InlineCompletionOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InlineCompletionOverlay.swift; sourceTree = "<group>"; };
 		3F6E15837690B043BAC29AEA /* PersistenceHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PersistenceHelpers.swift; sourceTree = "<group>"; };
 		40A49FDB4A8B4FF98E059EC0 /* SyntaxHighlighter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SyntaxHighlighter.swift; sourceTree = "<group>"; };
@@ -1160,6 +1162,7 @@
 				E395A34A4D4FD874AD1C19C5 /* AutomationAIStrategy.swift */,
 				63B7728748C14E480BBD09A7 /* MedicalAIService.swift */,
 				E24B598702FBEC6A8B12B82F /* MedicalWorkflowEngine.swift */,
+				3DE1841384BFCE269E3B8F0D /* MedicalSafetyGuard.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -2332,6 +2335,7 @@
 				B76CB2D620C45F6E0B36BB37 /* MedicalAIService.swift in Sources */,
 				56BB7A489F5194421E35D3B7 /* MedicalWorkflowEngine.swift in Sources */,
 				0C608810156789DC761B2211 /* MedicalPanel.swift in Sources */,
+				81D2B44D9672167BD5002A9A /* MedicalSafetyGuard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

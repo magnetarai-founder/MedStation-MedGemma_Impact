@@ -178,7 +178,7 @@ struct MedicalWorkflowEngine {
             imageAnalysisMs: imageAnalysisMs
         )
 
-        let result = MedicalWorkflowResult(
+        var result = MedicalWorkflowResult(
             intakeId: intake.id,
             triageLevel: triageLevel,
             differentialDiagnoses: diagnoses,
@@ -188,6 +188,9 @@ struct MedicalWorkflowEngine {
             disclaimer: standardDisclaimer,
             generatedAt: Date()
         )
+
+        // Post-processing: HAI-DEF safety validation
+        result.safetyAlerts = MedicalSafetyGuard.validate(result, intake: intake)
 
         logger.info("Medical workflow completed in \(String(format: "%.0f", totalMs))ms: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")
         return result

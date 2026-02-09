@@ -83,6 +83,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
     var recommendedActions: [RecommendedAction]
     var reasoning: [ReasoningStep]
     var performanceMetrics: PerformanceMetrics?
+    var safetyAlerts: [SafetyAlert]
     var disclaimer: String
     var generatedAt: Date
 
@@ -102,6 +103,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         recommendedActions: [RecommendedAction] = [],
         reasoning: [ReasoningStep] = [],
         performanceMetrics: PerformanceMetrics? = nil,
+        safetyAlerts: [SafetyAlert] = [],
         disclaimer: String = "",
         generatedAt: Date = Date()
     ) {
@@ -112,6 +114,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         self.recommendedActions = recommendedActions
         self.reasoning = reasoning
         self.performanceMetrics = performanceMetrics
+        self.safetyAlerts = safetyAlerts
         self.disclaimer = disclaimer
         self.generatedAt = generatedAt
     }
