@@ -21,6 +21,7 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
     var medicalHistory: [String]
     var currentMedications: [String]
     var allergies: [String]
+    var attachedImagePaths: [String]
     var createdAt: Date
     var updatedAt: Date
 
@@ -42,6 +43,7 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
         medicalHistory: [String] = [],
         currentMedications: [String] = [],
         allergies: [String] = [],
+        attachedImagePaths: [String] = [],
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -55,6 +57,7 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
         self.medicalHistory = medicalHistory
         self.currentMedications = currentMedications
         self.allergies = allergies
+        self.attachedImagePaths = attachedImagePaths
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -79,6 +82,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
     var differentialDiagnoses: [Diagnosis]
     var recommendedActions: [RecommendedAction]
     var reasoning: [ReasoningStep]
+    var performanceMetrics: PerformanceMetrics?
     var disclaimer: String
     var generatedAt: Date
 
@@ -97,6 +101,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         differentialDiagnoses: [Diagnosis] = [],
         recommendedActions: [RecommendedAction] = [],
         reasoning: [ReasoningStep] = [],
+        performanceMetrics: PerformanceMetrics? = nil,
         disclaimer: String = "",
         generatedAt: Date = Date()
     ) {
@@ -106,6 +111,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         self.differentialDiagnoses = differentialDiagnoses
         self.recommendedActions = recommendedActions
         self.reasoning = reasoning
+        self.performanceMetrics = performanceMetrics
         self.disclaimer = disclaimer
         self.generatedAt = generatedAt
     }
@@ -155,13 +161,15 @@ struct ReasoningStep: Codable, Identifiable, Equatable, Sendable {
     var step: Int
     var title: String
     var content: String
+    var durationMs: Double
     var timestamp: Date
 
-    init(id: UUID = UUID(), step: Int, title: String, content: String, timestamp: Date = Date()) {
+    init(id: UUID = UUID(), step: Int, title: String, content: String, durationMs: Double = 0, timestamp: Date = Date()) {
         self.id = id
         self.step = step
         self.title = title
         self.content = content
+        self.durationMs = durationMs
         self.timestamp = timestamp
     }
 }
@@ -198,4 +206,67 @@ struct MedicalCase: Identifiable, Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+}
+
+// MARK: - Edge AI Performance Metrics
+
+struct PerformanceMetrics: Codable, Equatable, Sendable {
+    var totalWorkflowMs: Double
+    var stepDurations: [String: Double]
+    var modelName: String
+    var modelParameterCount: String
+    var deviceThermalState: ThermalLabel
+    var peakMemoryMB: Int?
+    var imageAnalysisMs: Double?
+
+    enum ThermalLabel: String, Codable, Sendable {
+        case nominal = "Nominal"
+        case fair = "Fair"
+        case serious = "Serious"
+        case critical = "Critical"
+
+        init(from processInfo: ProcessInfo) {
+            switch processInfo.thermalState {
+            case .nominal: self = .nominal
+            case .fair: self = .fair
+            case .serious: self = .serious
+            case .critical: self = .critical
+            @unknown default: self = .nominal
+            }
+        }
+    }
+
+    var averageStepMs: Double {
+        guard !stepDurations.isEmpty else { return 0 }
+        return stepDurations.values.reduce(0, +) / Double(stepDurations.count)
+    }
+
+    init(
+        totalWorkflowMs: Double = 0,
+        stepDurations: [String: Double] = [:],
+        modelName: String = "medgemma:4b",
+        modelParameterCount: String = "4B",
+        deviceThermalState: ThermalLabel = .nominal,
+        peakMemoryMB: Int? = nil,
+        imageAnalysisMs: Double? = nil
+    ) {
+        self.totalWorkflowMs = totalWorkflowMs
+        self.stepDurations = stepDurations
+        self.modelName = modelName
+        self.modelParameterCount = modelParameterCount
+        self.deviceThermalState = deviceThermalState
+        self.peakMemoryMB = peakMemoryMB
+        self.imageAnalysisMs = imageAnalysisMs
+    }
+}
+
+// MARK: - Image Analysis Context (for multimodal enrichment)
+
+struct MedicalImageAnalysis: Codable, Equatable, Sendable {
+    var imagePath: String
+    var ocrText: String
+    var detectedObjects: [String]
+    var analysisDescription: String
+    var layerTimings: [String: Double]
+    var totalAnalysisMs: Double
 }

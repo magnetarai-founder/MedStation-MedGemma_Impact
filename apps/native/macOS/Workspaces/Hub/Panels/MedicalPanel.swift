@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 import os
 
 private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalPanel")
@@ -192,6 +193,7 @@ private struct CaseListItem: View {
                         .background(statusColor.opacity(0.2))
                         .foregroundStyle(statusColor)
                         .clipShape(Capsule())
+                        .accessibilityLabel("Status: \(medicalCase.status.rawValue)")
                 }
 
                 Text(medicalCase.intake.chiefComplaint)
@@ -202,6 +204,7 @@ private struct CaseListItem: View {
                 HStack {
                     Image(systemName: "calendar")
                         .font(.system(size: 10))
+                        .accessibilityHidden(true)
                     Text(medicalCase.createdAt, style: .date)
                         .font(.system(size: 10))
 
@@ -209,9 +212,11 @@ private struct CaseListItem: View {
 
                     if let result = medicalCase.result {
                         triagePill(result.triageLevel)
+                            .accessibilityLabel("Triage level: \(triageShort(result.triageLevel))")
                     }
                 }
                 .foregroundStyle(.tertiary)
+                .accessibilityElement(children: .combine)
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -251,6 +256,7 @@ private struct MedicalCaseDetailView: View {
     @State private var isRunningWorkflow = false
     @State private var currentStep: ReasoningStep?
     @State private var workflowError: String?
+    @State private var showDisclaimerConfirm = false
 
     var body: some View {
         ScrollView {
@@ -276,6 +282,14 @@ private struct MedicalCaseDetailView: View {
             }
             .padding(20)
         }
+        .alert("Medical Disclaimer", isPresented: $showDisclaimerConfirm) {
+            Button("I Understand — Run Analysis") {
+                Task { await runWorkflow() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This AI analysis is for educational and informational purposes only. It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider.")
+        }
     }
 
     // MARK: - Header
@@ -298,6 +312,14 @@ private struct MedicalCaseDetailView: View {
             Spacer()
 
             if let result = medicalCase.result {
+                Button {
+                    exportMedicalReport(result)
+                } label: {
+                    Label("Export Report", systemImage: "arrow.up.doc")
+                        .font(.caption)
+                }
+                .accessibilityLabel("Export medical report as text file")
+
                 triageBadge(result.triageLevel)
             }
         }
@@ -339,6 +361,35 @@ private struct MedicalCaseDetailView: View {
             if !medicalCase.intake.allergies.isEmpty {
                 infoRow("Allergies", medicalCase.intake.allergies.joined(separator: ", "))
             }
+
+            if !medicalCase.intake.attachedImagePaths.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Attached Images (\(medicalCase.intake.attachedImagePaths.count))")
+                        .font(.subheadline.weight(.medium))
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(medicalCase.intake.attachedImagePaths, id: \.self) { path in
+                                if let img = NSImage(contentsOfFile: path) {
+                                    Image(nsImage: img)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                } else {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(width: 60, height: 60)
+                                        .overlay {
+                                            Image(systemName: "photo")
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor))
@@ -350,7 +401,7 @@ private struct MedicalCaseDetailView: View {
     private var runWorkflowSection: some View {
         VStack(spacing: 12) {
             Button {
-                Task { await runWorkflow() }
+                showDisclaimerConfirm = true
             } label: {
                 HStack {
                     Image(systemName: "wand.and.stars")
@@ -504,6 +555,11 @@ private struct MedicalCaseDetailView: View {
                 }
             }
 
+            // Edge AI Performance Metrics
+            if let metrics = result.performanceMetrics {
+                edgeAIMetricsSection(metrics, steps: result.reasoning)
+            }
+
             // Reasoning Steps
             DisclosureGroup("Clinical Reasoning (\(result.reasoning.count) steps)") {
                 VStack(alignment: .leading, spacing: 12) {
@@ -515,6 +571,11 @@ private struct MedicalCaseDetailView: View {
                                 Text(step.title)
                                     .font(.caption.weight(.medium))
                                 Spacer()
+                                if step.durationMs > 0 {
+                                    Text(formatDuration(step.durationMs))
+                                        .font(.caption2.monospaced())
+                                        .foregroundStyle(.blue)
+                                }
                                 Text(step.timestamp, style: .time)
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
@@ -610,6 +671,132 @@ private struct MedicalCaseDetailView: View {
         }
     }
 
+    private func edgeAIMetricsSection(_ metrics: PerformanceMetrics, steps: [ReasoningStep]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "cpu")
+                    .foregroundStyle(.blue)
+                Text("Edge AI Performance")
+                    .font(.headline)
+                Spacer()
+                Text("100% On-Device")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.blue.opacity(0.15))
+                    .foregroundStyle(.blue)
+                    .clipShape(Capsule())
+            }
+
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 10) {
+                metricCard(
+                    "Total Time",
+                    formatDuration(metrics.totalWorkflowMs),
+                    icon: "clock"
+                )
+                metricCard(
+                    "Avg Step",
+                    formatDuration(metrics.averageStepMs),
+                    icon: "gauge.with.dots.needle.33percent"
+                )
+                metricCard(
+                    "Model",
+                    metrics.modelParameterCount,
+                    icon: "brain"
+                )
+            }
+
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 10) {
+                metricCard(
+                    "Thermal",
+                    metrics.deviceThermalState.rawValue,
+                    icon: "thermometer.medium"
+                )
+                metricCard(
+                    "Steps",
+                    "\(steps.count)",
+                    icon: "list.number"
+                )
+                if let imgMs = metrics.imageAnalysisMs {
+                    metricCard(
+                        "Image Analysis",
+                        formatDuration(imgMs),
+                        icon: "photo"
+                    )
+                } else {
+                    metricCard(
+                        "Pipeline",
+                        "Agentic",
+                        icon: "arrow.triangle.branch"
+                    )
+                }
+            }
+
+            // Per-step breakdown
+            if !metrics.stepDurations.isEmpty {
+                DisclosureGroup("Step Breakdown") {
+                    VStack(spacing: 4) {
+                        ForEach(steps) { step in
+                            HStack {
+                                Text("Step \(step.step): \(step.title)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(formatDuration(step.durationMs))
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .font(.caption.weight(.medium))
+            }
+        }
+        .padding()
+        .background(Color.blue.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func metricCard(_ title: String, _ value: String, icon: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(.blue)
+            Text(value)
+                .font(.system(size: 13, weight: .semibold).monospaced())
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func formatDuration(_ ms: Double) -> String {
+        if ms >= 60_000 {
+            return String(format: "%.1fm", ms / 60_000)
+        } else if ms >= 1000 {
+            return String(format: "%.1fs", ms / 1000)
+        } else {
+            return String(format: "%.0fms", ms)
+        }
+    }
+
     private func triageBadge(_ level: MedicalWorkflowResult.TriageLevel) -> some View {
         Text(level.rawValue)
             .font(.caption.weight(.semibold))
@@ -626,6 +813,86 @@ private struct MedicalCaseDetailView: View {
         case .semiUrgent: return .yellow.opacity(0.2)
         case .nonUrgent: return .blue.opacity(0.2)
         case .selfCare: return .green.opacity(0.2)
+        }
+    }
+
+    private func exportMedicalReport(_ result: MedicalWorkflowResult) {
+        let intake = medicalCase.intake
+        var report = """
+        MEDICAL ANALYSIS REPORT
+        Generated: \(result.generatedAt.formatted())
+        Model: MedGemma 4B (On-Device)
+        ═══════════════════════════════════════
+
+        PATIENT INFORMATION
+        ───────────────────
+        Patient ID: \(intake.patientId.isEmpty ? "Anonymous" : intake.patientId)
+        Chief Complaint: \(intake.chiefComplaint)
+        Onset: \(intake.onsetTime)
+        Severity: \(intake.severity.rawValue)
+        """
+
+        if !intake.symptoms.isEmpty {
+            report += "\nSymptoms: \(intake.symptoms.joined(separator: ", "))"
+        }
+        if !intake.medicalHistory.isEmpty {
+            report += "\nMedical History: \(intake.medicalHistory.joined(separator: ", "))"
+        }
+        if !intake.currentMedications.isEmpty {
+            report += "\nMedications: \(intake.currentMedications.joined(separator: ", "))"
+        }
+        if !intake.allergies.isEmpty {
+            report += "\nAllergies: \(intake.allergies.joined(separator: ", "))"
+        }
+
+        report += """
+
+        \nTRIAGE ASSESSMENT
+        ─────────────────
+        \(result.triageLevel.rawValue)
+
+        DIFFERENTIAL DIAGNOSIS
+        ──────────────────────
+        """
+
+        for (i, dx) in result.differentialDiagnoses.enumerated() {
+            report += "\n\(i + 1). \(dx.condition) (\(String(format: "%.0f", dx.probability * 100))%)"
+            if !dx.rationale.isEmpty {
+                report += "\n   \(dx.rationale)"
+            }
+        }
+
+        report += "\n\nRECOMMENDED ACTIONS\n───────────────────"
+        for action in result.recommendedActions {
+            report += "\n[\(action.priority.rawValue)] \(action.action)"
+        }
+
+        if let metrics = result.performanceMetrics {
+            report += """
+
+            \nEDGE AI PERFORMANCE
+            ────────────────────
+            Total Workflow: \(String(format: "%.0f", metrics.totalWorkflowMs))ms
+            Average Step: \(String(format: "%.0f", metrics.averageStepMs))ms
+            Model: \(metrics.modelName) (\(metrics.modelParameterCount) parameters)
+            Thermal State: \(metrics.deviceThermalState.rawValue)
+            Processing: 100% On-Device
+            """
+        }
+
+        report += "\n\n\(result.disclaimer)"
+
+        // Show save panel
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "MedicalReport-\(medicalCase.id.uuidString.prefix(8)).txt"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try report.write(to: url, atomically: true, encoding: .utf8)
+            logger.info("Exported medical report to \(url.lastPathComponent)")
+        } catch {
+            logger.error("Failed to export medical report: \(error.localizedDescription)")
         }
     }
 
@@ -660,6 +927,7 @@ private struct NewCaseSheet: View {
     @State private var temperature = ""
     @State private var respiratoryRate = ""
     @State private var oxygenSaturation = ""
+    @State private var attachedImagePaths: [String] = []
 
     var body: some View {
         NavigationStack {
@@ -700,6 +968,55 @@ private struct NewCaseSheet: View {
                         .lineLimit(2...4)
                     TextField("Allergies (comma-separated)", text: $allergiesText, axis: .vertical)
                         .lineLimit(2...4)
+                }
+
+                Section("Medical Images") {
+                    Button {
+                        pickImages()
+                    } label: {
+                        Label("Attach Images", systemImage: "photo.badge.plus")
+                    }
+                    .accessibilityLabel("Attach medical images such as X-rays or lab results")
+
+                    if !attachedImagePaths.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(attachedImagePaths, id: \.self) { path in
+                                    ZStack(alignment: .topTrailing) {
+                                        if let img = NSImage(contentsOfFile: path) {
+                                            Image(nsImage: img)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 80, height: 80)
+                                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(Color.gray.opacity(0.2))
+                                                .frame(width: 80, height: 80)
+                                                .overlay {
+                                                    Image(systemName: "photo")
+                                                        .foregroundStyle(.tertiary)
+                                                }
+                                        }
+
+                                        Button {
+                                            attachedImagePaths.removeAll { $0 == path }
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 16))
+                                                .foregroundStyle(.white, .red)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .offset(x: 4, y: -4)
+                                        .accessibilityLabel("Remove attached image")
+                                    }
+                                }
+                            }
+                        }
+                        Text("\(attachedImagePaths.count) image(s) attached — will be analyzed by on-device Vision pipeline")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .formStyle(.grouped)
@@ -743,11 +1060,25 @@ private struct NewCaseSheet: View {
             vitalSigns: vitals,
             medicalHistory: history,
             currentMedications: meds,
-            allergies: allergies
+            allergies: allergies,
+            attachedImagePaths: attachedImagePaths
         )
 
         onCreate(intake)
         dismiss()
+    }
+
+    private func pickImages() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.image, .png, .jpeg, .heic, .tiff, .pdf]
+        panel.message = "Select medical images (X-rays, lab results, skin photos, etc.)"
+
+        guard panel.runModal() == .OK else { return }
+
+        let newPaths = panel.urls.map(\.path)
+        attachedImagePaths.append(contentsOf: newPaths)
     }
 }
 

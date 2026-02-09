@@ -9,6 +9,7 @@
 //  MedGemma Impact Challenge (Kaggle 2026) — Agentic Medical Workflow.
 //
 
+import AppKit
 import Foundation
 import os
 
@@ -38,7 +39,23 @@ struct MedicalWorkflowEngine {
         }
 
         var reasoningSteps: [ReasoningStep] = []
-        let patientContext = formatPatientContext(intake)
+        var stepDurations: [String: Double] = [:]
+        var imageAnalysisMs: Double?
+        let workflowStart = ContinuousClock.now
+        var patientContext = formatPatientContext(intake)
+
+        // Pre-step: Analyze attached medical images (on-device Vision pipeline)
+        if !intake.attachedImagePaths.isEmpty {
+            let imageStart = ContinuousClock.now
+            let imageContext = await analyzeAttachedImages(intake.attachedImagePaths)
+            let imgElapsed = imageStart.duration(to: .now)
+            imageAnalysisMs = Double(imgElapsed.components.seconds) * 1000 + Double(imgElapsed.components.attoseconds) / 1_000_000_000_000_000
+
+            if !imageContext.isEmpty {
+                patientContext += "\n\nMedical Image Analysis:\n\(imageContext)"
+                logger.info("Image analysis completed in \(String(format: "%.0f", imageAnalysisMs ?? 0))ms for \(intake.attachedImagePaths.count) images")
+            }
+        }
 
         // Step 1: Symptom Analysis
         let symptomAnalysis = try await executeStep(
@@ -145,17 +162,34 @@ struct MedicalWorkflowEngine {
 
         let actions = parseRecommendedActions(from: recommendations.content, triageLevel: triageLevel)
 
+        // Capture step durations from timing data
+        for step in reasoningSteps {
+            stepDurations[step.title] = step.durationMs
+        }
+
+        let elapsed = workflowStart.duration(to: .now)
+        let totalMs = Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000
+        let metrics = PerformanceMetrics(
+            totalWorkflowMs: totalMs,
+            stepDurations: stepDurations,
+            modelName: "alibayram/medgemma:4b",
+            modelParameterCount: "4B",
+            deviceThermalState: .init(from: ProcessInfo.processInfo),
+            imageAnalysisMs: imageAnalysisMs
+        )
+
         let result = MedicalWorkflowResult(
             intakeId: intake.id,
             triageLevel: triageLevel,
             differentialDiagnoses: diagnoses,
             recommendedActions: actions,
             reasoning: reasoningSteps,
+            performanceMetrics: metrics,
             disclaimer: standardDisclaimer,
             generatedAt: Date()
         )
 
-        logger.info("Medical workflow completed: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")
+        logger.info("Medical workflow completed in \(String(format: "%.0f", totalMs))ms: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")
         return result
     }
 
@@ -170,15 +204,21 @@ struct MedicalWorkflowEngine {
     ) async throws -> ReasoningStep {
         logger.debug("Executing step \(stepNumber): \(title)")
 
+        let stepStart = ContinuousClock.now
         let response = try await service.generateWorkflowStep(
             stepPrompt: prompt,
             patientContext: patientContext
         )
+        let stepElapsed = stepStart.duration(to: .now)
+        let stepMs = Double(stepElapsed.components.seconds) * 1000 + Double(stepElapsed.components.attoseconds) / 1_000_000_000_000_000
+
+        logger.info("Step \(stepNumber) (\(title)) completed in \(String(format: "%.0f", stepMs))ms")
 
         return ReasoningStep(
             step: stepNumber,
             title: title,
             content: response,
+            durationMs: stepMs,
             timestamp: Date()
         )
     }
@@ -219,6 +259,36 @@ struct MedicalWorkflowEngine {
         }
 
         return context
+    }
+
+    // MARK: - Image Analysis
+
+    private static func analyzeAttachedImages(_ imagePaths: [String]) async -> String {
+        var contextParts: [String] = []
+
+        for path in imagePaths {
+            guard let nsImage = NSImage(contentsOfFile: path) else {
+                logger.warning("Could not load image at path: \(path)")
+                continue
+            }
+
+            do {
+                let result = try await ImageAnalysisService().analyze(nsImage)
+                let aiContext = result.generateAIContext()
+
+                if !aiContext.isEmpty {
+                    let filename = (path as NSString).lastPathComponent
+                    contextParts.append("[\(filename)]:\n\(aiContext)")
+                }
+
+                let layerInfo = result.layerTimings.map { "\($0.key): \(String(format: "%.0f", $0.value * 1000))ms" }.joined(separator: ", ")
+                logger.info("Analyzed \((path as NSString).lastPathComponent): \(result.layersExecuted.count) layers (\(layerInfo))")
+            } catch {
+                logger.error("Image analysis failed for \(path): \(error.localizedDescription)")
+            }
+        }
+
+        return contextParts.joined(separator: "\n\n")
     }
 
     // MARK: - Output Parsing
