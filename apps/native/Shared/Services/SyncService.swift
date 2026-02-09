@@ -138,7 +138,11 @@ final class SyncService {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         let magnetarDir = appSupport.appendingPathComponent("MagnetarStudio")
-        try? FileManager.default.createDirectory(at: magnetarDir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: magnetarDir, withIntermediateDirectories: true)
+        } catch {
+            logger.warning("Failed to create offline queue directory: \(error.localizedDescription)")
+        }
         self.offlineQueueFile = magnetarDir.appendingPathComponent("sync_queue.json")
 
         loadOfflineQueue()

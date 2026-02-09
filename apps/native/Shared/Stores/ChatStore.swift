@@ -1178,8 +1178,13 @@ final class ChatStore {
             if jsonString == "[START]" { continue }
 
             // Parse JSON chunk
-            guard let jsonData = jsonString.data(using: .utf8),
-                  let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+            guard let jsonData = jsonString.data(using: .utf8) else { continue }
+            let dict: [String: Any]
+            do {
+                guard let parsed = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else { continue }
+                dict = parsed
+            } catch {
+                logger.debug("Failed to parse streaming JSON chunk: \(error.localizedDescription)")
                 continue
             }
 

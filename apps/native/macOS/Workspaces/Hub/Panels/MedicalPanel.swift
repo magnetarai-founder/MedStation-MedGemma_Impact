@@ -446,6 +446,7 @@ private struct MedicalCaseDetailView: View {
     @State private var currentStep: ReasoningStep?
     @State private var workflowError: String?
     @State private var showDisclaimerConfirm = false
+    @State private var exportError: String?
 
     // Follow-up Q&A chat (persisted via MedicalCase.followUpMessages)
     @State private var chatMessages: [FollowUpMessage] = []
@@ -490,6 +491,11 @@ private struct MedicalCaseDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This AI analysis is for educational and informational purposes only. It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider.")
+        }
+        .alert("Export Error", isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })) {
+            Button("OK") { exportError = nil }
+        } message: {
+            Text(exportError ?? "Unknown error")
         }
     }
 
@@ -673,7 +679,9 @@ private struct MedicalCaseDetailView: View {
 
                         HStack(spacing: 8) {
                             Button {
-                                NSWorkspace.shared.open(URL(string: "https://ollama.com/download")!)
+                                if let url = URL(string: "https://ollama.com/download") {
+                                    NSWorkspace.shared.open(url)
+                                }
                             } label: {
                                 Text("Download Ollama")
                                     .font(.caption.weight(.medium))
@@ -1464,7 +1472,9 @@ private struct MedicalCaseDetailView: View {
     private func alertActionButton(_ label: String, color: Color, isCritical: Bool) -> some View {
         Button {
             if label.lowercased().contains("911") {
-                NSWorkspace.shared.open(URL(string: "tel:911")!)
+                if let url = URL(string: "tel:911") {
+                    NSWorkspace.shared.open(url)
+                }
             }
         } label: {
             HStack(spacing: 4) {
@@ -1696,8 +1706,12 @@ private struct MedicalCaseDetailView: View {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
 
-        guard let data = try? encoder.encode(export) else {
-            logger.error("Failed to encode clinical export JSON")
+        let data: Data
+        do {
+            data = try encoder.encode(export)
+        } catch {
+            logger.error("Failed to encode clinical export JSON: \(error.localizedDescription)")
+            exportError = "Failed to encode clinical data: \(error.localizedDescription)"
             return
         }
 
@@ -1813,8 +1827,12 @@ private struct MedicalCaseDetailView: View {
             "entry": entries
         ]
 
-        guard let data = try? JSONSerialization.data(withJSONObject: bundle, options: [.prettyPrinted, .sortedKeys]) else {
-            logger.error("Failed to serialize FHIR bundle")
+        let data: Data
+        do {
+            data = try JSONSerialization.data(withJSONObject: bundle, options: [.prettyPrinted, .sortedKeys])
+        } catch {
+            logger.error("Failed to serialize FHIR bundle: \(error.localizedDescription)")
+            exportError = "Failed to serialize FHIR bundle: \(error.localizedDescription)"
             return
         }
 
@@ -2457,8 +2475,11 @@ private struct BenchmarkSheet: View {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
 
-        guard let data = try? encoder.encode(report) else {
-            logger.error("Failed to encode benchmark report")
+        let data: Data
+        do {
+            data = try encoder.encode(report)
+        } catch {
+            logger.error("Failed to encode benchmark report: \(error.localizedDescription)")
             return
         }
 

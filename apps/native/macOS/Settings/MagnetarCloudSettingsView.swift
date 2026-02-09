@@ -410,7 +410,11 @@ final class CloudAuthManager {
             authStatus = .idle
 
             // Clear invalid token
-            try? keychain.deleteToken(forKey: cloudTokenKey)
+            do {
+                try keychain.deleteToken(forKey: cloudTokenKey)
+            } catch {
+                logger.warning("Failed to clear invalid cloud token: \(error.localizedDescription)")
+            }
         }
     }
 

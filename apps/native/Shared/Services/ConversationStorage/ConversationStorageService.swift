@@ -122,7 +122,11 @@ final class ConversationStorageService {
     /// List all conversation IDs
     func listConversations() -> [UUID] {
         let conversationsDir = rootDirectory.appendingPathComponent("conversations")
-        guard let contents = try? fileManager.contentsOfDirectory(at: conversationsDir, includingPropertiesForKeys: nil) else {
+        let contents: [URL]
+        do {
+            contents = try fileManager.contentsOfDirectory(at: conversationsDir, includingPropertiesForKeys: nil)
+        } catch {
+            logger.debug("[ConversationStorage] No conversations directory yet: \(error.localizedDescription)")
             return []
         }
 
@@ -148,7 +152,11 @@ final class ConversationStorageService {
     /// Load all themes for a conversation
     func loadThemes(_ conversationId: UUID) -> [ConversationTheme] {
         let themesDir = conversationDirectory(conversationId).appendingPathComponent("hierarchy/themes")
-        guard let contents = try? fileManager.contentsOfDirectory(at: themesDir, includingPropertiesForKeys: nil) else {
+        let contents: [URL]
+        do {
+            contents = try fileManager.contentsOfDirectory(at: themesDir, includingPropertiesForKeys: nil)
+        } catch {
+            logger.debug("[ConversationStorage] No themes directory for \(conversationId): \(error.localizedDescription)")
             return []
         }
 
@@ -168,7 +176,11 @@ final class ConversationStorageService {
     func deleteTheme(_ themeId: UUID, conversationId: UUID) {
         let url = conversationDirectory(conversationId)
             .appendingPathComponent("hierarchy/themes/theme_\(themeId.uuidString).json")
-        try? fileManager.removeItem(at: url)
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            logger.warning("[ConversationStorage] Failed to delete theme \(themeId): \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Semantic Node Operations
@@ -185,7 +197,11 @@ final class ConversationStorageService {
     /// Load all semantic nodes for a conversation
     func loadSemanticNodes(_ conversationId: UUID) -> [SemanticNode] {
         let nodesDir = conversationDirectory(conversationId).appendingPathComponent("hierarchy/semantic_nodes")
-        guard let contents = try? fileManager.contentsOfDirectory(at: nodesDir, includingPropertiesForKeys: nil) else {
+        let contents: [URL]
+        do {
+            contents = try fileManager.contentsOfDirectory(at: nodesDir, includingPropertiesForKeys: nil)
+        } catch {
+            logger.debug("[ConversationStorage] No semantic nodes directory for \(conversationId): \(error.localizedDescription)")
             return []
         }
 
@@ -312,7 +328,11 @@ final class ConversationStorageService {
     /// Load all file references for a conversation
     func loadFileReferences(_ conversationId: UUID) -> [FileReference] {
         let filesDir = conversationDirectory(conversationId).appendingPathComponent("files")
-        guard let contents = try? fileManager.contentsOfDirectory(at: filesDir, includingPropertiesForKeys: nil) else {
+        let contents: [URL]
+        do {
+            contents = try fileManager.contentsOfDirectory(at: filesDir, includingPropertiesForKeys: nil)
+        } catch {
+            logger.debug("[ConversationStorage] No files directory for \(conversationId): \(error.localizedDescription)")
             return []
         }
 
