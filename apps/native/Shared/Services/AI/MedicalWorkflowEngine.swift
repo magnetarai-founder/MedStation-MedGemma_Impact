@@ -192,6 +192,13 @@ struct MedicalWorkflowEngine {
         // Post-processing: HAI-DEF safety validation
         result.safetyAlerts = MedicalSafetyGuard.validate(result, intake: intake)
 
+        // HAI-DEF audit logging
+        MedicalAuditLogger.logWorkflowExecution(
+            intake: intake,
+            result: result,
+            imageAnalysisPerformed: !intake.attachedImagePaths.isEmpty
+        )
+
         logger.info("Medical workflow completed in \(String(format: "%.0f", totalMs))ms: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")
         return result
     }

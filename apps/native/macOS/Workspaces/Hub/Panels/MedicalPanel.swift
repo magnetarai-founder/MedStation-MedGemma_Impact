@@ -715,6 +715,42 @@ private struct MedicalCaseDetailView: View {
             }
             .font(.headline)
 
+            // HAI-DEF Audit Trail
+            if let audit = MedicalAuditLogger.loadAuditEntry(for: result.intakeId) {
+                DisclosureGroup("HAI-DEF Audit Trail") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        auditRow("Timestamp", audit.timestamp.formatted())
+                        auditRow("Model", "\(audit.modelId) (\(audit.modelVersion))")
+                        auditRow("On-Device", audit.performanceMetrics.onDeviceInference ? "Yes" : "No")
+                        auditRow("Safety Alerts", "\(audit.safetyAlertsGenerated)")
+                        auditRow("Disclaimer Shown", audit.disclaimerPresented ? "Yes" : "No")
+                        auditRow("Patient Data Hash", audit.patientDataHash)
+                        auditRow("Workflow Steps", "\(audit.workflowSteps.count)")
+
+                        ForEach(Array(audit.workflowSteps.enumerated()), id: \.offset) { _, step in
+                            HStack {
+                                Text("  Step \(step.stepNumber): \(step.title)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(step.outputLengthChars) chars")
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .font(.caption.weight(.medium))
+                .padding()
+                .background(Color.purple.opacity(0.03))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.purple.opacity(0.15), lineWidth: 1)
+                )
+            }
+
             // Disclaimer
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -1013,6 +1049,18 @@ private struct MedicalCaseDetailView: View {
         case .critical: return .red
         case .warning: return .orange
         case .info: return .blue
+        }
+    }
+
+    private func auditRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 120, alignment: .leading)
+            Text(value)
+                .font(.caption2.monospaced())
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

@@ -328,6 +328,7 @@
 		D4961D96F291B5DBA4CCEDC6 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F57669A2A1DFB938D99E88 /* DatabaseService.swift */; };
 		D4A461AFC13164587AEBD166 /* CodeSearchPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9FC3EA4DD3DE6E2997CF640 /* CodeSearchPanel.swift */; };
 		D56036B09BB689AF7CAF0576 /* PDFPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F5ABE212CCA6A1FE2F08B4 /* PDFPanel.swift */; };
+		D59A19BCFFE88FDB1C379B0F /* MedicalAuditLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45024F9B088317A6F49C251 /* MedicalAuditLogger.swift */; };
 		D5CE7E001AD598ACF75AF215 /* CloudSyncStatusPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E898982C2CAB02E4BF02EA3A /* CloudSyncStatusPanel.swift */; };
 		D646869CB44A3987491CE0BB /* MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B2E6752E622A4A112E4C89 /* MarkdownRenderer.swift */; };
 		D6BEE28C7736EA9B572CBE5D /* VaultListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BEECB031F544876171A7FC /* VaultListView.swift */; };
@@ -657,6 +658,7 @@
 		A0BE2F810874A230A8712E92 /* ModelEnrichmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelEnrichmentService.swift; sourceTree = "<group>"; };
 		A1255F929A396F1A33A48EFD /* MetricCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricCard.swift; sourceTree = "<group>"; };
 		A155D99CB4EA4D1B16039286 /* UploadRecordingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadRecordingSheet.swift; sourceTree = "<group>"; };
+		A45024F9B088317A6F49C251 /* MedicalAuditLogger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicalAuditLogger.swift; path = Shared/Services/AI/MedicalAuditLogger.swift; sourceTree = "<group>"; };
 		A602C84A80EBCA075A2804CE /* NetworkFirewallModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkFirewallModifier.swift; sourceTree = "<group>"; };
 		A6361F2C849546414080CE27 /* ChatSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSidebar.swift; sourceTree = "<group>"; };
 		A83EE9ADED11FAFD786571CE /* EmergencyModeService+Backend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmergencyModeService+Backend.swift"; sourceTree = "<group>"; };
@@ -1163,6 +1165,7 @@
 				63B7728748C14E480BBD09A7 /* MedicalAIService.swift */,
 				E24B598702FBEC6A8B12B82F /* MedicalWorkflowEngine.swift */,
 				3DE1841384BFCE269E3B8F0D /* MedicalSafetyGuard.swift */,
+				A45024F9B088317A6F49C251 /* MedicalAuditLogger.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -2336,6 +2339,7 @@
 				56BB7A489F5194421E35D3B7 /* MedicalWorkflowEngine.swift in Sources */,
 				0C608810156789DC761B2211 /* MedicalPanel.swift in Sources */,
 				81D2B44D9672167BD5002A9A /* MedicalSafetyGuard.swift in Sources */,
+				D59A19BCFFE88FDB1C379B0F /* MedicalAuditLogger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
