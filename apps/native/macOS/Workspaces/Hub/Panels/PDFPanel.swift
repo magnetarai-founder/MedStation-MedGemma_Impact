@@ -23,6 +23,7 @@ struct PDFPanel: View {
     @State private var currentPage = 0
     @State private var pdfToDelete: PDFDocumentInfo?
     @State private var saveError: String?
+    @State private var pdfViewRef: PDFView?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -53,7 +54,7 @@ struct PDFPanel: View {
                         }
 
                         // Main PDF view
-                        PDFViewWrapper(document: pdf)
+                        PDFViewWrapper(document: pdf, pdfViewRef: $pdfViewRef)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
 
@@ -104,6 +105,7 @@ struct PDFPanel: View {
 
             // Zoom controls
             Button {
+                pdfViewRef?.scaleFactor *= 0.8
             } label: {
                 Image(systemName: "minus.magnifyingglass")
                     .font(.system(size: 13))
@@ -113,6 +115,7 @@ struct PDFPanel: View {
             .accessibilityLabel("Zoom out")
 
             Button {
+                pdfViewRef?.scaleFactor *= 1.25
             } label: {
                 Image(systemName: "plus.magnifyingglass")
                     .font(.system(size: 13))
@@ -120,16 +123,6 @@ struct PDFPanel: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Zoom in")
-
-            Divider().frame(height: 16)
-
-            // Annotation tools
-            Group {
-                annotationButton(icon: "highlighter", help: "Highlight")
-                annotationButton(icon: "underline", help: "Underline")
-                annotationButton(icon: "note.text", help: "Add Note")
-                annotationButton(icon: "pencil.tip", help: "Freehand")
-            }
 
             Spacer()
 
@@ -142,10 +135,9 @@ struct PDFPanel: View {
 
             // More options
             Menu {
-                Button("Add Bookmark") {}
-                Divider()
-                Button("Export Annotations...") {}
-                Button("Print...") {}
+                Button("Print...") {
+                    pdfViewRef?.print(with: NSPrintInfo.shared, autoRotate: true)
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 13))
@@ -160,18 +152,6 @@ struct PDFPanel: View {
         .padding(.horizontal, 12)
         .frame(height: HubLayout.headerHeight)
         .background(Color.surfaceTertiary.opacity(0.5))
-    }
-
-    private func annotationButton(icon: String, help: String) -> some View {
-        Button {} label: {
-            Image(systemName: icon)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .frame(width: 26, height: 26)
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .accessibilityLabel(help)
     }
 
     // MARK: - Status Bar
@@ -331,6 +311,7 @@ struct PDFPanel: View {
     private func selectPDF(_ doc: PDFDocumentInfo) {
         selectedPDFID = doc.id
         pdfDocument = PDFDocument(url: doc.fileURL)
+        pdfViewRef = nil
         currentPage = 0
     }
 
@@ -382,6 +363,12 @@ struct PDFPanel: View {
 
 struct PDFViewWrapper: NSViewRepresentable {
     let document: PDFDocument
+    @Binding var pdfViewRef: PDFView?
+
+    init(document: PDFDocument, pdfViewRef: Binding<PDFView?> = .constant(nil)) {
+        self.document = document
+        self._pdfViewRef = pdfViewRef
+    }
 
     func makeNSView(context: Context) -> PDFView {
         let view = PDFView()
@@ -389,6 +376,7 @@ struct PDFViewWrapper: NSViewRepresentable {
         view.displayMode = .singlePageContinuous
         view.displayDirection = .vertical
         view.document = document
+        DispatchQueue.main.async { pdfViewRef = view }
         return view
     }
 
