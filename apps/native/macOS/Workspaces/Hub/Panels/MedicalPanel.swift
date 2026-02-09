@@ -502,6 +502,11 @@ private struct MedicalCaseDetailView: View {
                     } label: {
                         Label("Export as Clinical JSON", systemImage: "curlybraces")
                     }
+                    Button {
+                        exportFHIRBundle(result)
+                    } label: {
+                        Label("Export as FHIR R4 Bundle", systemImage: "heart.text.clipboard")
+                    }
                 } label: {
                     Label("Export", systemImage: "arrow.up.doc")
                         .font(.caption)
@@ -834,8 +839,16 @@ private struct MedicalCaseDetailView: View {
                     .font(.headline)
                 Spacer()
                 if isChatStreaming {
-                    ProgressView()
-                        .scaleEffect(0.7)
+                    Button {
+                        aiService.cancel()
+                        isChatStreaming = false
+                    } label: {
+                        Label("Stop", systemImage: "stop.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Stop generating response")
                 }
             }
 
@@ -1651,6 +1664,123 @@ private struct MedicalCaseDetailView: View {
         }
     }
 
+    // MARK: - FHIR R4 Export
+
+    private func exportFHIRBundle(_ result: MedicalWorkflowResult) {
+        let intake = medicalCase.intake
+        let caseId = medicalCase.id.uuidString
+        let patientId = "patient-\(caseId.prefix(8))"
+        let now = ISO8601DateFormatter().string(from: result.generatedAt)
+
+        // Build FHIR R4 Bundle with Patient, Conditions, Observations, RiskAssessment
+        var entries: [[String: Any]] = []
+
+        // Patient resource
+        let patient: [String: Any] = [
+            "resourceType": "Patient",
+            "id": patientId,
+            "identifier": [["value": intake.patientId.isEmpty ? "anonymous" : intake.patientId]],
+            "gender": intake.sex?.rawValue.lowercased() ?? "unknown",
+            "extension": intake.age.map { [["url": "http://hl7.org/fhir/StructureDefinition/patient-age", "valueInteger": $0]] } ?? []
+        ]
+        entries.append(["resource": patient, "request": ["method": "POST", "url": "Patient"]])
+
+        // Condition resources (differential diagnoses)
+        for dx in result.differentialDiagnoses {
+            let condition: [String: Any] = [
+                "resourceType": "Condition",
+                "id": "condition-\(dx.id.uuidString.prefix(8))",
+                "subject": ["reference": "Patient/\(patientId)"],
+                "code": ["text": dx.condition],
+                "note": [["text": dx.rationale]],
+                "extension": [["url": "http://magnetarstudio.com/fhir/probability", "valueDecimal": dx.probability]]
+            ]
+            entries.append(["resource": condition, "request": ["method": "POST", "url": "Condition"]])
+        }
+
+        // Observation resources (vital signs)
+        if let vitals = intake.vitalSigns {
+            func addVital(_ code: String, _ display: String, _ value: Any?, _ unit: String) {
+                guard let v = value else { return }
+                let obs: [String: Any] = [
+                    "resourceType": "Observation",
+                    "status": "final",
+                    "category": [["coding": [["system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"]]]],
+                    "code": ["coding": [["system": "http://loinc.org", "code": code, "display": display]]],
+                    "subject": ["reference": "Patient/\(patientId)"],
+                    "effectiveDateTime": now,
+                    "valueQuantity": ["value": v, "unit": unit]
+                ]
+                entries.append(["resource": obs, "request": ["method": "POST", "url": "Observation"]])
+            }
+            addVital("8867-4", "Heart rate", vitals.heartRate, "bpm")
+            addVital("8310-5", "Body temperature", vitals.temperature, "°F")
+            addVital("9279-1", "Respiratory rate", vitals.respiratoryRate, "/min")
+            addVital("2708-6", "Oxygen saturation", vitals.oxygenSaturation, "%")
+            if let bp = vitals.bloodPressure {
+                let bpObs: [String: Any] = [
+                    "resourceType": "Observation",
+                    "status": "final",
+                    "code": ["coding": [["system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure"]]],
+                    "subject": ["reference": "Patient/\(patientId)"],
+                    "effectiveDateTime": now,
+                    "valueString": bp
+                ]
+                entries.append(["resource": bpObs, "request": ["method": "POST", "url": "Observation"]])
+            }
+        }
+
+        // RiskAssessment resource (triage)
+        let riskLevel: String
+        switch result.triageLevel {
+        case .emergency: riskLevel = "critical"
+        case .urgent: riskLevel = "high"
+        case .semiUrgent: riskLevel = "moderate"
+        case .nonUrgent: riskLevel = "low"
+        case .selfCare: riskLevel = "negligible"
+        }
+
+        let riskAssessment: [String: Any] = [
+            "resourceType": "RiskAssessment",
+            "status": "final",
+            "subject": ["reference": "Patient/\(patientId)"],
+            "occurrenceDateTime": now,
+            "method": ["text": "MedGemma 4B on-device agentic workflow (5-step)"],
+            "prediction": result.differentialDiagnoses.map { dx -> [String: Any] in
+                ["outcome": ["text": dx.condition], "probabilityDecimal": dx.probability]
+            },
+            "mitigation": result.triageLevel.rawValue,
+            "note": [["text": result.disclaimer]],
+            "extension": [["url": "http://magnetarstudio.com/fhir/triage-level", "valueCode": riskLevel]]
+        ]
+        entries.append(["resource": riskAssessment, "request": ["method": "POST", "url": "RiskAssessment"]])
+
+        let bundle: [String: Any] = [
+            "resourceType": "Bundle",
+            "type": "transaction",
+            "timestamp": now,
+            "meta": ["profile": ["http://magnetarstudio.com/fhir/medgemma-triage-bundle"]],
+            "entry": entries
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: bundle, options: [.prettyPrinted, .sortedKeys]) else {
+            logger.error("Failed to serialize FHIR bundle")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "FHIR-Bundle-\(caseId.prefix(8)).json"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url)
+            logger.info("Exported FHIR R4 bundle to \(url.lastPathComponent)")
+        } catch {
+            logger.error("Failed to export FHIR bundle: \(error.localizedDescription)")
+        }
+    }
+
     private func priorityColor(_ priority: RecommendedAction.ActionPriority) -> Color {
         switch priority {
         case .immediate: return .red
@@ -1832,10 +1962,27 @@ private struct NewCaseSheet: View {
             if spo2 < 0 { warnings.append("SpO2 cannot be negative") }
         }
         if let temp = Double(temperature) {
-            if temp < 80 || temp > 115 { warnings.append("Temperature \(String(format: "%.1f", temp))°F is outside expected range") }
+            if temp <= 50 {
+                // Likely Celsius — auto-convert hint
+                warnings.append("Temperature \(String(format: "%.1f", temp)) looks like Celsius. Will auto-convert to \(String(format: "%.1f°F", temp * 9.0 / 5.0 + 32))")
+            } else if temp < 80 || temp > 115 {
+                warnings.append("Temperature \(String(format: "%.1f", temp))°F is outside expected range")
+            }
         }
         if let rr = Int(respiratoryRate) {
             if rr < 4 || rr > 60 { warnings.append("Respiratory rate \(rr) is outside expected range (4-60)") }
+        }
+        // Blood pressure format validation
+        if !bloodPressure.isEmpty {
+            let bpParts = bloodPressure.components(separatedBy: "/")
+            if bpParts.count != 2 || Int(bpParts[0].trimmingCharacters(in: .whitespaces)) == nil || Int(bpParts[1].trimmingCharacters(in: .whitespaces)) == nil {
+                warnings.append("Blood pressure should be in systolic/diastolic format (e.g., 120/80)")
+            } else if let sys = Int(bpParts[0].trimmingCharacters(in: .whitespaces)),
+                      let dia = Int(bpParts[1].trimmingCharacters(in: .whitespaces)) {
+                if sys < 60 || sys > 260 { warnings.append("Systolic BP \(sys) is outside expected range (60-260)") }
+                if dia < 30 || dia > 160 { warnings.append("Diastolic BP \(dia) is outside expected range (30-160)") }
+                if dia >= sys { warnings.append("Diastolic BP should be lower than systolic") }
+            }
         }
         return warnings
     }
@@ -1848,10 +1995,16 @@ private struct NewCaseSheet: View {
 
         var vitals: VitalSigns?
         if includeVitals {
+            // Auto-convert Celsius to Fahrenheit if value ≤50
+            var tempF: Double?
+            if let raw = Double(temperature) {
+                tempF = raw <= 50 ? (raw * 9.0 / 5.0 + 32) : raw
+            }
+
             vitals = VitalSigns(
                 heartRate: Int(heartRate),
                 bloodPressure: bloodPressure.isEmpty ? nil : bloodPressure,
-                temperature: Double(temperature),
+                temperature: tempF,
                 respiratoryRate: Int(respiratoryRate),
                 oxygenSaturation: Int(oxygenSaturation)
             )

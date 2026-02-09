@@ -57,6 +57,9 @@ struct MedicalSafetyGuard {
         // 8. Input robustness validation
         alerts.append(contentsOf: checkInputRobustness(intake))
 
+        // 9. Clinical guideline references
+        alerts.append(contentsOf: attachGuidelineReferences(result))
+
         if !alerts.isEmpty {
             logger.info("Safety guard generated \(alerts.count) alerts for case \(result.intakeId)")
         }
@@ -565,6 +568,69 @@ struct MedicalSafetyGuard {
 
         return alerts
     }
+
+    // MARK: - Clinical Guideline References
+
+    private static func attachGuidelineReferences(_ result: MedicalWorkflowResult) -> [SafetyAlert] {
+        var alerts: [SafetyAlert] = []
+        let conditions = result.differentialDiagnoses.map { $0.condition.lowercased() }
+        let reasoning = result.reasoning.map(\.content).joined(separator: " ").lowercased()
+
+        let guidelines: [(keywords: [String], guideline: String, citation: String)] = [
+            // Cardiovascular
+            (["chest pain", "acute coronary", "myocardial infarction", "angina", "stemi", "nstemi"],
+             "AHA/ACC 2021 Chest Pain Guidelines",
+             "Gulati M, et al. 2021 AHA/ACC Guideline for the Evaluation and Diagnosis of Chest Pain. Circulation. 2021;144:e368-e454."),
+            (["heart failure", "cardiomyopathy", "ejection fraction"],
+             "AHA/ACC/HFSA 2022 Heart Failure Guidelines",
+             "Heidenreich PA, et al. 2022 AHA/ACC/HFSA Guideline for Management of Heart Failure. Circulation. 2022;145:e895-e1032."),
+            (["atrial fibrillation", "afib", "a-fib"],
+             "AHA/ACC/HRS 2023 AF Guidelines",
+             "Joglar JA, et al. 2023 ACC/AHA/ACCP/HRS Guideline for Diagnosis and Management of Atrial Fibrillation. Circulation. 2024;149:e1-e156."),
+            // Respiratory
+            (["asthma", "wheezing", "bronchospasm"],
+             "GINA 2023 Asthma Management",
+             "Global Initiative for Asthma (GINA). Global Strategy for Asthma Management and Prevention, 2023 Update."),
+            (["pneumonia", "community-acquired"],
+             "ATS/IDSA 2019 CAP Guidelines",
+             "Metlay JP, et al. ATS/IDSA Guidelines for Community-Acquired Pneumonia. Am J Respir Crit Care Med. 2019;200(7):e45-e67."),
+            // Neurological
+            (["stroke", "tia", "cerebrovascular", "ischemic attack"],
+             "AHA/ASA 2019 Acute Ischemic Stroke Guidelines",
+             "Powers WJ, et al. Guidelines for Early Management of Acute Ischemic Stroke. Stroke. 2019;50:e344-e418."),
+            // Endocrine
+            (["diabetes", "hyperglycemia", "type 2 diabetes", "diabetic"],
+             "ADA 2024 Standards of Care in Diabetes",
+             "American Diabetes Association. Standards of Care in Diabetes—2024. Diabetes Care. 2024;47(Suppl. 1)."),
+            // Infectious
+            (["sepsis", "septic shock", "systemic infection"],
+             "Surviving Sepsis Campaign 2021",
+             "Evans L, et al. Surviving Sepsis Campaign: International Guidelines. Intensive Care Med. 2021;47:1181-1247."),
+            // Pain
+            (["headache", "migraine", "tension headache"],
+             "AHS 2021 Migraine Treatment Guidelines",
+             "American Headache Society. Consensus Statement on Acute Treatment of Migraine in Adults. Headache. 2021;61:1021-1039."),
+        ]
+
+        var cited = Set<String>()
+        for guideline in guidelines {
+            let matched = guideline.keywords.contains { keyword in
+                conditions.contains(where: { $0.contains(keyword) }) || reasoning.contains(keyword)
+            }
+            if matched && !cited.contains(guideline.guideline) {
+                cited.insert(guideline.guideline)
+                alerts.append(SafetyAlert(
+                    severity: .info,
+                    category: .guidelineReference,
+                    title: guideline.guideline,
+                    message: guideline.citation,
+                    actionLabel: nil
+                ))
+            }
+        }
+
+        return alerts
+    }
 }
 
 // MARK: - Safety Alert Model
@@ -604,6 +670,7 @@ struct SafetyAlert: Identifiable, Codable, Equatable, Sendable {
         case demographicBias = "Demographic"
         case pregnancyRisk = "Pregnancy"
         case inputRobustness = "Input Quality"
+        case guidelineReference = "Guideline"
     }
 
     init(

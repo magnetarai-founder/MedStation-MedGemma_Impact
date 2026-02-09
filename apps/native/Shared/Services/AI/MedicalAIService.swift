@@ -38,6 +38,7 @@ final class MedicalAIService {
 
     private let medgemmaModelId = "alibayram/medgemma:4b"
     private var activeTask: Task<Void, Never>?
+    private var activeStreamingCancel: (() -> Void)?
 
     private init() {}
 
@@ -228,7 +229,8 @@ final class MedicalAIService {
                 }
             )
 
-            // URLSessionDataTask needs resume() to start
+            // Store cancel handle for cancellation support
+            activeStreamingCancel = streamingTask.cancel
             streamingTask.task.resume()
 
         } catch {
@@ -241,6 +243,8 @@ final class MedicalAIService {
     func cancel() {
         activeTask?.cancel()
         activeTask = nil
+        activeStreamingCancel?()
+        activeStreamingCancel = nil
         isGenerating = false
         currentResponse = ""
         error = nil
