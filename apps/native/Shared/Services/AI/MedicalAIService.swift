@@ -79,7 +79,15 @@ final class MedicalAIService {
             for try await progress in OllamaService.shared.pullModel(modelName: medgemmaModelId) {
                 switch progress.status {
                 case "progress":
-                    modelStatus = .downloading(progress: 0.5)
+                    // Parse percentage from message if available (e.g. "pulling layer 45%")
+                    let pct: Double
+                    if let range = progress.message.range(of: #"\d+"#, options: .regularExpression),
+                       let parsed = Double(progress.message[range]), parsed > 0, parsed <= 100 {
+                        pct = parsed / 100.0
+                    } else {
+                        pct = 0.5
+                    }
+                    modelStatus = .downloading(progress: pct)
                     logger.debug("MedGemma download: \(progress.message)")
                 case "completed":
                     modelStatus = .ready

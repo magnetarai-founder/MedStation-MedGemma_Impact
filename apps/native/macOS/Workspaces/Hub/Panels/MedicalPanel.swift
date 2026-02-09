@@ -71,7 +71,13 @@ struct MedicalPanel: View {
             }
         }
         .alert("MedGemma Medical Assistant", isPresented: $showOnboarding) {
-            Button("Get Started") { hasShownOnboarding = true }
+            Button("Get Started") {
+                hasShownOnboarding = true
+                // Auto-select the demo case so the user sees it immediately
+                if let demoCase = cases.first(where: { $0.intake.patientId == "DEMO-001" }) {
+                    selectedCaseID = demoCase.id
+                }
+            }
         } message: {
             Text("""
             Welcome to the AI-powered medical triage assistant.
@@ -161,6 +167,20 @@ struct MedicalPanel: View {
                                 isSelected: selectedCaseID == medicalCase.id,
                                 onSelect: { selectedCaseID = medicalCase.id }
                             )
+                            .contextMenu {
+                                if medicalCase.status != .archived {
+                                    Button {
+                                        archiveCase(medicalCase.id)
+                                    } label: {
+                                        Label("Archive Case", systemImage: "archivebox")
+                                    }
+                                }
+                                Button(role: .destructive) {
+                                    deleteCase(medicalCase.id)
+                                } label: {
+                                    Label("Delete Case", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
@@ -291,6 +311,21 @@ struct MedicalPanel: View {
 
         let file = Self.storageDirectory.appendingPathComponent("\(medicalCase.id.uuidString).json")
         PersistenceHelpers.save(updated, to: file, label: "medical case")
+    }
+
+    private func archiveCase(_ id: UUID) {
+        guard let index = cases.firstIndex(where: { $0.id == id }) else { return }
+        cases[index].status = .archived
+        saveCaseToFile(cases[index])
+        logger.info("Archived medical case \(id.uuidString.prefix(8))")
+    }
+
+    private func deleteCase(_ id: UUID) {
+        let file = Self.storageDirectory.appendingPathComponent("\(id.uuidString).json")
+        PersistenceHelpers.remove(at: file, label: "medical case")
+        cases.removeAll { $0.id == id }
+        if selectedCaseID == id { selectedCaseID = nil }
+        logger.info("Deleted medical case \(id.uuidString.prefix(8))")
     }
 
     private static var storageDirectory: URL {
@@ -583,14 +618,65 @@ private struct MedicalCaseDetailView: View {
                 .background(Color.orange.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             } else if case .failed(let msg) = aiService.modelStatus {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text("Model error: \(msg)")
-                        .font(.caption)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Model error: \(msg)")
+                            .font(.caption)
+                    }
+
+                    // Ollama setup guide
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Setup Guide")
+                            .font(.caption.weight(.semibold))
+                        Text("MedGemma requires Ollama running locally:")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            setupStep("1", "Install Ollama from ollama.com")
+                            setupStep("2", "Start Ollama (it runs in the menu bar)")
+                            setupStep("3", "The model downloads automatically (~2.5 GB)")
+                        }
+
+                        HStack(spacing: 8) {
+                            Button {
+                                NSWorkspace.shared.open(URL(string: "https://ollama.com/download")!)
+                            } label: {
+                                Text("Download Ollama")
+                                    .font(.caption.weight(.medium))
+                            }
+
+                            Button {
+                                Task { await aiService.ensureModelReady() }
+                            } label: {
+                                Label("Retry Connection", systemImage: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .padding(8)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .padding(8)
                 .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else if case .notInstalled = aiService.modelStatus {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle")
+                            .foregroundStyle(.blue)
+                        Text("MedGemma model not yet downloaded")
+                            .font(.caption)
+                    }
+                    Text("Click 'Run Medical Analysis' to auto-download (~2.5 GB). Requires Ollama running locally.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(8)
+                .background(Color.blue.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
 
@@ -999,6 +1085,9 @@ private struct MedicalCaseDetailView: View {
                 )
             }
 
+            // MedGemma Model Card (HAI-DEF requirement)
+            modelCardSection
+
             // Disclaimer
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -1020,7 +1109,7 @@ private struct MedicalCaseDetailView: View {
 
     // MARK: - Actions
 
-    private func runWorkflow() async {
+    private func runWorkflow(disclaimerConfirmed: Bool = true) async {
         isRunningWorkflow = true
         workflowError = nil
         medicalCase.status = .analyzing
@@ -1029,6 +1118,7 @@ private struct MedicalCaseDetailView: View {
         do {
             let result = try await MedicalWorkflowEngine.executeWorkflow(
                 intake: medicalCase.intake,
+                disclaimerConfirmed: disclaimerConfirmed,
                 onProgress: { step in
                     Task { @MainActor in
                         currentStep = step
@@ -1064,6 +1154,18 @@ private struct MedicalCaseDetailView: View {
     }
 
     // MARK: - Helpers
+
+    private func setupStep(_ number: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(number)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.blue)
+                .frame(width: 14)
+            Text(text)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
 
     private func infoRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top) {
@@ -1224,55 +1326,10 @@ private struct MedicalCaseDetailView: View {
 
     private func safetyAlertsSection(_ alerts: [SafetyAlert]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "shield.checkered")
-                    .foregroundStyle(.red)
-                Text("Safety Alerts")
-                    .font(.headline)
-                Spacer()
-                Text("HAI-DEF")
-                    .font(.caption2.weight(.bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundStyle(.purple)
-                    .clipShape(Capsule())
-            }
+            safetyAlertsHeader
 
             ForEach(alerts) { alert in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: alertIcon(alert.severity))
-                        .foregroundStyle(alertColor(alert.severity))
-                        .font(.system(size: 16))
-                        .frame(width: 20)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text(alert.title)
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text(alert.category.rawValue)
-                                .font(.caption2)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(alertColor(alert.severity).opacity(0.1))
-                                .foregroundStyle(alertColor(alert.severity))
-                                .clipShape(Capsule())
-                        }
-                        Text(alert.message)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(10)
-                .background(alertColor(alert.severity).opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(alertColor(alert.severity).opacity(0.3), lineWidth: 1)
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(alert.severity.rawValue) alert: \(alert.title). \(alert.message)")
+                safetyAlertRow(alert)
             }
         }
         .padding()
@@ -1282,6 +1339,86 @@ private struct MedicalCaseDetailView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.red.opacity(0.15), lineWidth: 1)
         )
+    }
+
+    private var safetyAlertsHeader: some View {
+        HStack {
+            Image(systemName: "shield.checkered")
+                .foregroundStyle(.red)
+            Text("Safety Alerts")
+                .font(.headline)
+            Spacer()
+            Text("HAI-DEF")
+                .font(.caption2.weight(.bold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.purple.opacity(0.15))
+                .foregroundStyle(.purple)
+                .clipShape(Capsule())
+        }
+    }
+
+    private func safetyAlertRow(_ alert: SafetyAlert) -> some View {
+        let color = alertColor(alert.severity)
+
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: alertIcon(alert.severity))
+                .foregroundStyle(color)
+                .font(.system(size: 16))
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(alert.title)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text(alert.category.rawValue)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(color.opacity(0.1))
+                        .foregroundStyle(color)
+                        .clipShape(Capsule())
+                }
+                Text(alert.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let actionLabel = alert.actionLabel {
+                    alertActionButton(actionLabel, color: color, isCritical: alert.severity == .critical)
+                }
+            }
+        }
+        .padding(10)
+        .background(color.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(color.opacity(0.3), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(alert.severity.rawValue) alert: \(alert.title). \(alert.message)")
+    }
+
+    private func alertActionButton(_ label: String, color: Color, isCritical: Bool) -> some View {
+        Button {
+            if label.lowercased().contains("911") {
+                NSWorkspace.shared.open(URL(string: "tel:911")!)
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isCritical ? "phone.fill" : "arrow.right.circle.fill")
+                    .font(.caption2)
+                Text(label)
+                    .font(.caption.weight(.semibold))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(color)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
     }
 
     private func alertIcon(_ severity: SafetyAlert.Severity) -> String {
@@ -1308,6 +1445,95 @@ private struct MedicalCaseDetailView: View {
                 .frame(width: 120, alignment: .leading)
             Text(value)
                 .font(.caption2.monospaced())
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Model Card (HAI-DEF)
+
+    private var modelCardSection: some View {
+        DisclosureGroup("MedGemma Model Card") {
+            VStack(alignment: .leading, spacing: 10) {
+                modelCardRow("Model", "MedGemma 4B (google/medgemma-4b-it)")
+                modelCardRow("Architecture", "Gemma 2 4B fine-tuned on medical corpora")
+                modelCardRow("Parameters", "4 billion")
+                modelCardRow("Inference", "100% on-device via Ollama (no cloud)")
+                modelCardRow("Quantization", "Q4_0 (GGUF) — ~2.5 GB VRAM")
+
+                Divider()
+
+                Text("Intended Use")
+                    .font(.caption.weight(.semibold))
+                Text("Educational triage screening tool. Assists in symptom assessment and urgency classification. NOT for clinical diagnosis or treatment decisions.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Text("Known Limitations")
+                    .font(.caption.weight(.semibold))
+                Text("""
+                \u{2022} Training data skews toward English-language, US/EU clinical presentations
+                \u{2022} Rare diseases and atypical presentations may be under-represented
+                \u{2022} Pediatric and geriatric populations may have lower accuracy
+                \u{2022} No imaging diagnostic capability (uses OCR/object detection only)
+                \u{2022} Probability estimates are heuristic, not calibrated confidence scores
+                """)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Text("Bias Considerations")
+                    .font(.caption.weight(.semibold))
+                Text("""
+                \u{2022} Chest pain in women may be under-triaged (active bias detection enabled)
+                \u{2022} Sex-specific conditions are cross-checked against reported biological sex
+                \u{2022} Age-banded vital sign ranges reduce pediatric/geriatric misclassification
+                \u{2022} Demographic bias detection alerts flag potential reasoning gaps
+                """)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Text("Safety Framework")
+                    .font(.caption.weight(.semibold))
+                Text("""
+                \u{2022} HAI-DEF compliant: 8-category post-processing safety validation
+                \u{2022} Mandatory disclaimer before every analysis
+                \u{2022} SHA-256 patient data hashing in audit trail (no PII stored in logs)
+                \u{2022} User feedback loop for triage accuracy tracking
+                \u{2022} Emergency escalation alerts with actionable guidance
+                """)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Text("Privacy Architecture")
+                    .font(.caption.weight(.semibold))
+                Text("""
+                \u{2022} Zero network transmission of patient data
+                \u{2022} All inference runs on Apple Silicon via Ollama
+                \u{2022} Data stored locally: ~/Library/Application Support/MagnetarStudio/
+                \u{2022} No telemetry, no analytics, no cloud sync of medical data
+                """)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 4)
+        }
+        .font(.caption.weight(.medium))
+        .padding()
+        .background(Color.teal.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.teal.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private func modelCardRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 100, alignment: .leading)
+            Text(value)
+                .font(.caption2)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

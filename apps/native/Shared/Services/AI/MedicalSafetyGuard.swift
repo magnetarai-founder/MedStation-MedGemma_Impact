@@ -92,7 +92,7 @@ struct MedicalSafetyGuard {
                 category: .emergencyEscalation,
                 title: "Potentially Serious Conditions Detected",
                 message: "The analysis mentions \(foundAcute.joined(separator: ", ")). Even if triage is not Emergency, consider seeking urgent medical evaluation.",
-                actionLabel: nil
+                actionLabel: "Seek Urgent Care"
             ))
         }
 
@@ -141,12 +141,40 @@ struct MedicalSafetyGuard {
     private static func checkCriticalVitals(_ vitals: VitalSigns, age: Int? = nil) -> [SafetyAlert] {
         var alerts: [SafetyAlert] = []
 
-        // Age-contextualized heart rate ranges
-        let hrCriticalHigh = (age ?? 30) < 18 ? 180 : 150
-        let hrCriticalLow = (age ?? 30) < 18 ? 60 : 40
-        let hrWarningHigh = (age ?? 30) < 18 ? 150 : 120
-        let hrWarningLow = (age ?? 30) < 18 ? 70 : 50
-        let hrContext = (age ?? 30) < 18 ? "pediatric" : ((age ?? 30) > 65 ? "geriatric" : "adult")
+        // Age-banded heart rate ranges (clinical reference ranges)
+        let patientAge = age ?? 30
+        let hrCriticalHigh: Int
+        let hrCriticalLow: Int
+        let hrWarningHigh: Int
+        let hrWarningLow: Int
+        let hrContext: String
+
+        switch patientAge {
+        case ..<1:    // Neonate/Infant
+            hrCriticalHigh = 190; hrCriticalLow = 80
+            hrWarningHigh = 160; hrWarningLow = 100
+            hrContext = "neonate/infant"
+        case 1..<6:  // Toddler/Preschool
+            hrCriticalHigh = 170; hrCriticalLow = 60
+            hrWarningHigh = 140; hrWarningLow = 80
+            hrContext = "toddler"
+        case 6..<12: // Child
+            hrCriticalHigh = 150; hrCriticalLow = 50
+            hrWarningHigh = 120; hrWarningLow = 70
+            hrContext = "child"
+        case 12..<18: // Adolescent
+            hrCriticalHigh = 140; hrCriticalLow = 40
+            hrWarningHigh = 110; hrWarningLow = 60
+            hrContext = "adolescent"
+        case 18..<65: // Adult
+            hrCriticalHigh = 150; hrCriticalLow = 40
+            hrWarningHigh = 120; hrWarningLow = 50
+            hrContext = "adult"
+        default:      // Geriatric (65+)
+            hrCriticalHigh = 140; hrCriticalLow = 40
+            hrWarningHigh = 110; hrWarningLow = 50
+            hrContext = "geriatric"
+        }
 
         if let hr = vitals.heartRate {
             if hr > hrCriticalHigh || hr < hrCriticalLow {
@@ -155,7 +183,7 @@ struct MedicalSafetyGuard {
                     category: .criticalVital,
                     title: "Critical Heart Rate: \(hr) bpm",
                     message: hr > hrCriticalHigh ? "Tachycardia >\(hrCriticalHigh) bpm (\(hrContext)) may indicate cardiac emergency" : "Bradycardia <\(hrCriticalLow) bpm (\(hrContext)) may indicate heart block",
-                    actionLabel: nil
+                    actionLabel: "Seek Emergency Care"
                 ))
             } else if hr > hrWarningHigh || hr < hrWarningLow {
                 alerts.append(SafetyAlert(
@@ -175,7 +203,7 @@ struct MedicalSafetyGuard {
                     category: .criticalVital,
                     title: "Hyperpyrexia: \(String(format: "%.1f", temp))°F",
                     message: "Temperature ≥104°F is a medical emergency requiring immediate cooling measures.",
-                    actionLabel: nil
+                    actionLabel: "Seek Emergency Care"
                 ))
             } else if temp >= 102.0 {
                 alerts.append(SafetyAlert(
@@ -195,7 +223,7 @@ struct MedicalSafetyGuard {
                     category: .criticalVital,
                     title: "Critical SpO2: \(spo2)%",
                     message: "Oxygen saturation <90% indicates hypoxemia requiring supplemental oxygen.",
-                    actionLabel: nil
+                    actionLabel: "Seek Emergency Care"
                 ))
             } else if spo2 < 94 {
                 alerts.append(SafetyAlert(
@@ -215,7 +243,7 @@ struct MedicalSafetyGuard {
                     category: .criticalVital,
                     title: "Critical Respiratory Rate: \(rr)/min",
                     message: rr > 30 ? "Tachypnea >30/min suggests respiratory distress" : "Bradypnea <8/min may indicate respiratory failure",
-                    actionLabel: nil
+                    actionLabel: "Seek Emergency Care"
                 ))
             }
         }
@@ -259,6 +287,71 @@ struct MedicalSafetyGuard {
                 message: "Current NSAID use with possible GI condition. Consider discussing alternatives with healthcare provider.",
                 actionLabel: nil
             ))
+        }
+
+        // Drug-drug interaction database (major interactions)
+        let interactionPairs: [(drugs: [String], interacts: [String], severity: SafetyAlert.Severity, warning: String)] = [
+            // Serotonin syndrome risk
+            (["sertraline", "fluoxetine", "paroxetine", "citalopram", "escitalopram", "venlafaxine", "duloxetine"],
+             ["tramadol", "fentanyl", "meperidine", "linezolid", "methylene blue"],
+             .critical, "Serotonin syndrome risk — combination of serotonergic agents"),
+            (["sertraline", "fluoxetine", "paroxetine", "citalopram", "escitalopram"],
+             ["phenelzine", "tranylcypromine", "isocarboxazid", "selegiline"],
+             .critical, "SSRI + MAOI — life-threatening serotonin syndrome risk. Contraindicated."),
+            // Cardiac rhythm
+            (["amiodarone"],
+             ["metoprolol", "atenolol", "propranolol", "diltiazem", "verapamil"],
+             .warning, "Amiodarone + rate-controlling agent — risk of severe bradycardia or heart block"),
+            (["digoxin"],
+             ["amiodarone", "verapamil", "quinidine", "spironolactone"],
+             .warning, "Digoxin toxicity risk — these drugs increase digoxin levels"),
+            // Hyperkalemia
+            (["lisinopril", "enalapril", "ramipril", "losartan", "valsartan"],
+             ["spironolactone", "eplerenone", "potassium", "triamterene"],
+             .warning, "ACE inhibitor/ARB + potassium-sparing agent — hyperkalemia risk"),
+            // Renal
+            (["metformin"],
+             ["contrast", "iodine", "gadolinium"],
+             .warning, "Metformin + contrast media — risk of lactic acidosis. Hold metformin before/after contrast."),
+            // Bleeding
+            (["warfarin", "coumadin"],
+             ["metronidazole", "fluconazole", "amiodarone", "sulfamethoxazole", "trimethoprim"],
+             .critical, "Warfarin + CYP inhibitor — increased bleeding risk, INR monitoring required"),
+            // QT prolongation
+            (["azithromycin", "erythromycin", "clarithromycin", "moxifloxacin"],
+             ["ondansetron", "haloperidol", "methadone", "amiodarone", "sotalol"],
+             .warning, "Dual QT-prolonging agents — risk of torsades de pointes"),
+            // Hypotension
+            (["sildenafil", "tadalafil", "vardenafil"],
+             ["nitroglycerin", "isosorbide", "nitrate"],
+             .critical, "PDE5 inhibitor + nitrate — severe hypotension risk. Contraindicated."),
+            // Statin myopathy
+            (["simvastatin", "atorvastatin", "lovastatin"],
+             ["clarithromycin", "erythromycin", "itraconazole", "cyclosporine", "gemfibrozil"],
+             .warning, "Statin + CYP3A4 inhibitor — increased risk of rhabdomyolysis"),
+            // Lithium toxicity
+            (["lithium"],
+             ["ibuprofen", "naproxen", "diclofenac", "hydrochlorothiazide", "furosemide", "lisinopril", "enalapril"],
+             .warning, "Lithium + NSAIDs/diuretics/ACE inhibitors — lithium toxicity risk"),
+            // Hypoglycemia
+            (["glipizide", "glyburide", "glimepiride", "insulin"],
+             ["fluconazole", "ciprofloxacin", "metoprolol", "propranolol"],
+             .warning, "Hypoglycemic agent + masking/potentiating drug — hypoglycemia risk"),
+        ]
+
+        for pair in interactionPairs {
+            let hasDrug = pair.drugs.first { drug in medsLower.contains(where: { $0.contains(drug) }) }
+            let hasInteraction = pair.interacts.first { drug in medsLower.contains(where: { $0.contains(drug) }) }
+
+            if let drug = hasDrug, let interacting = hasInteraction {
+                alerts.append(SafetyAlert(
+                    severity: pair.severity,
+                    category: .medicationInteraction,
+                    title: "Drug Interaction: \(drug.capitalized) + \(interacting.capitalized)",
+                    message: pair.warning,
+                    actionLabel: pair.severity == .critical ? "Consult Pharmacist" : nil
+                ))
+            }
         }
 
         return alerts

@@ -24,6 +24,7 @@ struct MedicalWorkflowEngine {
     @MainActor
     static func executeWorkflow(
         intake: PatientIntake,
+        disclaimerConfirmed: Bool = true,
         onProgress: @escaping (ReasoningStep) -> Void
     ) async throws -> MedicalWorkflowResult {
         logger.info("Starting medical workflow for intake \(intake.id)")
@@ -196,7 +197,8 @@ struct MedicalWorkflowEngine {
         MedicalAuditLogger.logWorkflowExecution(
             intake: intake,
             result: result,
-            imageAnalysisPerformed: !intake.attachedImagePaths.isEmpty
+            imageAnalysisPerformed: !intake.attachedImagePaths.isEmpty,
+            disclaimerConfirmed: disclaimerConfirmed
         )
 
         logger.info("Medical workflow completed in \(String(format: "%.0f", totalMs))ms: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")

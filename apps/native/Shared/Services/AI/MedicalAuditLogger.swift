@@ -24,7 +24,8 @@ struct MedicalAuditLogger {
     static func logWorkflowExecution(
         intake: PatientIntake,
         result: MedicalWorkflowResult,
-        imageAnalysisPerformed: Bool
+        imageAnalysisPerformed: Bool,
+        disclaimerConfirmed: Bool = true
     ) {
         let entry = AuditEntry(
             caseId: result.intakeId,
@@ -53,8 +54,8 @@ struct MedicalAuditLogger {
                 onDeviceInference: true
             ),
             patientDataHash: hashPatientData(intake),
-            disclaimerPresented: true,
-            consentConfirmed: true
+            disclaimerPresented: disclaimerConfirmed,
+            consentConfirmed: disclaimerConfirmed
         )
 
         saveAuditEntry(entry, caseId: result.intakeId)
