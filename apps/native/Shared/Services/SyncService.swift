@@ -331,7 +331,7 @@ final class SyncService {
         stopAutoSync()
 
         syncTimer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true) { [weak self] _ in
-            Task { [weak self] in
+            Task { @MainActor [weak self] in
                 do {
                     try await self?.triggerSync()
                 } catch {
@@ -341,7 +341,7 @@ final class SyncService {
         }
 
         // Trigger immediate sync
-        Task {
+        Task { @MainActor in
             do {
                 try await triggerSync()
             } catch {

@@ -11,7 +11,17 @@ import Foundation
 /// Custom URLProtocol that intercepts all outgoing network requests
 final class NetworkFirewallProtocol: URLProtocol, @unchecked Sendable {
 
-    private var dataTask: URLSessionDataTask?
+    private var _dataTask: URLSessionDataTask?
+    private let taskLock = NSLock()
+
+    /// Thread-safe access to the underlying data task.
+    /// startLoading/stopLoading are called on arbitrary URLProtocol threads,
+    /// while proceedWithRequest runs on @MainActor — the lock prevents a data race.
+    private var dataTask: URLSessionDataTask? {
+        get { taskLock.withLock { _dataTask } }
+        set { taskLock.withLock { _dataTask = newValue } }
+    }
+
     private static var internalSession: URLSession = {
         let config = URLSessionConfiguration.default
         config.protocolClasses = [] // Don't intercept internal requests
