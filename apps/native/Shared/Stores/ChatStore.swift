@@ -94,10 +94,8 @@ final class ChatStore {
         didSet { UserDefaults.standard.set(selectedModelId, forKey: Self.selectedModelIdKey) }
     }
 
-    // Context utilization (Phase 6)
-    var contextSummary: ContextSummary {
-        contextBridge.getContextSummary()
-    }
+    // Context utilization (stub — context bridge removed)
+    var contextTokensUsed: Int { 0 }
 
     /// Default model to use when no specific model is selected
     /// Uses first available model from Ollama, or a reasonable fallback
@@ -121,8 +119,7 @@ final class ChatStore {
     @ObservationIgnored
     private let chatService = ChatService.shared
 
-    @ObservationIgnored
-    private let contextBridge = EnhancedContextBridge.shared
+    // Context bridge removed (non-medical feature)
 
     // MARK: - Per-Session Model Override (transient, resets on app restart)
 
@@ -467,10 +464,7 @@ final class ChatStore {
     }
 
     func selectSession(_ session: ChatSession) async {
-        // Notify bridge about session change (save previous session's graph)
-        if let previousSession = currentSession, previousSession.id != session.id {
-            await contextBridge.onSessionEnded(previousSession.id, messages: messages)
-        }
+        // Session change (context bridge removed)
 
         currentSession = session
 
@@ -500,8 +494,7 @@ final class ChatStore {
             // Load model preferences for this session
             await loadModelPreferences(sessionId: backendSessionId)
 
-            // Notify bridge about new session selection (load session graph)
-            await contextBridge.onSessionSelected(session.id)
+            // Session selected (context bridge removed)
         } catch {
             logger.error("Failed to load messages: \(error)")
             messages = []
@@ -579,10 +572,6 @@ final class ChatStore {
         let messagesToArchive = wasCurrentSession ? messages : []
 
         // Notify context bridge about session ending (archive context)
-        Task { [weak self] in
-            await self?.contextBridge.onSessionEnded(session.id, messages: messagesToArchive)
-        }
-
         // Optimistically remove from UI
         sessions.removeAll { $0.id == session.id }
         if wasCurrentSession {
@@ -1172,68 +1161,14 @@ final class ChatStore {
         )
     }
 
-    /// Store message context for semantic search (fire and forget)
+    /// Store message context (context bridge removed — no-op)
     private func storeMessageContext(
         sessionId: UUID,
         userQuery: String,
         response: String,
         model: String
     ) {
-        Task {
-            // 1. Index user message for enhanced context (RAG, graph, files)
-            let userMessage = ChatMessage(
-                role: .user,
-                content: userQuery,
-                sessionId: sessionId
-            )
-            await contextBridge.processMessageForContext(
-                message: userMessage,
-                sessionId: sessionId,
-                conversationTitle: currentSession?.title
-            )
-
-            // 2. Index assistant response
-            let assistantMessage = ChatMessage(
-                role: .assistant,
-                content: response,
-                sessionId: sessionId,
-                modelId: model
-            )
-            await contextBridge.processMessageForContext(
-                message: assistantMessage,
-                sessionId: sessionId,
-                conversationTitle: currentSession?.title
-            )
-
-            // 3. Store to backend context service
-            do {
-                try await ContextService.shared.storeContext(
-                    sessionId: sessionId.uuidString,
-                    workspaceType: "chat",
-                    content: """
-                    User: \(userQuery)
-                    Assistant: \(response)
-                    """,
-                    metadata: [
-                        "model": model,
-                        "user_query": userQuery,
-                        "response_length": response.count
-                    ]
-                )
-            } catch {
-                // Context storage is optional enhancement
-                // 404: Endpoint not configured - expected in some deployments
-                // Other errors: Log as warning for debugging data loss issues
-                let errorString = String(describing: error)
-                if errorString.contains("404") || errorString.contains("notFound") {
-                    // Silently ignore - context endpoint not available
-                    return
-                }
-
-                // Log actual errors (network, server, auth) as warnings
-                logger.warning("Context storage failed: \(error.localizedDescription)")
-            }
-        }
+        // Context indexing removed (non-medical feature)
     }
 
     /// Analyze an image and return context string for AI prompts.
