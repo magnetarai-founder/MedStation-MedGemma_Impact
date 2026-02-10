@@ -80,12 +80,6 @@ from api.security.device_identity import (
     get_device_identity,
 )
 
-# Emergency Wipe - always available
-from api.security.emergency_wipe import (
-    perform_dod_wipe,
-    wipe_single_file,
-)
-
 # Rate Limiter - always available
 from api.security.rate_limiter import (
     RateLimiter,

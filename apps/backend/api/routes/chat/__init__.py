@@ -7,8 +7,8 @@ __all__ = ["router", "public_router"]
 from fastapi import APIRouter, Depends
 from api.auth_middleware import get_current_user
 
-from . import sessions, messages, files, model_tags
-from .models import router as models_router  # Refactored package
+from . import sessions, messages, files
+from .models import router as models_router
 
 # Authenticated router
 router = APIRouter(
@@ -27,8 +27,6 @@ public_router = APIRouter(
 router.include_router(sessions.router)
 router.include_router(messages.router)
 router.include_router(files.router)
-router.include_router(model_tags.router)  # Model tags management
 
-# Models router is public (function-level auth on protected endpoints)
-# router.include_router(models_router)  # REMOVED - was causing 403 shadowing
+# Models router is public
 public_router.include_router(models_router)
