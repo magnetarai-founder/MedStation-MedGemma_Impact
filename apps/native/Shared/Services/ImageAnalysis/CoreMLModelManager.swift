@@ -10,7 +10,7 @@ import Foundation
 import CoreML
 import os
 
-private let logger = Logger(subsystem: "com.magnetarai", category: "CoreMLModelManager")
+private let logger = Logger(subsystem: "com.medstation.app", category: "CoreMLModelManager")
 
 // MARK: - Model Definition
 

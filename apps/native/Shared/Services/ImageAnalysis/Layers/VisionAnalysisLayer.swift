@@ -7,7 +7,7 @@ import AppKit
 import Vision
 import os
 
-private let logger = Logger(subsystem: "com.magnetarai", category: "VisionAnalysis")
+private let logger = Logger(subsystem: "com.medstation.app", category: "VisionAnalysis")
 
 /// Vision Framework analysis layer
 /// Handles OCR, barcode detection, and document boundary detection

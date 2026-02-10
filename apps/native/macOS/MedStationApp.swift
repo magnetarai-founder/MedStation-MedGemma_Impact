@@ -54,7 +54,7 @@ struct MedStationApp: App {
         .environment(chatStore)
         .environment(authStore)
         .commands {
-            MagnetarMenuCommands(
+            MedStationMenuCommands(
                 navigationStore: navigationStore,
                 chatStore: chatStore
             )

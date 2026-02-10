@@ -9,7 +9,7 @@ import CoreVideo
 import Vision
 import os
 
-private let logger = Logger(subsystem: "com.magnetarai", category: "DepthEstimation")
+private let logger = Logger(subsystem: "com.medstation.app", category: "DepthEstimation")
 
 /// Depth Anything V2 depth estimation layer
 /// Estimates depth from monocular images

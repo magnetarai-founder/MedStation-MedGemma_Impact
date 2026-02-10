@@ -38,8 +38,8 @@ commit:
   enabled: true
   sign: false
   branch_strategy: patch-branches
-  message_template: "{description}\n\n\U0001F916 Generated with ElohimOS Agent\n\n\
-    Co-Authored-By: ElohimOS <noreply@magnetarai.dev>\n"
+  message_template: "{description}\n\n\U0001F916 Generated with MedStation Agent\n\n\
+    Co-Authored-By: MedStation <noreply@medstation.dev>\n"
 security:
   strict_workspace: true
   max_concurrent_patches: 1

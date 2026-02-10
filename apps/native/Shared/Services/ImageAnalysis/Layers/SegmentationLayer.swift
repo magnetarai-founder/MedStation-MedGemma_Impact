@@ -8,7 +8,7 @@ import CoreML
 import Vision
 import os
 
-private let logger = Logger(subsystem: "com.magnetarai", category: "Segmentation")
+private let logger = Logger(subsystem: "com.medstation.app", category: "Segmentation")
 
 /// MobileSAM/SAM2 segmentation layer
 /// Segments objects in images with precise masks

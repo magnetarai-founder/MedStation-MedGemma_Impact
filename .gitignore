@@ -133,3 +133,6 @@ DerivedData/
 # Test coverage
 .coverage.*
 coverage/
+
+# Claude Code local data
+.claude/

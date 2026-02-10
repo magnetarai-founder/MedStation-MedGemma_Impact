@@ -12,7 +12,7 @@ extension Notification.Name {
     static let focusPanelSearch = Notification.Name("com.medstation.app.focusPanelSearch")
 }
 
-struct MagnetarMenuCommands: Commands {
+struct MedStationMenuCommands: Commands {
     let navigationStore: NavigationStore
     let chatStore: ChatStore
 

@@ -2,7 +2,7 @@ import Foundation
 import SQLite3
 import os
 
-private let logger = Logger(subsystem: "com.magnetarai", category: "ImageAnalysisCache")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ImageAnalysisCache")
 
 /// Cache for image analysis results using SQLite
 @MainActor

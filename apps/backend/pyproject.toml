@@ -1,5 +1,5 @@
 [project]
-name = "elohimos-backend"
+name = "medstation-backend"
 version = "0.1.0"
 description = "MagnetarStudio - AI-powered data processing platform"
 authors = [{name = "MagnetarAI, LLC"}]

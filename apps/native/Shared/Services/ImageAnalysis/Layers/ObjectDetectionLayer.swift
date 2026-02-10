@@ -8,7 +8,7 @@ import CoreML
 import Vision
 import os
 
-private let logger = Logger(subsystem: "com.magnetarai", category: "ObjectDetection")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ObjectDetection")
 
 /// YOLO11-nano object detection layer
 /// Detects 80 COCO object classes with bounding boxes

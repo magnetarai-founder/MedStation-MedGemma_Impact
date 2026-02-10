@@ -32,11 +32,11 @@ class VaultUser(HttpUser):
     def on_start(self):
         """Login and get auth token"""
         # Get founder password from environment
-        password = os.getenv("MEDSTATION_FOUNDER_PASSWORD", "MedStation_2024_Founder")
+        password = os.getenv("MEDSTATION_ADMIN_PASSWORD", "CHANGE_ME")
 
         response = self.client.post(
             "/api/v1/auth/login",
-            data={"username": "medstation_founder", "password": password},
+            data={"username": "admin", "password": password},
             name="/auth/login"
         )
 
