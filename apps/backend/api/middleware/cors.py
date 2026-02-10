@@ -27,11 +27,11 @@ def configure_cors(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     # Determine environment
-    env = os.getenv('ELOHIM_ENV', 'production').lower()
+    env = os.getenv('MEDSTATION_ENV', 'production').lower()
     is_production = env == 'production'
 
     # Parse CORS origins from environment or use defaults
-    cors_origins_env = os.getenv('ELOHIM_CORS_ORIGINS', '')
+    cors_origins_env = os.getenv('MEDSTATION_CORS_ORIGINS', '')
     if cors_origins_env:
         # Parse comma-separated list from environment
         allowed_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
@@ -41,7 +41,7 @@ def configure_cors(app: FastAPI) -> None:
             # No defaults - must be set via environment variable
             allowed_origins = []
             logger.warning("No CORS origins configured for production!")
-            logger.warning("Set ELOHIM_CORS_ORIGINS environment variable")
+            logger.warning("Set MEDSTATION_CORS_ORIGINS environment variable")
         else:
             # Default dev origins - include common Vite fallback ports
             allowed_origins = [
@@ -81,7 +81,7 @@ def configure_cors(app: FastAPI) -> None:
         logger.warning("  - allow_methods: ['*']")
         logger.warning("  - allow_headers: ['*']")
         logger.warning("  - Origins: %s", ", ".join(allowed_origins[:3]) + "...")
-        logger.warning("Set ELOHIM_ENV=production for secure CORS settings")
+        logger.warning("Set MEDSTATION_ENV=production for secure CORS settings")
         logger.warning("=" * 60)
 
     app.add_middleware(

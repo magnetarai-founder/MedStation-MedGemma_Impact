@@ -1,6 +1,6 @@
 //
 //  DetachedAIWindow.swift
-//  MagnetarStudio (macOS)
+//  MedStation (macOS)
 //
 //  Floating AI assistant window with workspace context tabs.
 //  Global model picker + per-tab model override + per-session override.
@@ -10,7 +10,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "DetachedAIWindow")
+private let logger = Logger(subsystem: "com.medstation.app", category: "DetachedAIWindow")
 
 struct DetachedAIWindow: View {
     @Environment(ChatStore.self) private var chatStore
@@ -68,7 +68,7 @@ struct DetachedAIWindow: View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
                 .font(.system(size: 18))
-                .foregroundStyle(LinearGradient.magnetarGradient)
+                .foregroundStyle(LinearGradient.medstationGradient)
 
             Text("AI Assistant")
                 .font(.system(size: 16, weight: .semibold))
@@ -299,7 +299,7 @@ struct DetachedAIWindow: View {
         VStack(spacing: 16) {
             Image(systemName: activeContext.icon)
                 .font(.system(size: 40))
-                .foregroundStyle(LinearGradient.magnetarGradient)
+                .foregroundStyle(LinearGradient.medstationGradient)
 
             Text("\(activeContext.displayName) Assistant")
                 .font(.title2.weight(.semibold))

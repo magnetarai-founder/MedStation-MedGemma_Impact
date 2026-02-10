@@ -68,7 +68,7 @@ class FounderSetupWizard:
             db_path = auth_service.db_path
 
         self.db_path = db_path
-        self.keychain_service = "com.elohimos.founder"
+        self.keychain_service = "com.medstationos.founder"
         self.keychain_account = "founder_password"
 
         # Platform detection

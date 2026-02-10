@@ -19,7 +19,7 @@ organized under api/services/chat/core/:
 All functionality is preserved exactly as before. This wrapper ensures
 that existing imports continue to work without modification.
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 # Re-export all functions from the refactored core module sub-packages

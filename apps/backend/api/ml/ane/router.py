@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Apple Neural Engine (ANE) Router for ElohimOS
+Apple Neural Engine (ANE) Router for MedStation
 Ultra-low power routing using Core ML on Apple Silicon
 Perfect for missionary field deployments (maximizes battery life)
 """

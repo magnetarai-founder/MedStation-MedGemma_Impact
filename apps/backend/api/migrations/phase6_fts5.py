@@ -7,7 +7,7 @@ Creates FTS5 virtual table for fast session message search.
 import sqlite3
 from pathlib import Path
 
-def migrate(db_path: str = "data/elohimos.db") -> None:
+def migrate(db_path: str = "data/medstationos.db") -> None:
     """Create FTS5 virtual table for message search"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

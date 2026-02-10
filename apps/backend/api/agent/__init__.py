@@ -1,6 +1,6 @@
 """
 Agent Orchestrator Module
-Integrates Aider + Continue + Codex for ElohimOS
+Integrates Aider + Continue + Codex for MedStation
 """
 
 from .orchestrator import router

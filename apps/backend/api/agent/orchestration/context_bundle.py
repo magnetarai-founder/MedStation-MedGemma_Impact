@@ -59,9 +59,9 @@ def build_context_bundle(
         user_workspace_root = paths.data_dir / "code_workspaces" / user_id
 
         # Allow user's home directory for convenience (can be disabled via env var)
-        # Set ELOHIM_STRICT_WORKSPACE=1 to restrict to code_workspaces only
+        # Set MEDSTATION_STRICT_WORKSPACE=1 to restrict to code_workspaces only
         allowed_roots = [user_workspace_root]
-        if not os.getenv("ELOHIM_STRICT_WORKSPACE", "").lower() in ("1", "true", "yes"):
+        if not os.getenv("MEDSTATION_STRICT_WORKSPACE", "").lower() in ("1", "true", "yes"):
             user_home = Path.home()
             allowed_roots.append(user_home)
 

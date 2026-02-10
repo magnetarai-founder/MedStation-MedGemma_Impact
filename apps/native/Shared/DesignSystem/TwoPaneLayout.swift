@@ -1,6 +1,6 @@
 //
 //  TwoPaneLayout.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Two-pane layout matching the React app structure:
 //  Horizontal toolbar + Left sidebar + Main content
@@ -102,7 +102,7 @@ struct ToolbarButton: View {
     private var backgroundColor: Color {
         switch style {
         case .primary:
-            return Color.magnetarPrimary
+            return Color.medstationPrimary
         case .secondary:
             return Color.surfaceSecondary
         case .icon:

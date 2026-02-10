@@ -1,6 +1,6 @@
 //
 //  LiquidGlassPanel.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Liquid Glass panel component - core building block of the UI.
 //  Provides blur, refraction, and dynamic tinting.
@@ -92,7 +92,7 @@ extension View {
 #Preview {
     ZStack {
         // Background gradient
-        LinearGradient.magnetarGradient
+        LinearGradient.medstationGradient
             .ignoresSafeArea()
 
         VStack(spacing: 20) {

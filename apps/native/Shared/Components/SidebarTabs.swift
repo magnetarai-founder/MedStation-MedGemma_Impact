@@ -1,6 +1,6 @@
 //
 //  SidebarTabs.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Two-tab sidebar component: Columns | Logs
 //  - Active tab has primary color with 2px bottom border
@@ -10,7 +10,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "SidebarTabs")
+private let logger = Logger(subsystem: "com.medstation.app", category: "SidebarTabs")
 
 struct SidebarTabs: View {
     @State private var selectedTab: SidebarTab = .columns
@@ -71,12 +71,12 @@ struct TabButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(isSelected ? Color.magnetarPrimary : (isHovered ? .primary : .secondary))
+                .foregroundStyle(isSelected ? Color.medstationPrimary : (isHovered ? .primary : .secondary))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .overlay(
                     Rectangle()
-                        .fill(isSelected ? Color.magnetarPrimary : Color.clear)
+                        .fill(isSelected ? Color.medstationPrimary : Color.clear)
                         .frame(height: 2),
                     alignment: .bottom
                 )
@@ -155,7 +155,7 @@ struct ColumnRow: View {
             if isHovered && column.isClickable {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 16))
-                    .foregroundStyle(Color.magnetarPrimary)
+                    .foregroundStyle(Color.medstationPrimary)
             }
         }
         .padding(.horizontal, 12)

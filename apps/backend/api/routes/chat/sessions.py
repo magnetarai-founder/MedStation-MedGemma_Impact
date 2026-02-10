@@ -7,7 +7,7 @@ Provides endpoints for managing chat sessions:
 - Token counting and model preferences
 - Team-based access control
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 import logging

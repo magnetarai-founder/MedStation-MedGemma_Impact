@@ -1,6 +1,6 @@
 //
 //  HubConstants.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Shared layout constants for the Workspace Hub.
 //

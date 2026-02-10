@@ -34,7 +34,7 @@ class N8NOfflineCache:
 
     def __init__(self, db_path: Optional[Path] = None):
         if db_path is None:
-            db_path = Path.home() / ".elohimos" / "n8n_cache.db"
+            db_path = Path.home() / ".medstationos" / "n8n_cache.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self.db_path = db_path
         self._init_db()

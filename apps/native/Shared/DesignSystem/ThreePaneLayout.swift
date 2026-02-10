@@ -1,6 +1,6 @@
 //
 //  ThreePaneLayout.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Uniform three-pane Outlook-style layout used across all workspaces.
 //  Inspired by macOS Tahoe's Liquid Glass design.
@@ -98,7 +98,7 @@ struct PaneHeader: View {
                 Button(action: action) {
                     Image(systemName: actionIcon)
                         .font(.title3)
-                        .foregroundStyle(LinearGradient.magnetarGradient)
+                        .foregroundStyle(LinearGradient.medstationGradient)
                 }
                 .buttonStyle(.plain)
             }
@@ -135,7 +135,7 @@ struct PaneEmptyState: View {
         VStack(spacing: 20) {
             Image(systemName: icon)
                 .font(.system(size: 56))
-                .foregroundStyle(LinearGradient.magnetarGradient.opacity(0.7))
+                .foregroundStyle(LinearGradient.medstationGradient.opacity(0.7))
 
             VStack(spacing: 8) {
                 Text(title)

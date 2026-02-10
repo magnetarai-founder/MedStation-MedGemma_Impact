@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Startup Migrations Runner for ElohimOS
+Startup Migrations Runner for MedStation
 
 Runs database migrations automatically on application startup.
 Non-interactive - no user prompts required.

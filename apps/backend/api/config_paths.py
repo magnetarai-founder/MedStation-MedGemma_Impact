@@ -1,13 +1,13 @@
 """
-Centralized Path Configuration for ElohimOS
+Centralized Path Configuration for MedStation
 
 All file paths are now configurable via environment variables.
 This allows deployment flexibility and easier testing.
 
 Environment Variables:
-- ELOHIMOS_DATA_DIR: Base data directory (default: .neutron_data)
-- ELOHIMOS_TEMP_DIR: Temporary files directory (default: temp_uploads)
-- ELOHIMOS_EXPORTS_DIR: Export files directory (default: temp_exports)
+- MEDSTATIONOS_DATA_DIR: Base data directory (default: .neutron_data)
+- MEDSTATIONOS_TEMP_DIR: Temporary files directory (default: temp_uploads)
+- MEDSTATIONOS_EXPORTS_DIR: Export files directory (default: temp_exports)
 
 Usage:
     from config_paths import PATHS
@@ -30,16 +30,16 @@ class PathConfig:
         # Base data directory (configurable via env var or auto-detected project root)
         if base_dir:
             self.data_dir = Path(base_dir)
-        elif os.getenv("ELOHIMOS_DATA_DIR"):
-            self.data_dir = Path(os.getenv("ELOHIMOS_DATA_DIR"))
+        elif os.getenv("MEDSTATIONOS_DATA_DIR"):
+            self.data_dir = Path(os.getenv("MEDSTATIONOS_DATA_DIR"))
         else:
             # Auto-detect project root: go up from api/ to project root
-            # This file is in: ElohimOS/apps/backend/api/config_paths.py
-            # Project root is: ElohimOS/
+            # This file is in: MedStation/apps/backend/api/config_paths.py
+            # Project root is: MedStation/
             api_dir = Path(__file__).parent  # api/
             backend_dir = api_dir.parent  # backend/
             apps_dir = backend_dir.parent  # apps/
-            project_root = apps_dir.parent  # ElohimOS/
+            project_root = apps_dir.parent  # MedStation/
             self.data_dir = project_root / ".neutron_data"
 
         # Ensure base directory exists
@@ -51,7 +51,7 @@ class PathConfig:
     @property
     def app_db(self) -> Path:
         """Main application database (consolidated from auth, users, docs, chat, workflows)"""
-        return self.data_dir / "elohimos_app.db"
+        return self.data_dir / "medstationos_app.db"
 
     @property
     def vault_db(self) -> Path:
@@ -159,14 +159,14 @@ class PathConfig:
     @property
     def temp_uploads_dir(self) -> Path:
         """Temporary uploads directory (configurable)"""
-        temp_dir = Path(os.getenv("ELOHIMOS_TEMP_DIR", "temp_uploads"))
+        temp_dir = Path(os.getenv("MEDSTATIONOS_TEMP_DIR", "temp_uploads"))
         temp_dir.mkdir(exist_ok=True)
         return temp_dir
 
     @property
     def temp_exports_dir(self) -> Path:
         """Temporary exports directory (configurable)"""
-        exports_dir = Path(os.getenv("ELOHIMOS_EXPORTS_DIR", "temp_exports"))
+        exports_dir = Path(os.getenv("MEDSTATIONOS_EXPORTS_DIR", "temp_exports"))
         exports_dir.mkdir(exist_ok=True)
         return exports_dir
 

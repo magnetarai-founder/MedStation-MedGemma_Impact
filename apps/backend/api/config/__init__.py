@@ -5,7 +5,7 @@ Centralized configuration constants to avoid magic numbers.
 """
 
 from .settings import (
-    ElohimOSSettings,
+    MedStationSettings,
     PATHS,
     get_settings,
     is_airgap_mode,
@@ -63,7 +63,7 @@ __all__ = [
     # Utilities
     "get_config_summary",
     # Settings (from former api/config.py)
-    "ElohimOSSettings",
+    "MedStationSettings",
     "PATHS",
     "get_settings",
     "is_airgap_mode",

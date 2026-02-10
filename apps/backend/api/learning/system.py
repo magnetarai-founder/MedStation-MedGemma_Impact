@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class LearningSystem:
     """
-    Adaptive learning system for ElohimOS.
+    Adaptive learning system for MedStation.
 
     Learns from user interactions to provide intelligent recommendations,
     track success patterns, detect coding styles, and manage project contexts.

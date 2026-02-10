@@ -1,6 +1,6 @@
 //
 //  NetworkFirewallModifier.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  View modifier that listens for network approval requests and displays modal
 //

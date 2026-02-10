@@ -3,7 +3,7 @@
 from api.errors.handler import ErrorHandler, logger
 from api.errors.types import (
     ErrorType,
-    ElohimOSError,
+    MedStationError,
     OllamaError,
     ValidationError,
     AuthError,
@@ -15,7 +15,7 @@ __all__ = [
     "ErrorHandler",
     "logger",
     "ErrorType",
-    "ElohimOSError",
+    "MedStationError",
     "OllamaError",
     "ValidationError",
     "AuthError",

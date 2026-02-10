@@ -1,6 +1,6 @@
 //
 //  ModelEvictionDialog.swift
-//  MagnetarStudio (macOS)
+//  MedStation (macOS)
 //
 //  Dialog for handling hot slot eviction when all slots are full.
 //  Presented by ModelSelectorMenu and SmartModelPicker when all hot slots are occupied.
@@ -12,7 +12,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelEvictionDialog")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ModelEvictionDialog")
 
 struct ModelEvictionDialog: View {
     let modelToLoad: String
@@ -54,7 +54,7 @@ struct ModelEvictionDialog: View {
                 HStack(spacing: 12) {
                     Image(systemName: "wand.and.stars")
                         .font(.system(size: 20))
-                        .foregroundStyle(Color.magnetarPrimary)
+                        .foregroundStyle(Color.medstationPrimary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Auto Replace Least-Used")
@@ -79,7 +79,7 @@ struct ModelEvictionDialog: View {
                         .padding(.vertical, 8)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.magnetarPrimary)
+                    .tint(.medstationPrimary)
                 }
                 .padding(12)
                 .background(Color.surfaceSecondary.opacity(0.3))
@@ -159,7 +159,7 @@ struct EvictionSlotCard: View {
                 ZStack {
                     if isSelected {
                         Circle()
-                            .fill(LinearGradient.magnetarGradient)
+                            .fill(LinearGradient.medstationGradient)
                             .frame(width: 40, height: 40)
                     } else {
                         Circle()
@@ -216,17 +216,17 @@ struct EvictionSlotCard: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundStyle(Color.magnetarPrimary)
+                        .foregroundStyle(Color.medstationPrimary)
                 }
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.magnetarPrimary.opacity(0.1) : Color.surfaceSecondary.opacity(0.2))
+                    .fill(isSelected ? Color.medstationPrimary.opacity(0.1) : Color.surfaceSecondary.opacity(0.2))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(
-                                isSelected ? Color.magnetarPrimary :
+                                isSelected ? Color.medstationPrimary :
                                 slot.isPinned ? Color.orange.opacity(0.5) :
                                 Color.clear,
                                 lineWidth: 2

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Recursive NLP Prompt Library for ElohimOS
+Recursive NLP Prompt Library for MedStation
 Breaks complex prompts into optimized sub-tasks with Metal 4 + ANE acceleration
 
 Extracted modules (P2 decomposition):

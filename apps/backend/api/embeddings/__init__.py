@@ -1,7 +1,7 @@
 """
 Embeddings Package
 
-Embedding systems for ElohimOS:
+Embedding systems for MedStation:
 - EmbeddingSystem: Lightweight semantic embeddings
 - UnifiedEmbedder: Multi-backend embedding interface
 """

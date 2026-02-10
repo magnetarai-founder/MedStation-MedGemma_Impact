@@ -28,7 +28,7 @@ async def start_discovery(request: Request, display_name: str, device_name: str)
     Start mDNS peer discovery on local network
 
     Initiates zero-config service discovery using Bonjour/mDNS to automatically
-    find other ElohimOS instances on the same LAN without manual IP configuration.
+    find other MedStation instances on the same LAN without manual IP configuration.
 
     Flow:
     1. Broadcasts service announcement on local network via mDNS

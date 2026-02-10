@@ -1,7 +1,7 @@
 """
 Learning System Package
 
-Modular adaptive learning system for ElohimOS.
+Modular adaptive learning system for MedStation.
 
 Main Components:
 - LearningSystem: Main orchestrator class

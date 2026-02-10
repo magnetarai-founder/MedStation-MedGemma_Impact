@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MLX Distributed Computing for ElohimOS
+MLX Distributed Computing for MedStation
 Pool multiple Apple Silicon devices for faster AI inference
 Uses Bonjour (mDNS) for discovery + WebSocket for communication
 Perfect for missionary teams with multiple M-series Macs

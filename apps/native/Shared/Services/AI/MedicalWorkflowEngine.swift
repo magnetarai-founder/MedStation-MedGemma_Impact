@@ -1,6 +1,6 @@
 //
 //  MedicalWorkflowEngine.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Agentic workflow engine for multi-step medical reasoning using MedGemma.
 //  Executes a 5-step pipeline: Symptom Analysis → Triage → Differential Dx →
@@ -13,7 +13,7 @@ import AppKit
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalWorkflowEngine")
+private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalWorkflowEngine")
 
 // MARK: - Medical Workflow Engine
 

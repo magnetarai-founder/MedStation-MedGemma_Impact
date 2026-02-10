@@ -1,7 +1,7 @@
 """
 Focus Mode Package
 
-Focus mode management for ElohimOS:
+Focus mode management for MedStation:
 - Quiet Mode: Muted colors, distraction-free
 - Field Mode: High contrast, battery saver
 - Emergency Mode: Critical functions only

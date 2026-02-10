@@ -1,7 +1,7 @@
 """
 WebSocket Package
 
-Real-time communication for ElohimOS:
+Real-time communication for MedStation:
 - ConnectionManager: WebSocket connection tracking and broadcasting
 - Collaborative editing via Yjs CRDT
 - Workspace session management across tabs

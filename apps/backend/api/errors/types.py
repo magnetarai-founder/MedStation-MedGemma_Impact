@@ -4,7 +4,7 @@ Error Handler Types - Enums and exception classes for error handling
 Extracted from error_handler.py during P2 decomposition.
 Contains:
 - ErrorType enum (standardized error types)
-- Exception classes (ElohimOSError and subclasses)
+- Exception classes (MedStationError and subclasses)
 """
 
 from typing import Optional, Dict, Any
@@ -55,8 +55,8 @@ class ErrorType(Enum):
     SERVICE_UNAVAILABLE = "service_unavailable"
 
 
-class ElohimOSError(Exception):
-    """Base exception for ElohimOS"""
+class MedStationError(Exception):
+    """Base exception for MedStation"""
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class ElohimOSError(Exception):
         super().__init__(self.message)
 
 
-class OllamaError(ElohimOSError):
+class OllamaError(MedStationError):
     """Ollama-specific errors"""
 
     def __init__(
@@ -89,7 +89,7 @@ class OllamaError(ElohimOSError):
         )
 
 
-class ValidationError(ElohimOSError):
+class ValidationError(MedStationError):
     """Validation errors"""
 
     def __init__(
@@ -106,7 +106,7 @@ class ValidationError(ElohimOSError):
         )
 
 
-class AuthError(ElohimOSError):
+class AuthError(MedStationError):
     """Authentication/authorization errors"""
 
     def __init__(
@@ -123,7 +123,7 @@ class AuthError(ElohimOSError):
         )
 
 
-class DataEngineError(ElohimOSError):
+class DataEngineError(MedStationError):
     """Data engine/SQL errors"""
 
     def __init__(
@@ -140,7 +140,7 @@ class DataEngineError(ElohimOSError):
         )
 
 
-class MeshError(ElohimOSError):
+class MeshError(MedStationError):
     """P2P mesh networking errors"""
 
     def __init__(
@@ -161,7 +161,7 @@ __all__ = [
     # Enum
     "ErrorType",
     # Exception classes
-    "ElohimOSError",
+    "MedStationError",
     "OllamaError",
     "ValidationError",
     "AuthError",

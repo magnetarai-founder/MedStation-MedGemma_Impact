@@ -26,7 +26,7 @@ class LANClient:
 
 @dataclass
 class LANDevice:
-    """Represents a discovered ElohimOS instance on the network"""
+    """Represents a discovered MedStation instance on the network"""
     id: str
     name: str
     ip: str

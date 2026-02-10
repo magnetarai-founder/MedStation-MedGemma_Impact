@@ -1,5 +1,5 @@
 """
-Security and utility functions for ElohimOS backend
+Security and utility functions for MedStation backend
 """
 
 import os

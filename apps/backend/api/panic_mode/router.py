@@ -34,14 +34,14 @@ logger = logging.getLogger(__name__)
 
 # ===== EMERGENCY MODE SAFETY CHECK =====
 # CRITICAL: This must be explicitly enabled to allow emergency wipe
-# Set environment variable: ELOHIM_ALLOW_EMERGENCY_WIPE=true
-ALLOW_EMERGENCY_WIPE = os.getenv("ELOHIM_ALLOW_EMERGENCY_WIPE", "false").lower() == "true"
+# Set environment variable: MEDSTATION_ALLOW_EMERGENCY_WIPE=true
+ALLOW_EMERGENCY_WIPE = os.getenv("MEDSTATION_ALLOW_EMERGENCY_WIPE", "false").lower() == "true"
 
 if not ALLOW_EMERGENCY_WIPE:
-    logger.warning("⚠️  Emergency wipe DISABLED (ELOHIM_ALLOW_EMERGENCY_WIPE=false)")
-    logger.warning("   This is a safety measure. Set ELOHIM_ALLOW_EMERGENCY_WIPE=true to enable.")
+    logger.warning("⚠️  Emergency wipe DISABLED (MEDSTATION_ALLOW_EMERGENCY_WIPE=false)")
+    logger.warning("   This is a safety measure. Set MEDSTATION_ALLOW_EMERGENCY_WIPE=true to enable.")
 else:
-    logger.critical("🚨 Emergency wipe ENABLED (ELOHIM_ALLOW_EMERGENCY_WIPE=true)")
+    logger.critical("🚨 Emergency wipe ENABLED (MEDSTATION_ALLOW_EMERGENCY_WIPE=true)")
     logger.critical("   ⚠️  DoD 7-pass wipe is active and IRREVERSIBLE")
 
 router = APIRouter(
@@ -139,7 +139,7 @@ async def trigger_emergency_mode(
     ⚠️  CRITICAL WARNING: THIS IS IRREVERSIBLE ⚠️
 
     This endpoint performs a DoD 5220.22-M standard 7-pass overwrite
-    on ALL MagnetarStudio data, followed by secure deletion.
+    on ALL MedStation data, followed by secure deletion.
 
     **Data wiped includes:**
     - Vault databases (sensitive + unsensitive)
@@ -150,7 +150,7 @@ async def trigger_emergency_mode(
     - User preferences and settings
 
     **Safety Requirements:**
-    1. Environment variable ELOHIM_ALLOW_EMERGENCY_WIPE=true must be set
+    1. Environment variable MEDSTATION_ALLOW_EMERGENCY_WIPE=true must be set
     2. User must be authenticated
     3. Confirmation="CONFIRM" required
     4. Rate limited (5 triggers per hour)
@@ -164,8 +164,8 @@ async def trigger_emergency_mode(
     """
     # Safety check: Emergency mode must be explicitly enabled
     if not ALLOW_EMERGENCY_WIPE:
-        logger.error("🚫 Emergency mode attempt BLOCKED (ELOHIM_ALLOW_EMERGENCY_WIPE=false)")
-        raise http_403("Emergency mode is disabled. Set ELOHIM_ALLOW_EMERGENCY_WIPE=true to enable.")
+        logger.error("🚫 Emergency mode attempt BLOCKED (MEDSTATION_ALLOW_EMERGENCY_WIPE=false)")
+        raise http_403("Emergency mode is disabled. Set MEDSTATION_ALLOW_EMERGENCY_WIPE=true to enable.")
 
     # Rate limiting (5 emergency triggers per hour)
     client_ip = get_client_ip(request)
@@ -196,16 +196,16 @@ async def trigger_emergency_mode(
 
         # Directories
         os.path.expanduser("~/.magnetar/models/"),
-        os.path.expanduser("~/.elohimos_backups/"),
-        os.path.expanduser("~/Library/Caches/com.magnetarstudio.app/"),
-        os.path.expanduser("~/Library/Application Support/MagnetarStudio/"),
-        os.path.expanduser("~/Library/Logs/MagnetarStudio/"),
+        os.path.expanduser("~/.medstationos_backups/"),
+        os.path.expanduser("~/Library/Caches/com.medstation.app/"),
+        os.path.expanduser("~/Library/Application Support/MedStation/"),
+        os.path.expanduser("~/Library/Logs/MedStation/"),
 
         # Preferences
-        os.path.expanduser("~/Library/Preferences/com.magnetarstudio.app.plist"),
+        os.path.expanduser("~/Library/Preferences/com.medstation.app.plist"),
 
         # LaunchAgents
-        os.path.expanduser("~/Library/LaunchAgents/com.magnetarstudio.*.plist"),
+        os.path.expanduser("~/Library/LaunchAgents/com.medstation.*.plist"),
     ]
 
     # Perform DoD 7-pass wipe

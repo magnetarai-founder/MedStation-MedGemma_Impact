@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "SettingsModels")
+private let logger = Logger(subsystem: "com.medstation.app", category: "SettingsModels")
 
 // MARK: - Saved Query
 

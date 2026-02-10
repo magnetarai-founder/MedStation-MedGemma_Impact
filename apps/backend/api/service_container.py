@@ -1,5 +1,5 @@
 """
-Lightweight Dependency Injection Container for ElohimOS
+Lightweight Dependency Injection Container for MedStation
 
 Surgical approach: Wraps existing singletons without requiring full refactor.
 Provides testability and service lifecycle management.

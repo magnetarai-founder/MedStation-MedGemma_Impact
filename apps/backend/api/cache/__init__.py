@@ -1,7 +1,7 @@
 """
 Cache Package
 
-Caching utilities for ElohimOS:
+Caching utilities for MedStation:
 - Generic cache service with Redis/memory backends
 - Query caching for database operations
 - Response caching for API endpoints

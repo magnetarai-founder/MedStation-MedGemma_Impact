@@ -333,8 +333,8 @@ class TestUpdateModelPreferencesEndpoint:
 
         with patch('api.routes.user_models.require_perm', lambda x: lambda f: f):
             with patch('pathlib.Path.home', return_value=tmp_path):
-                # Create .elohim directory structure
-                (tmp_path / ".elohim").mkdir(exist_ok=True)
+                # Create .medstation directory structure
+                (tmp_path / ".medstation").mkdir(exist_ok=True)
 
                 response = client.put(
                     "/api/v1/users/me/models/preferences",

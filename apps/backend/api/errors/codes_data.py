@@ -24,7 +24,7 @@ from typing import Dict
 
 
 class ErrorCode(str, Enum):
-    """Standardized error codes for ElohimOS API"""
+    """Standardized error codes for MedStation API"""
 
     # Authentication (1000-1099)
     AUTH_INVALID_CREDENTIALS = "ERR-1001"

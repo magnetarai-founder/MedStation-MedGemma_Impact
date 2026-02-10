@@ -1,8 +1,8 @@
-# MagnetarStudio
+# MedStation
 
 > **Enterprise-Grade, Offline-First AI Operating System**
 
-MagnetarStudio is a secure, privacy-first AI platform designed for mission-critical operations in disconnected environments. Built with industry-leading security practices and optimized for production deployment.
+MedStation is a secure, privacy-first AI platform designed for mission-critical operations in disconnected environments. Built with industry-leading security practices and optimized for production deployment.
 
 [![Security Score](https://img.shields.io/badge/Security%20Score-99%25-brightgreen)](./FINAL_STATUS_REPORT.md)
 [![Production Ready](https://img.shields.io/badge/Production%20Ready-95%25-brightgreen)](./DEPLOYMENT_GUIDE.md)
@@ -24,7 +24,7 @@ MagnetarStudio is a secure, privacy-first AI platform designed for mission-criti
 ```bash
 # Clone repository
 git clone magnetar-studio
-cd magnetarstudio
+cd medstation
 
 # Backend setup
 cd apps/backend
@@ -67,7 +67,7 @@ Password: CHANGE_ME_ON_FIRST_STARTUP
 
 ### Development
 - **[Progress Report](./PROGRESS_REPORT.md)** - Sprint 0-1 achievements
-- **Roadmap** - See `/Users/indiedevhipps/Desktop/MagnetarStudio Roadmap/`
+- **Roadmap** - See `/Users/indiedevhipps/Desktop/MedStation Roadmap/`
 
 ---
 
@@ -119,7 +119,7 @@ Password: CHANGE_ME_ON_FIRST_STARTUP
 ## 🏗️ Architecture
 
 ```
-MagnetarStudio/
+MedStation/
 ├── apps/
 │   ├── backend/          # Python FastAPI server
 │   │   └── api/          # REST API endpoints
@@ -204,7 +204,7 @@ MagnetarStudio/
 
 ### Test Coverage: 62% (315 tests)
 
-MagnetarStudio includes comprehensive test coverage across security, performance, and integration:
+MedStation includes comprehensive test coverage across security, performance, and integration:
 
 ```bash
 # Run all tests
@@ -262,12 +262,12 @@ cp .env.example .env
 # Edit .env with production secrets
 
 # 3. Deploy with systemd
-sudo cp deployment/magnetarstudio.service /etc/systemd/system/
-sudo systemctl enable magnetarstudio
-sudo systemctl start magnetarstudio
+sudo cp deployment/medstation.service /etc/systemd/system/
+sudo systemctl enable medstation
+sudo systemctl start medstation
 
 # 4. Configure Nginx + SSL
-sudo cp deployment/nginx.conf /etc/nginx/sites-available/magnetarstudio
+sudo cp deployment/nginx.conf /etc/nginx/sites-available/medstation
 sudo certbot --nginx -d yourdomain.com
 ```
 
@@ -376,7 +376,7 @@ See [LICENSE](./LICENSE) for details.
 - [API Docs](http://localhost:8000/api/docs)
 
 ### Issues
-- Report security issues privately to: security@magnetarstudio.com
+- Report security issues privately to: security@medstation.com
 - File bugs: https://magnetar.studio/support
 - Feature requests: https://magnetar.studio/support
 
@@ -397,7 +397,7 @@ See [LICENSE](./LICENSE) for details.
 - Sprint 5: Advanced Features
 - Sprint 6: Mobile Apps
 
-See `/Users/indiedevhipps/Desktop/MagnetarStudio Roadmap/` for details.
+See `/Users/indiedevhipps/Desktop/MedStation Roadmap/` for details.
 
 ---
 
@@ -423,8 +423,8 @@ See `/Users/indiedevhipps/Desktop/MagnetarStudio Roadmap/` for details.
 
 ## 📞 Contact
 
-- **Website:** https://magnetarstudio.com
-- **Email:** support@magnetarstudio.com
+- **Website:** https://medstation.com
+- **Email:** support@medstation.com
 - **Repository:** https://magnetar.studio
 
 ---

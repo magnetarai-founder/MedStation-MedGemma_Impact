@@ -1,10 +1,10 @@
 """
 Errors Package
 
-Provides standardized error handling for ElohimOS:
+Provides standardized error handling for MedStation:
 - ErrorCode enum with standardized error codes (ERR-XXXX)
 - ErrorType enum for error categories
-- Exception classes (ElohimOSError and subclasses)
+- Exception classes (MedStationError and subclasses)
 - ErrorHandler for converting errors to standardized format
 - AppException and helper functions for HTTP error responses
 """
@@ -16,7 +16,7 @@ from api.errors.codes import get_error_message
 # Error types and exception classes
 from api.errors.types import (
     ErrorType,
-    ElohimOSError,
+    MedStationError,
     OllamaError,
     ValidationError,
     AuthError,
@@ -68,7 +68,7 @@ __all__ = [
     "get_error_message",
     # Error types
     "ErrorType",
-    "ElohimOSError",
+    "MedStationError",
     "OllamaError",
     "ValidationError",
     "AuthError",

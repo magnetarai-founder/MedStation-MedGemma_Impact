@@ -61,7 +61,7 @@ def apply_plan_logic(
     project_root = Path(os.getcwd()).parent.parent.parent
     venv_path = project_root / "venv"
     if not venv_path.exists():
-        venv_path = Path.home() / ".virtualenvs" / "elohimos"
+        venv_path = Path.home() / ".virtualenvs" / "medstationos"
 
     repo_root = Path(body.repo_root) if body.repo_root else project_root
 

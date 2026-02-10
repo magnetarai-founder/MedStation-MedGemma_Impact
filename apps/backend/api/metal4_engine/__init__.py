@@ -1,5 +1,5 @@
 """
-Metal 4 Unified Command Queue Engine for ElohimOS
+Metal 4 Unified Command Queue Engine for MedStation
 
 Provides:
 - Unified command queues (Q_render, Q_ml, Q_blit)

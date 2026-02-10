@@ -3,7 +3,7 @@ Chat Files Routes - File upload and attachment management
 
 Provides endpoints for uploading files to chat sessions.
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 import logging

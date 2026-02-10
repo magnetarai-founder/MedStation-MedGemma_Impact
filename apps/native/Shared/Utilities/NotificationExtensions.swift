@@ -1,6 +1,6 @@
 //
 //  NotificationExtensions.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Shared notification name extensions used across components.
 //  NOTE: Prefer direct store method calls over NotificationCenter for better type safety.

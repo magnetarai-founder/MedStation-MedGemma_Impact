@@ -36,9 +36,9 @@ class N8NConfig(BaseModel):
 
 
 class N8NWorkflowMapping(BaseModel):
-    """Maps ElohimOS workflow stage to n8n workflow"""
-    elohim_workflow_id: str
-    elohim_stage_id: str
+    """Maps MedStation workflow stage to n8n workflow"""
+    medstation_workflow_id: str
+    medstation_stage_id: str
     n8n_workflow_id: str
     n8n_webhook_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

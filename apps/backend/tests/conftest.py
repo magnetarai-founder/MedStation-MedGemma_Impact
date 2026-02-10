@@ -26,8 +26,8 @@ if str(backend_root / "api") not in sys.path:
     sys.path.insert(0, str(backend_root / "api"))
 
 # Set test environment before importing modules
-os.environ["ELOHIMOS_JWT_SECRET_KEY"] = "test-secret-key-for-unit-tests-only"
-os.environ["ELOHIM_ENV"] = "test"
+os.environ["MEDSTATIONOS_JWT_SECRET_KEY"] = "test-secret-key-for-unit-tests-only"
+os.environ["MEDSTATION_ENV"] = "test"
 
 
 def pytest_configure(config):

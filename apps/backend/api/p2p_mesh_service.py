@@ -65,7 +65,7 @@ logger.info(f"Loaded {len(connection_codes)} connection codes from database")
 
 
 @router.post("/start")
-async def start_p2p_mesh(request: Request, display_name: str = "ElohimOS User", device_name: str = "My Device") -> Dict[str, Any]:
+async def start_p2p_mesh(request: Request, display_name: str = "MedStation User", device_name: str = "My Device") -> Dict[str, Any]:
     """
     Start P2P mesh networking
     Initializes libp2p and begins peer discovery
@@ -542,7 +542,7 @@ async def run_diagnostic_checks(request: Request):
         name="Peer Discovery",
         ok=peer_count > 0,
         message=peer_message,
-        remediation="Ensure other ElohimOS instances are running on the same network with P2P enabled" if peer_count == 0 else None
+        remediation="Ensure other MedStation instances are running on the same network with P2P enabled" if peer_count == 0 else None
     ))
 
     # Check 5: Firewall

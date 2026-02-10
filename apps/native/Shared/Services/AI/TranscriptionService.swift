@@ -1,6 +1,6 @@
 //
 //  TranscriptionService.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Local speech-to-text transcription using SFSpeechRecognizer.
 //  Apple Neural Engine accelerated on macOS 14+.
@@ -10,7 +10,7 @@ import Foundation
 import Speech
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "TranscriptionService")
+private let logger = Logger(subsystem: "com.medstation.app", category: "TranscriptionService")
 
 @MainActor
 @Observable

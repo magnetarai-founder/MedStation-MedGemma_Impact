@@ -1,7 +1,7 @@
 """
 LAN Discovery Listener
 
-mDNS/Zeroconf service listener for discovering ElohimOS instances.
+mDNS/Zeroconf service listener for discovering MedStation instances.
 """
 
 import asyncio

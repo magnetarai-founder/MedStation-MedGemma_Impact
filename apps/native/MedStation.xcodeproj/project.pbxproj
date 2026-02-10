@@ -359,7 +359,7 @@
 		E49FB2F1D6E72EC44FBFC634 /* UploadRecordingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A155D99CB4EA4D1B16039286 /* UploadRecordingSheet.swift */; };
 		E4EB98FB39BB0CDA84C20FB4 /* HardwareValidationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16872CF979FCA3001AAC7BD /* HardwareValidationView.swift */; };
 		E5234A53F1ACD9B3FD5C8934 /* WorkflowQueueModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF73422FA6F1C8A1659A875 /* WorkflowQueueModels.swift */; };
-		E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */; };
+		E65EDDCF022977AA1854B1AA /* MedStationApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0369ADDFF9623D901CC8207E /* MedStationApp.swift */; };
 		E68789013473A49D03D15C8B /* ChatWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA268C85AA8894BC92182D94 /* ChatWorkspace.swift */; };
 		E725D00242F1653B7715C11A /* WorkspaceSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95C705B78E8B4CC6C5AD068 /* WorkspaceSidebarView.swift */; };
 		E82D4FB39919147FEBA2553C /* ThemeExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E2DA14427FF8F7E6082DF9 /* ThemeExtractor.swift */; };
@@ -420,7 +420,7 @@
 		019CACA96D9D5A8FF0C6B290 /* ModelRecommendationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelRecommendationService.swift; sourceTree = "<group>"; };
 		0279AD17089C318C0DB08C12 /* VouchNodeModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VouchNodeModal.swift; sourceTree = "<group>"; };
 		0313108C6F4CBEE13201CAB0 /* VaultAuditLogTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultAuditLogTab.swift; sourceTree = "<group>"; };
-		0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarStudioApp.swift; sourceTree = "<group>"; };
+		0369ADDFF9623D901CC8207E /* MedStationApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedStationApp.swift; sourceTree = "<group>"; };
 		03FAB5DF50A87A041A5DC217 /* WorkspaceAIService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceAIService.swift; sourceTree = "<group>"; };
 		04C008DAEAE303722E07770D /* docs_templates.json */ = {isa = PBXFileReference; includeInIndex = 1; name = docs_templates.json; path = docs_templates.json; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -482,7 +482,7 @@
 		2ADA9359DD72E6FA30050662 /* MagnetarCloudSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetarCloudSettingsView.swift; sourceTree = "<group>"; };
 		2C3DD210046B75952771558B /* TeamNotesPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeamNotesPanel.swift; sourceTree = "<group>"; };
 		2C6D18ADE59DFC811C4F0A6D /* NewDocumentModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDocumentModal.swift; sourceTree = "<group>"; };
-		2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagnetarStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C969A3D6C92097E6DF1F837 /* MedStation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MedStation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D684EFED023D2A6542AAB1F /* KanbanWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanWorkspace.swift; sourceTree = "<group>"; };
 		31982E5E50E81F3365DA8EFF /* WindowOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowOpener.swift; sourceTree = "<group>"; };
 		31D4807EE0958BCED62F56EE /* CodingStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodingStore.swift; sourceTree = "<group>"; };
@@ -853,7 +853,7 @@
 			children = (
 				DE1C4B939DAC9084AC244415 /* ContentView.swift */,
 				758F62B637F9DF75E26BAB65 /* Info.plist */,
-				0369ADDFF9623D901CC8207E /* MagnetarStudioApp.swift */,
+				0369ADDFF9623D901CC8207E /* MedStationApp.swift */,
 				0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */,
 				DE864A74EECDECCCA82BDBF0 /* CommandPalette */,
 				4CE16795DA2E305E75B5ABF8 /* Commands */,
@@ -1411,7 +1411,7 @@
 		734503D79C8E69B6DEAEC3C5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */,
+				2C969A3D6C92097E6DF1F837 /* MedStation.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1875,9 +1875,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		CF12937F0A3EEB2B08F068A2 /* MagnetarStudio */ = {
+		CF12937F0A3EEB2B08F068A2 /* MedStation */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D564153A8CF1A35B974FE202 /* Build configuration list for PBXNativeTarget "MagnetarStudio" */;
+			buildConfigurationList = D564153A8CF1A35B974FE202 /* Build configuration list for PBXNativeTarget "MedStation" */;
 			buildPhases = (
 				9EE81F7E3929ADC26D6BBE3D /* Sources */,
 				13A447B3ABD2FD72CC912EC9 /* Resources */,
@@ -1886,9 +1886,9 @@
 			);
 			dependencies = (
 			);
-			name = MagnetarStudio;
-			productName = MagnetarStudio;
-			productReference = 2C969A3D6C92097E6DF1F837 /* MagnetarStudio.app */;
+			name = MedStation;
+			productName = MedStation;
+			productReference = 2C969A3D6C92097E6DF1F837 /* MedStation.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -1905,7 +1905,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2CC4CFCE9A09A3A6A4B17D9B /* Build configuration list for PBXProject "MagnetarStudio" */;
+			buildConfigurationList = 2CC4CFCE9A09A3A6A4B17D9B /* Build configuration list for PBXProject "MedStation" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -1919,7 +1919,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				CF12937F0A3EEB2B08F068A2 /* MagnetarStudio */,
+				CF12937F0A3EEB2B08F068A2 /* MedStation */,
 			);
 		};
 /* End PBXProject section */
@@ -2088,7 +2088,7 @@
 				7C328471E35344C8F77662BD /* MagnetarCloudSettingsView.swift in Sources */,
 				419431498985644AE22A495A /* MagnetarHubWorkspace.swift in Sources */,
 				F17E01069978B7AD00EB786E /* MagnetarMenuCommands.swift in Sources */,
-				E65EDDCF022977AA1854B1AA /* MagnetarStudioApp.swift in Sources */,
+				E65EDDCF022977AA1854B1AA /* MedStationApp.swift in Sources */,
 				A1A6503876B0C162D5CD8836 /* MetricCard.swift in Sources */,
 				28B7A2F17038CD0CA4451D3B /* ModelCard.swift in Sources */,
 				897A1755D07D58C21222A020 /* ModelComparisonView.swift in Sources */,
@@ -2409,15 +2409,15 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "MagnetarStudio uses Face ID to securely authenticate you and protect your data.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "MedStation uses Face ID to securely authenticate you and protect your data.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Magnetar. All rights reserved.";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.magnetar.studio;
-				PRODUCT_NAME = MagnetarStudio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.medstation.app;
+				PRODUCT_NAME = MedStation;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -2431,7 +2431,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = MagnetarStudio.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MedStation.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2453,7 +2453,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = MagnetarStudio.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MedStation.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2523,14 +2523,14 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "MagnetarStudio uses Face ID to securely authenticate you and protect your data.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "MedStation uses Face ID to securely authenticate you and protect your data.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Magnetar. All rights reserved.";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.magnetar.studio;
-				PRODUCT_NAME = MagnetarStudio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.medstation.app;
+				PRODUCT_NAME = MedStation;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -2542,7 +2542,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2CC4CFCE9A09A3A6A4B17D9B /* Build configuration list for PBXProject "MagnetarStudio" */ = {
+		2CC4CFCE9A09A3A6A4B17D9B /* Build configuration list for PBXProject "MedStation" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0EA324DA9F8C44AA3295789F /* Debug */,
@@ -2551,7 +2551,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		D564153A8CF1A35B974FE202 /* Build configuration list for PBXNativeTarget "MagnetarStudio" */ = {
+		D564153A8CF1A35B974FE202 /* Build configuration list for PBXNativeTarget "MedStation" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				38296DEB77EF93C33C8F791D /* Debug */,

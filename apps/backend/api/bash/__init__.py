@@ -1,7 +1,7 @@
 """
 Bash Intelligence Package
 
-Bash command intelligence for ElohimOS terminal:
+Bash command intelligence for MedStation terminal:
 - Natural language to bash translation
 - Command safety validation
 - Context-aware suggestions

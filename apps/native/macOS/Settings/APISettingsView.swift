@@ -1,6 +1,6 @@
 //
 //  APISettingsView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Settings panel for API configuration.
 //

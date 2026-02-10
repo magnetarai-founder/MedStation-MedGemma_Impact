@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Offline Mesh Discovery for ElohimOS
+Offline Mesh Discovery for MedStation
 Local network peer discovery using mDNS (zero-configuration networking)
 Perfect for missionary teams working without internet
 """
@@ -43,7 +43,7 @@ class OfflineMeshDiscovery:
     """
     Offline peer discovery using mDNS (Bonjour/Avahi)
 
-    Discovers other ElohimOS instances on the local network
+    Discovers other MedStation instances on the local network
     Works without internet - only requires local WiFi/LAN
     """
 
@@ -341,7 +341,7 @@ def get_mesh_discovery(display_name: str = None, device_name: str = None) -> Off
         if not display_name or not device_name:
             import socket
             device_name = socket.gethostname()
-            display_name = f"ElohimOS ({device_name})"
+            display_name = f"MedStation ({device_name})"
 
         _mesh_discovery = OfflineMeshDiscovery(
             display_name=display_name,

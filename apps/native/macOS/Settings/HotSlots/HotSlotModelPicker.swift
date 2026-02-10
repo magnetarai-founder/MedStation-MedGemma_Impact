@@ -1,6 +1,6 @@
 //
 //  HotSlotModelPicker.swift
-//  MagnetarStudio (macOS)
+//  MedStation (macOS)
 //
 //  Model picker components for hot slots - Extracted from HotSlotSettingsView.swift (Phase 6.24)
 //
@@ -81,7 +81,7 @@ struct ModelPickerSheet: View {
                         .foregroundStyle(.secondary)
 
                     if searchText.isEmpty {
-                        Text("Install models from MagnetarHub first")
+                        Text("Install models from MedStationHub first")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -121,7 +121,7 @@ struct ModelPickerRow: View {
                 // Icon
                 Image(systemName: "cube.fill")
                     .font(.title2)
-                    .foregroundStyle(LinearGradient.magnetarGradient)
+                    .foregroundStyle(LinearGradient.medstationGradient)
                     .frame(width: 40)
 
                 // Model info
@@ -148,7 +148,7 @@ struct ModelPickerRow: View {
                 // Assign button
                 Image(systemName: "arrow.right.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(Color.magnetarPrimary)
+                    .foregroundStyle(Color.medstationPrimary)
             }
             .padding(12)
             .background(
@@ -157,7 +157,7 @@ struct ModelPickerRow: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isHovered ? Color.magnetarPrimary.opacity(0.5) : Color.clear, lineWidth: 1)
+                    .stroke(isHovered ? Color.medstationPrimary.opacity(0.5) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

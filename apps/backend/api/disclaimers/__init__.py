@@ -1,7 +1,7 @@
 """
 Disclaimers Package
 
-Legal disclaimers for ElohimOS:
+Legal disclaimers for MedStation:
 - Medical advice disclaimers
 - AI content warnings
 - Liability limitations

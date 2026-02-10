@@ -1,6 +1,6 @@
 //
 //  WorkspaceDocument.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Document model for the Docs panel — Notion + Word hybrid.
 //

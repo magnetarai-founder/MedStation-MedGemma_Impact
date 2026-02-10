@@ -1,5 +1,5 @@
 """
-Security Package for ElohimOS
+Security Package for MedStation
 
 Comprehensive security utilities including:
 - SQL injection prevention

@@ -1,5 +1,5 @@
 """
-Team-related Pydantic models for ElohimOS API.
+Team-related Pydantic models for MedStation API.
 
 Models for team management, member management, promotions, permissions,
 queues, Founder Rights, and team vault functionality.

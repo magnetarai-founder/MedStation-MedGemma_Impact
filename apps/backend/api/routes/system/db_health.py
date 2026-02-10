@@ -3,7 +3,7 @@ Database Health Routes
 
 Returns database path and table counts for admin monitoring.
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status

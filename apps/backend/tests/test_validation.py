@@ -20,7 +20,7 @@ import pytest
 from pathlib import Path
 
 # Ensure test environment
-os.environ["ELOHIM_ENV"] = "test"
+os.environ["MEDSTATION_ENV"] = "test"
 
 # Add backend to path
 backend_root = Path(__file__).parent.parent

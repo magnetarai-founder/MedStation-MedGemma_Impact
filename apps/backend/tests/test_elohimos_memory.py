@@ -1,7 +1,7 @@
 """
-Comprehensive tests for api/elohimos_memory.py
+Comprehensive tests for api/medstationos_memory.py
 
-ElohimOS Memory System:
+MedStation Memory System:
 - Query history with embeddings for semantic search
 - Intelligent caching with TTL
 - Saved queries with folder organization
@@ -43,12 +43,12 @@ def mock_jarvis_memory():
 
 @pytest.fixture
 def memory_instance(mock_jarvis_memory, tmp_path):
-    """Create an ElohimOSMemory instance with mocked JarvisBigQueryMemory"""
-    with patch('api.elohimos_memory.JarvisBigQueryMemory', return_value=mock_jarvis_memory):
-        from api.elohimos_memory import ElohimOSMemory
+    """Create an MedStationMemory instance with mocked JarvisBigQueryMemory"""
+    with patch('api.medstationos_memory.JarvisBigQueryMemory', return_value=mock_jarvis_memory):
+        from api.medstationos_memory import MedStationMemory
 
         db_path = tmp_path / "test_query_history.db"
-        memory = ElohimOSMemory(db_path)
+        memory = MedStationMemory(db_path)
         yield memory
 
         # Cleanup
@@ -58,7 +58,7 @@ def memory_instance(mock_jarvis_memory, tmp_path):
             pass
 
 
-class TestElohimOSMemoryInit:
+class TestMedStationMemoryInit:
     """Test initialization"""
 
     def test_init_creates_tables(self, memory_instance):
@@ -85,12 +85,12 @@ class TestElohimOSMemoryInit:
 
     def test_init_default_path(self, mock_jarvis_memory, tmp_path):
         """Test default db path when not specified"""
-        with patch('api.elohimos_memory.JarvisBigQueryMemory', return_value=mock_jarvis_memory):
+        with patch('api.medstationos_memory.JarvisBigQueryMemory', return_value=mock_jarvis_memory):
             with patch.object(Path, 'home', return_value=tmp_path):
-                from api.elohimos_memory import ElohimOSMemory
+                from api.medstationos_memory import MedStationMemory
 
                 # This should use the default path
-                memory = ElohimOSMemory()
+                memory = MedStationMemory()
 
                 # Verify cache initialization
                 assert memory._history_cache == {}
@@ -99,11 +99,11 @@ class TestElohimOSMemoryInit:
 
     def test_init_custom_path(self, mock_jarvis_memory, tmp_path):
         """Test custom db path"""
-        with patch('api.elohimos_memory.JarvisBigQueryMemory', return_value=mock_jarvis_memory):
-            from api.elohimos_memory import ElohimOSMemory
+        with patch('api.medstationos_memory.JarvisBigQueryMemory', return_value=mock_jarvis_memory):
+            from api.medstationos_memory import MedStationMemory
 
             custom_path = tmp_path / "custom" / "memory.db"
-            memory = ElohimOSMemory(db_path=custom_path)
+            memory = MedStationMemory(db_path=custom_path)
 
             # Verify parent directory was created
             assert custom_path.parent.exists()

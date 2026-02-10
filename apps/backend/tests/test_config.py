@@ -4,7 +4,7 @@ Comprehensive tests for api/config.py
 Tests unified configuration management using Pydantic BaseSettings.
 
 Coverage targets:
-- ElohimOSSettings class initialization and defaults
+- MedStationSettings class initialization and defaults
 - Field validators (data_dir)
 - Model validator (jwt_secret validation)
 - Computed properties (paths, system info)
@@ -26,7 +26,7 @@ pytestmark = pytest.mark.filterwarnings(
 from unittest.mock import patch, MagicMock
 
 from api.config import (
-    ElohimOSSettings,
+    MedStationSettings,
     get_settings,
     is_airgap_mode,
     is_offline_mode,
@@ -55,14 +55,14 @@ def temp_data_dir():
 def clean_env():
     """Clean environment of config-related env vars"""
     vars_to_clear = [
-        "ELOHIMOS_JWT_SECRET_KEY",
-        "ELOHIMOS_ENVIRONMENT",
-        "ELOHIMOS_DEBUG",
-        "ELOHIMOS_AIRGAP_MODE",
-        "ELOHIMOS_OFFLINE_MODE",
+        "MEDSTATIONOS_JWT_SECRET_KEY",
+        "MEDSTATIONOS_ENVIRONMENT",
+        "MEDSTATIONOS_DEBUG",
+        "MEDSTATIONOS_AIRGAP_MODE",
+        "MEDSTATIONOS_OFFLINE_MODE",
         "MAGNETAR_AIRGAP_MODE",
-        "ELOHIM_OFFLINE_MODE",
-        "ELOHIM_JWT_SECRET",
+        "MEDSTATION_OFFLINE_MODE",
+        "MEDSTATION_JWT_SECRET",
     ]
     old_values = {}
     for var in vars_to_clear:
@@ -78,36 +78,36 @@ def clean_env():
             os.environ.pop(var, None)
 
 
-# ========== ElohimOSSettings Initialization Tests ==========
+# ========== MedStationSettings Initialization Tests ==========
 
 class TestSettingsInit:
-    """Tests for ElohimOSSettings initialization"""
+    """Tests for MedStationSettings initialization"""
 
     def test_default_environment(self, reset_singleton, clean_env, temp_data_dir):
         """Test default environment is development"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.environment == "development"
 
     def test_default_debug(self, reset_singleton, clean_env, temp_data_dir):
         """Test default debug is True"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.debug is True
 
     def test_default_log_level(self, reset_singleton, clean_env, temp_data_dir):
         """Test default log level is INFO"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.log_level == "INFO"
 
     def test_default_api_settings(self, reset_singleton, clean_env, temp_data_dir):
         """Test default API server settings"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.api_host == "localhost"
         assert settings.api_port == 8000
@@ -115,30 +115,30 @@ class TestSettingsInit:
 
     def test_default_cors_origins(self, reset_singleton, clean_env, temp_data_dir):
         """Test default CORS origins"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert "http://localhost:4200" in settings.cors_origins
         assert "http://127.0.0.1:4200" in settings.cors_origins
 
     def test_default_jwt_algorithm(self, reset_singleton, clean_env, temp_data_dir):
         """Test default JWT algorithm"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.jwt_algorithm == "HS256"
 
     def test_default_jwt_expire_minutes(self, reset_singleton, clean_env, temp_data_dir):
         """Test default JWT expiration"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.jwt_access_token_expire_minutes == 60
 
     def test_default_ollama_settings(self, reset_singleton, clean_env, temp_data_dir):
         """Test default Ollama settings"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.ollama_base_url == "http://localhost:11434"
         assert settings.ollama_timeout == 300
@@ -147,16 +147,16 @@ class TestSettingsInit:
 
     def test_default_p2p_settings(self, reset_singleton, clean_env, temp_data_dir):
         """Test default P2P settings"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.p2p_enabled is False
         assert settings.p2p_port == 9000
 
     def test_default_airgap_mode(self, reset_singleton, clean_env, temp_data_dir):
         """Test default airgap mode is disabled"""
-        with patch.dict(os.environ, {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}, clear=False):
-            settings = ElohimOSSettings()
+        with patch.dict(os.environ, {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}, clear=False):
+            settings = MedStationSettings()
 
         assert settings.airgap_mode is False
         assert settings.offline_mode is False
@@ -167,15 +167,15 @@ class TestSettingsInit:
 class TestEnvOverrides:
     """Tests for environment variable overrides"""
 
-    def test_env_prefix_elohimos(self, reset_singleton, clean_env, temp_data_dir):
-        """Test ELOHIMOS_ prefix works"""
+    def test_env_prefix_medstationos(self, reset_singleton, clean_env, temp_data_dir):
+        """Test MEDSTATIONOS_ prefix works"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_DEBUG": "false",
-            "ELOHIMOS_LOG_LEVEL": "DEBUG",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_DEBUG": "false",
+            "MEDSTATIONOS_LOG_LEVEL": "DEBUG",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.debug is False
         assert settings.log_level == "DEBUG"
@@ -183,11 +183,11 @@ class TestEnvOverrides:
     def test_env_override_api_port(self, reset_singleton, clean_env, temp_data_dir):
         """Test API port override"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_API_PORT": "9000",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_API_PORT": "9000",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.api_port == 9000
 
@@ -195,44 +195,44 @@ class TestEnvOverrides:
         """Test JWT secret key override"""
         secret = "a" * 32  # 32 char secret
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_JWT_SECRET_KEY": secret,
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_JWT_SECRET_KEY": secret,
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.jwt_secret_key == secret
 
     def test_env_override_environment(self, reset_singleton, clean_env, temp_data_dir):
         """Test environment override"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_ENVIRONMENT": "testing",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_ENVIRONMENT": "testing",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.environment == "testing"
 
     def test_env_override_ollama_url(self, reset_singleton, clean_env, temp_data_dir):
         """Test Ollama URL override"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_OLLAMA_BASE_URL": "http://192.168.1.100:11434",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_OLLAMA_BASE_URL": "http://192.168.1.100:11434",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.ollama_base_url == "http://192.168.1.100:11434"
 
     def test_case_insensitive_env_vars(self, reset_singleton, clean_env, temp_data_dir):
         """Test env vars are case insensitive"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "elohimos_debug": "false",  # lowercase
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "medstationos_debug": "false",  # lowercase
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.debug is False
 
@@ -245,14 +245,14 @@ class TestJWTValidator:
     def test_auto_generate_secret_in_dev(self, reset_singleton, clean_env, temp_data_dir):
         """Test auto-generates JWT secret in development mode"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_ENVIRONMENT": "development",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_ENVIRONMENT": "development",
         }
         with patch.dict(os.environ, env, clear=False):
             import warnings
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                settings = ElohimOSSettings()
+                settings = MedStationSettings()
 
                 # Should have auto-generated a secret
                 assert len(settings.jwt_secret_key) >= 32
@@ -262,15 +262,15 @@ class TestJWTValidator:
     def test_empty_secret_auto_generates_in_dev(self, reset_singleton, clean_env, temp_data_dir):
         """Test empty secret triggers auto-generation in dev"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_JWT_SECRET_KEY": "",
-            "ELOHIMOS_ENVIRONMENT": "development",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_JWT_SECRET_KEY": "",
+            "MEDSTATIONOS_ENVIRONMENT": "development",
         }
         with patch.dict(os.environ, env, clear=False):
             import warnings
             with warnings.catch_warnings(record=True):
                 warnings.simplefilter("always")
-                settings = ElohimOSSettings()
+                settings = MedStationSettings()
 
                 assert len(settings.jwt_secret_key) >= 32
 
@@ -280,15 +280,15 @@ class TestJWTValidator:
 
         for secret in insecure_secrets:
             env = {
-                "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-                "ELOHIMOS_JWT_SECRET_KEY": secret,
-                "ELOHIMOS_ENVIRONMENT": "development",
+                "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+                "MEDSTATIONOS_JWT_SECRET_KEY": secret,
+                "MEDSTATIONOS_ENVIRONMENT": "development",
             }
             with patch.dict(os.environ, env, clear=False):
                 import warnings
                 with warnings.catch_warnings(record=True):
                     warnings.simplefilter("always")
-                    settings = ElohimOSSettings()
+                    settings = MedStationSettings()
 
                     # Should have auto-generated a new secret
                     assert settings.jwt_secret_key != secret
@@ -297,35 +297,35 @@ class TestJWTValidator:
     def test_production_requires_jwt_secret(self, reset_singleton, clean_env, temp_data_dir):
         """Test production mode requires JWT secret"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_ENVIRONMENT": "production",
-            "ELOHIMOS_JWT_SECRET_KEY": "",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_ENVIRONMENT": "production",
+            "MEDSTATIONOS_JWT_SECRET_KEY": "",
         }
         with patch.dict(os.environ, env, clear=False):
             with pytest.raises(ValueError, match="JWT_SECRET_KEY must be set in production"):
-                ElohimOSSettings()
+                MedStationSettings()
 
     def test_production_requires_long_secret(self, reset_singleton, clean_env, temp_data_dir):
         """Test production mode requires secret >= 32 chars"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_ENVIRONMENT": "production",
-            "ELOHIMOS_JWT_SECRET_KEY": "short_secret",  # < 32 chars
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_ENVIRONMENT": "production",
+            "MEDSTATIONOS_JWT_SECRET_KEY": "short_secret",  # < 32 chars
         }
         with patch.dict(os.environ, env, clear=False):
             with pytest.raises(ValueError, match="JWT_SECRET_KEY is too short"):
-                ElohimOSSettings()
+                MedStationSettings()
 
     def test_production_with_valid_secret(self, reset_singleton, clean_env, temp_data_dir):
         """Test production mode works with valid secret"""
         valid_secret = "a" * 32  # 32 chars
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_ENVIRONMENT": "production",
-            "ELOHIMOS_JWT_SECRET_KEY": valid_secret,
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_ENVIRONMENT": "production",
+            "MEDSTATIONOS_JWT_SECRET_KEY": valid_secret,
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.jwt_secret_key == valid_secret
 
@@ -341,9 +341,9 @@ class TestDataDirValidator:
             new_data_dir = Path(tmpdir) / "new_data_dir"
             assert not new_data_dir.exists()
 
-            env = {"ELOHIMOS_DATA_DIR": str(new_data_dir)}
+            env = {"MEDSTATIONOS_DATA_DIR": str(new_data_dir)}
             with patch.dict(os.environ, env, clear=False):
-                settings = ElohimOSSettings()
+                settings = MedStationSettings()
 
             assert new_data_dir.exists()
             assert new_data_dir.is_dir()
@@ -354,17 +354,17 @@ class TestDataDirValidator:
             nested_dir = Path(tmpdir) / "level1" / "level2" / "data"
             assert not nested_dir.exists()
 
-            env = {"ELOHIMOS_DATA_DIR": str(nested_dir)}
+            env = {"MEDSTATIONOS_DATA_DIR": str(nested_dir)}
             with patch.dict(os.environ, env, clear=False):
-                settings = ElohimOSSettings()
+                settings = MedStationSettings()
 
             assert nested_dir.exists()
 
     def test_uses_existing_data_dir(self, reset_singleton, clean_env, temp_data_dir):
         """Test uses existing directory without error"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.data_dir == temp_data_dir
 
@@ -376,41 +376,41 @@ class TestComputedProperties:
 
     def test_app_db_path(self, reset_singleton, clean_env, temp_data_dir):
         """Test app_db computed property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
-        assert settings.app_db == temp_data_dir / "elohimos_app.db"
+        assert settings.app_db == temp_data_dir / "medstationos_app.db"
 
     def test_vault_db_path(self, reset_singleton, clean_env, temp_data_dir):
         """Test vault_db computed property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.vault_db == temp_data_dir / "vault.db"
 
     def test_datasets_db_path(self, reset_singleton, clean_env, temp_data_dir):
         """Test datasets_db computed property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.datasets_db == temp_data_dir / "datasets" / "datasets.db"
 
     def test_memory_db_path(self, reset_singleton, clean_env, temp_data_dir):
         """Test memory_db computed property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.memory_db == temp_data_dir / "memory" / "chat_memory.db"
 
     def test_uploads_dir_creates_directory(self, reset_singleton, clean_env, temp_data_dir):
         """Test uploads_dir creates directory"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         uploads = settings.uploads_dir
         assert uploads.exists()
@@ -419,9 +419,9 @@ class TestComputedProperties:
 
     def test_cache_dir_creates_directory(self, reset_singleton, clean_env, temp_data_dir):
         """Test cache_dir creates directory"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         cache = settings.cache_dir
         assert cache.exists()
@@ -430,9 +430,9 @@ class TestComputedProperties:
 
     def test_shared_files_dir_creates_directory(self, reset_singleton, clean_env, temp_data_dir):
         """Test shared_files_dir creates directory"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         shared = settings.shared_files_dir
         assert shared.exists()
@@ -441,26 +441,26 @@ class TestComputedProperties:
 
     def test_model_hot_slots_file_path(self, reset_singleton, clean_env, temp_data_dir):
         """Test model_hot_slots_file computed property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.model_hot_slots_file == temp_data_dir / "model_hot_slots.json"
 
     def test_is_apple_silicon_property(self, reset_singleton, clean_env, temp_data_dir):
         """Test is_apple_silicon property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Just verify it returns a boolean
         assert isinstance(settings.is_apple_silicon, bool)
 
     def test_total_ram_gb_property(self, reset_singleton, clean_env, temp_data_dir):
         """Test total_ram_gb property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Should return positive float
         assert isinstance(settings.total_ram_gb, float)
@@ -468,9 +468,9 @@ class TestComputedProperties:
 
     def test_cpu_cores_property(self, reset_singleton, clean_env, temp_data_dir):
         """Test cpu_cores property"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Should return positive integer
         assert isinstance(settings.cpu_cores, int)
@@ -484,9 +484,9 @@ class TestHelperMethods:
 
     def test_get_ollama_generation_options_defaults(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_ollama_generation_options with defaults"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         options = settings.get_ollama_generation_options()
 
@@ -497,9 +497,9 @@ class TestHelperMethods:
 
     def test_get_ollama_generation_options_with_overrides(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_ollama_generation_options with overrides"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         options = settings.get_ollama_generation_options(num_ctx=8192, temperature=0.7)
 
@@ -509,54 +509,54 @@ class TestHelperMethods:
 
     def test_get_rate_limit_global(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_rate_limit for global"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.get_rate_limit("global") == "100/minute"
 
     def test_get_rate_limit_auth(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_rate_limit for auth"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.get_rate_limit("auth") == "5/minute"
 
     def test_get_rate_limit_chat(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_rate_limit for chat"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.get_rate_limit("chat") == "20/minute"
 
     def test_get_rate_limit_unknown_defaults_to_global(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_rate_limit for unknown type defaults to global"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.get_rate_limit("unknown") == "100/minute"
 
     def test_get_rate_limit_dev_mode_multiplier(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_rate_limit applies dev mode multiplier"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_DEV_MODE": "true",
-            "ELOHIMOS_DEV_RATE_LIMIT_MULTIPLIER": "5",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_DEV_MODE": "true",
+            "MEDSTATIONOS_DEV_RATE_LIMIT_MULTIPLIER": "5",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # 100/minute * 5 = 500/minute
         assert settings.get_rate_limit("global") == "500/minute"
 
     def test_detect_optimal_ollama_settings(self, reset_singleton, clean_env, temp_data_dir):
         """Test detect_optimal_ollama_settings returns dict"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         result = settings.detect_optimal_ollama_settings()
 
@@ -566,9 +566,9 @@ class TestHelperMethods:
 
     def test_detect_optimal_ollama_settings_apple_silicon(self, reset_singleton, clean_env, temp_data_dir):
         """Test detect_optimal_ollama_settings for Apple Silicon"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Mock platform.processor and psutil for Apple Silicon with 64GB
         mock_mem = MagicMock()
@@ -588,9 +588,9 @@ class TestHelperMethods:
 
     def test_detect_optimal_ollama_settings_32gb_ram(self, reset_singleton, clean_env, temp_data_dir):
         """Test detect_optimal_ollama_settings for 32GB RAM"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Mock Apple Silicon with 32GB
         mock_mem = MagicMock()
@@ -607,9 +607,9 @@ class TestHelperMethods:
 
     def test_detect_optimal_ollama_settings_low_ram(self, reset_singleton, clean_env, temp_data_dir):
         """Test detect_optimal_ollama_settings for low RAM"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Mock Apple Silicon with 16GB
         mock_mem = MagicMock()
@@ -626,9 +626,9 @@ class TestHelperMethods:
 
     def test_detect_optimal_ollama_settings_non_apple(self, reset_singleton, clean_env, temp_data_dir):
         """Test detect_optimal_ollama_settings for non-Apple Silicon"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Mock non-Apple Silicon (x86)
         with patch('platform.processor', return_value='x86_64'), \
@@ -642,9 +642,9 @@ class TestHelperMethods:
 
     def test_to_dict(self, reset_singleton, clean_env, temp_data_dir):
         """Test to_dict method"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         result = settings.to_dict()
 
@@ -661,16 +661,16 @@ class TestSingleton:
     """Tests for singleton pattern"""
 
     def test_get_settings_returns_instance(self, reset_singleton, clean_env, temp_data_dir):
-        """Test get_settings returns ElohimOSSettings instance"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        """Test get_settings returns MedStationSettings instance"""
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
             result = get_settings()
 
-        assert isinstance(result, ElohimOSSettings)
+        assert isinstance(result, MedStationSettings)
 
     def test_get_settings_returns_same_instance(self, reset_singleton, clean_env, temp_data_dir):
         """Test get_settings returns same instance on multiple calls"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
             settings1 = get_settings()
             settings2 = get_settings()
@@ -680,7 +680,7 @@ class TestSingleton:
     def test_paths_alias_is_settings(self, reset_singleton, clean_env, temp_data_dir):
         """Test PATHS is an alias for settings"""
         # PATHS is a module-level variable
-        assert isinstance(PATHS, ElohimOSSettings)
+        assert isinstance(PATHS, MedStationSettings)
 
 
 # ========== Air-Gap Mode Tests ==========
@@ -690,18 +690,18 @@ class TestAirgapMode:
 
     def test_airgap_disabled_by_default(self, reset_singleton, clean_env, temp_data_dir):
         """Test airgap mode is disabled by default"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
             result = is_airgap_mode()
 
         assert result is False
 
-    def test_airgap_enabled_via_elohimos(self, reset_singleton, clean_env, temp_data_dir):
-        """Test airgap mode enabled via ELOHIMOS_AIRGAP_MODE"""
+    def test_airgap_enabled_via_medstationos(self, reset_singleton, clean_env, temp_data_dir):
+        """Test airgap mode enabled via MEDSTATIONOS_AIRGAP_MODE"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_AIRGAP_MODE": "true",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_AIRGAP_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
@@ -712,7 +712,7 @@ class TestAirgapMode:
     def test_airgap_enabled_via_magnetar(self, reset_singleton, clean_env, temp_data_dir):
         """Test airgap mode enabled via legacy MAGNETAR_AIRGAP_MODE"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
             "MAGNETAR_AIRGAP_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=False):
@@ -721,11 +721,11 @@ class TestAirgapMode:
 
         assert result is True
 
-    def test_airgap_enabled_via_elohim_offline(self, reset_singleton, clean_env, temp_data_dir):
-        """Test airgap mode enabled via legacy ELOHIM_OFFLINE_MODE"""
+    def test_airgap_enabled_via_medstation_offline(self, reset_singleton, clean_env, temp_data_dir):
+        """Test airgap mode enabled via legacy MEDSTATION_OFFLINE_MODE"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIM_OFFLINE_MODE": "true",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATION_OFFLINE_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
@@ -739,7 +739,7 @@ class TestAirgapMode:
 
         for value in truthy_values:
             env = {
-                "ELOHIMOS_DATA_DIR": str(temp_data_dir),
+                "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
                 "MAGNETAR_AIRGAP_MODE": value,
             }
             with patch.dict(os.environ, env, clear=False):
@@ -756,18 +756,18 @@ class TestOfflineMode:
 
     def test_offline_disabled_by_default(self, reset_singleton, clean_env, temp_data_dir):
         """Test offline mode is disabled by default"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
             result = is_offline_mode()
 
         assert result is False
 
-    def test_offline_enabled_via_elohimos(self, reset_singleton, clean_env, temp_data_dir):
-        """Test offline mode enabled via ELOHIMOS_OFFLINE_MODE"""
+    def test_offline_enabled_via_medstationos(self, reset_singleton, clean_env, temp_data_dir):
+        """Test offline mode enabled via MEDSTATIONOS_OFFLINE_MODE"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_OFFLINE_MODE": "true",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_OFFLINE_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
@@ -775,11 +775,11 @@ class TestOfflineMode:
 
         assert result is True
 
-    def test_offline_enabled_via_elohim(self, reset_singleton, clean_env, temp_data_dir):
-        """Test offline mode enabled via legacy ELOHIM_OFFLINE_MODE"""
+    def test_offline_enabled_via_medstation(self, reset_singleton, clean_env, temp_data_dir):
+        """Test offline mode enabled via legacy MEDSTATION_OFFLINE_MODE"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIM_OFFLINE_MODE": "true",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATION_OFFLINE_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
@@ -790,8 +790,8 @@ class TestOfflineMode:
     def test_offline_implied_by_airgap(self, reset_singleton, clean_env, temp_data_dir):
         """Test offline mode is True when airgap is enabled"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_AIRGAP_MODE": "true",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_AIRGAP_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=False):
             get_settings.cache_clear()
@@ -808,11 +808,11 @@ class TestEdgeCases:
     def test_empty_cors_origins_list(self, reset_singleton, clean_env, temp_data_dir):
         """Test handling of empty CORS origins"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_CORS_ORIGINS": "[]",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_CORS_ORIGINS": "[]",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         # Should accept empty list
         assert isinstance(settings.cors_origins, list)
@@ -821,9 +821,9 @@ class TestEdgeCases:
         """Test unicode characters in data directory path"""
         with tempfile.TemporaryDirectory() as tmpdir:
             unicode_dir = Path(tmpdir) / "данные_数据"
-            env = {"ELOHIMOS_DATA_DIR": str(unicode_dir)}
+            env = {"MEDSTATIONOS_DATA_DIR": str(unicode_dir)}
             with patch.dict(os.environ, env, clear=False):
-                settings = ElohimOSSettings()
+                settings = MedStationSettings()
 
             assert unicode_dir.exists()
             assert settings.data_dir == unicode_dir
@@ -832,23 +832,23 @@ class TestEdgeCases:
         """Test handling very long JWT secret"""
         long_secret = "x" * 1000
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_JWT_SECRET_KEY": long_secret,
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_JWT_SECRET_KEY": long_secret,
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.jwt_secret_key == long_secret
 
     def test_numeric_string_conversion(self, reset_singleton, clean_env, temp_data_dir):
         """Test numeric string conversion for integer fields"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_API_PORT": "12345",
-            "ELOHIMOS_DB_TIMEOUT": "999",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_API_PORT": "12345",
+            "MEDSTATIONOS_DB_TIMEOUT": "999",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.api_port == 12345
         assert settings.db_timeout == 999
@@ -856,12 +856,12 @@ class TestEdgeCases:
     def test_boolean_string_conversion(self, reset_singleton, clean_env, temp_data_dir):
         """Test boolean string conversion"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_DEBUG": "false",
-            "ELOHIMOS_P2P_ENABLED": "true",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_DEBUG": "false",
+            "MEDSTATIONOS_P2P_ENABLED": "true",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.debug is False
         assert settings.p2p_enabled is True
@@ -876,11 +876,11 @@ class TestIntegration:
         """Test full settings workflow"""
         jwt_secret = "integration_test_secret_" + "x" * 20
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_JWT_SECRET_KEY": jwt_secret,
-            "ELOHIMOS_ENVIRONMENT": "testing",
-            "ELOHIMOS_DEBUG": "false",
-            "ELOHIMOS_API_PORT": "9000",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_JWT_SECRET_KEY": jwt_secret,
+            "MEDSTATIONOS_ENVIRONMENT": "testing",
+            "MEDSTATIONOS_DEBUG": "false",
+            "MEDSTATIONOS_API_PORT": "9000",
         }
         with patch.dict(os.environ, env, clear=False):
             settings = get_settings()
@@ -905,7 +905,7 @@ class TestIntegration:
 
     def test_settings_singleton_consistency(self, reset_singleton, clean_env, temp_data_dir):
         """Test that singleton returns consistent settings"""
-        env = {"ELOHIMOS_DATA_DIR": str(temp_data_dir)}
+        env = {"MEDSTATIONOS_DATA_DIR": str(temp_data_dir)}
         with patch.dict(os.environ, env, clear=False):
             settings1 = get_settings()
             original_debug = settings1.debug
@@ -919,14 +919,14 @@ class TestIntegration:
     def test_cloud_storage_settings(self, reset_singleton, clean_env, temp_data_dir):
         """Test cloud storage settings"""
         env = {
-            "ELOHIMOS_DATA_DIR": str(temp_data_dir),
-            "ELOHIMOS_CLOUD_STORAGE_ENABLED": "true",
-            "ELOHIMOS_CLOUD_STORAGE_PROVIDER": "s3",
-            "ELOHIMOS_S3_BUCKET_NAME": "my-bucket",
-            "ELOHIMOS_S3_REGION": "us-west-2",
+            "MEDSTATIONOS_DATA_DIR": str(temp_data_dir),
+            "MEDSTATIONOS_CLOUD_STORAGE_ENABLED": "true",
+            "MEDSTATIONOS_CLOUD_STORAGE_PROVIDER": "s3",
+            "MEDSTATIONOS_S3_BUCKET_NAME": "my-bucket",
+            "MEDSTATIONOS_S3_REGION": "us-west-2",
         }
         with patch.dict(os.environ, env, clear=False):
-            settings = ElohimOSSettings()
+            settings = MedStationSettings()
 
         assert settings.cloud_storage_enabled is True
         assert settings.cloud_storage_provider == "s3"

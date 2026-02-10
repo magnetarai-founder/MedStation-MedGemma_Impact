@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Monitoring Routes for ElohimOS API
+Monitoring Routes for MedStation API
 Health checks, Metal 4 diagnostics, and system monitoring
 """
 

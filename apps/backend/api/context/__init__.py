@@ -1,7 +1,7 @@
 """
 Context Package
 
-ANE Context Engine API for ElohimOS:
+ANE Context Engine API for MedStation:
 - Semantic search across workspaces
 - Background vectorization
 - RAG document retrieval

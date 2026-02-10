@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database Query Result Caching for ElohimOS
+Database Query Result Caching for MedStation
 
 Provides intelligent caching for frequently accessed database queries
 to reduce database load and improve response times.

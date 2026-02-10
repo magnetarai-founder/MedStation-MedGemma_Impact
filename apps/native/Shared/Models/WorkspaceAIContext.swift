@@ -1,6 +1,6 @@
 //
 //  WorkspaceAIContext.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Workspace AI context types for the detached AI assistant window.
 //  Each context represents a workspace domain with its own sessions and model override.

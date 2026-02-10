@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "SettingsStore")
+private let logger = Logger(subsystem: "com.medstation.app", category: "SettingsStore")
 
 // MARK: - SettingsStore
 

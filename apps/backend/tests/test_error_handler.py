@@ -3,12 +3,12 @@ Comprehensive tests for api/error_handler.py
 
 Tests the unified error handling system including:
 - ErrorType enum values
-- Custom exception classes (ElohimOSError, OllamaError, ValidationError, etc.)
+- Custom exception classes (MedStationError, OllamaError, ValidationError, etc.)
 - ErrorHandler static methods for error conversion and handling
 
 Coverage targets:
 - ErrorType: All enum values
-- ElohimOSError: Base exception class
+- MedStationError: Base exception class
 - OllamaError, ValidationError, AuthError, DataEngineError, MeshError: Subclasses
 - ErrorHandler: All static methods
 """
@@ -19,7 +19,7 @@ from fastapi import HTTPException
 
 from api.error_handler import (
     ErrorType,
-    ElohimOSError,
+    MedStationError,
     OllamaError,
     ValidationError,
     AuthError,
@@ -86,14 +86,14 @@ class TestErrorType:
         assert len(ErrorType) == 25
 
 
-# ========== ElohimOSError Tests ==========
+# ========== MedStationError Tests ==========
 
-class TestElohimOSError:
-    """Tests for ElohimOSError base exception"""
+class TestMedStationError:
+    """Tests for MedStationError base exception"""
 
     def test_basic_creation(self):
         """Test creating basic error"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test error",
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -105,7 +105,7 @@ class TestElohimOSError:
 
     def test_creation_with_all_params(self):
         """Test creating error with all parameters"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Full error",
             error_type=ErrorType.FILE_NOT_FOUND,
             status_code=404,
@@ -119,7 +119,7 @@ class TestElohimOSError:
 
     def test_inherits_from_exception(self):
         """Test inherits from Exception"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Inherits test",
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -129,8 +129,8 @@ class TestElohimOSError:
 
     def test_can_be_raised(self):
         """Test error can be raised and caught"""
-        with pytest.raises(ElohimOSError) as exc_info:
-            raise ElohimOSError(
+        with pytest.raises(MedStationError) as exc_info:
+            raise MedStationError(
                 message="Raised error",
                 error_type=ErrorType.INTERNAL_ERROR
             )
@@ -139,7 +139,7 @@ class TestElohimOSError:
 
     def test_none_details_becomes_empty_dict(self):
         """Test None details defaults to empty dict"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR,
             details=None
@@ -180,10 +180,10 @@ class TestOllamaError:
 
         assert error.details == {"model": "llama2", "timeout_sec": 30}
 
-    def test_inherits_from_elohimos_error(self):
-        """Test inherits from ElohimOSError"""
+    def test_inherits_from_medstationos_error(self):
+        """Test inherits from MedStationError"""
         error = OllamaError(message="Test")
-        assert isinstance(error, ElohimOSError)
+        assert isinstance(error, MedStationError)
 
 
 # ========== ValidationError Tests ==========
@@ -216,10 +216,10 @@ class TestValidationError:
 
         assert error.details["field"] == "email"
 
-    def test_inherits_from_elohimos_error(self):
-        """Test inherits from ElohimOSError"""
+    def test_inherits_from_medstationos_error(self):
+        """Test inherits from MedStationError"""
         error = ValidationError(message="Test")
-        assert isinstance(error, ElohimOSError)
+        assert isinstance(error, MedStationError)
 
 
 # ========== AuthError Tests ==========
@@ -253,10 +253,10 @@ class TestAuthError:
 
         assert error.details["session_id"] == "abc123"
 
-    def test_inherits_from_elohimos_error(self):
-        """Test inherits from ElohimOSError"""
+    def test_inherits_from_medstationos_error(self):
+        """Test inherits from MedStationError"""
         error = AuthError(message="Test")
-        assert isinstance(error, ElohimOSError)
+        assert isinstance(error, MedStationError)
 
 
 # ========== DataEngineError Tests ==========
@@ -290,10 +290,10 @@ class TestDataEngineError:
 
         assert error.details["query"] == "SELECT * FROM"
 
-    def test_inherits_from_elohimos_error(self):
-        """Test inherits from ElohimOSError"""
+    def test_inherits_from_medstationos_error(self):
+        """Test inherits from MedStationError"""
         error = DataEngineError(message="Test")
-        assert isinstance(error, ElohimOSError)
+        assert isinstance(error, MedStationError)
 
 
 # ========== MeshError Tests ==========
@@ -327,10 +327,10 @@ class TestMeshError:
 
         assert error.details["peer_id"] == "peer_123"
 
-    def test_inherits_from_elohimos_error(self):
-        """Test inherits from ElohimOSError"""
+    def test_inherits_from_medstationos_error(self):
+        """Test inherits from MedStationError"""
         error = MeshError(message="Test")
-        assert isinstance(error, ElohimOSError)
+        assert isinstance(error, MedStationError)
 
 
 # ========== ErrorHandler.handle_ollama_error Tests ==========
@@ -399,8 +399,8 @@ class TestToHttpException:
     """Tests for ErrorHandler.to_http_exception"""
 
     def test_converts_to_http_exception(self):
-        """Test converts ElohimOSError to HTTPException"""
-        error = ElohimOSError(
+        """Test converts MedStationError to HTTPException"""
+        error = MedStationError(
             message="Test error",
             error_type=ErrorType.INTERNAL_ERROR,
             status_code=500
@@ -415,7 +415,7 @@ class TestToHttpException:
 
     def test_includes_details(self):
         """Test includes details in HTTPException"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="File error",
             error_type=ErrorType.FILE_NOT_FOUND,
             status_code=404,
@@ -726,7 +726,7 @@ class TestRecordErrorAnalytics:
 
     def test_records_error_to_analytics(self):
         """Test records error to analytics service"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test error",
             error_type=ErrorType.INTERNAL_ERROR,
             status_code=500,
@@ -754,7 +754,7 @@ class TestRecordErrorAnalytics:
 
     def test_handles_analytics_failure_gracefully(self):
         """Test handles analytics failure without raising"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -771,7 +771,7 @@ class TestRecordErrorAnalytics:
 
     def test_handles_service_error_gracefully(self):
         """Test handles get_analytics_service failure without raising"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -785,7 +785,7 @@ class TestRecordErrorAnalytics:
 
     def test_handles_import_error_gracefully(self):
         """Test handles import error without raising"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -860,7 +860,7 @@ class TestEdgeCases:
 
     def test_unicode_error_message(self):
         """Test handling unicode in error messages"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="エラー: 日本語メッセージ",
             error_type=ErrorType.INTERNAL_ERROR,
             details={"info": "日本語"}
@@ -871,7 +871,7 @@ class TestEdgeCases:
 
     def test_empty_string_message(self):
         """Test handling empty string message"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="",
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -881,7 +881,7 @@ class TestEdgeCases:
     def test_very_long_error_message(self):
         """Test handling very long error messages"""
         long_message = "Error: " + "x" * 10000
-        error = ElohimOSError(
+        error = MedStationError(
             message=long_message,
             error_type=ErrorType.INTERNAL_ERROR
         )
@@ -890,7 +890,7 @@ class TestEdgeCases:
 
     def test_special_chars_in_details(self):
         """Test handling special characters in details"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR,
             details={
@@ -905,7 +905,7 @@ class TestEdgeCases:
 
     def test_nested_details(self):
         """Test handling nested details"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR,
             details={
@@ -921,7 +921,7 @@ class TestEdgeCases:
 
     def test_error_with_numeric_details(self):
         """Test handling numeric values in details"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR,
             details={
@@ -937,7 +937,7 @@ class TestEdgeCases:
 
     def test_error_with_list_details(self):
         """Test handling list values in details"""
-        error = ElohimOSError(
+        error = MedStationError(
             message="Test",
             error_type=ErrorType.INTERNAL_ERROR,
             details={

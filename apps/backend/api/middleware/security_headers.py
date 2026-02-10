@@ -33,7 +33,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response: Response = await call_next(request)
 
         # Determine if production mode
-        env = os.getenv('ELOHIM_ENV', 'production').lower()
+        env = os.getenv('MEDSTATION_ENV', 'production').lower()
         is_production = env == 'production'
 
         # X-Content-Type-Options: Prevent MIME sniffing

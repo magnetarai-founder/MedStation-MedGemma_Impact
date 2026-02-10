@@ -23,7 +23,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, PropertyMock
 
 # Ensure test environment
-os.environ["ELOHIM_ENV"] = "test"
+os.environ["MEDSTATION_ENV"] = "test"
 
 # Add backend to path
 backend_root = Path(__file__).parent.parent

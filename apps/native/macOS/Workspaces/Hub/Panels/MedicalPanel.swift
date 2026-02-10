@@ -1,6 +1,6 @@
 //
 //  MedicalPanel.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Medical workspace panel for patient intake and MedGemma-powered agentic workflows.
 //  Displays case list, intake details, workflow progress, and structured results.
@@ -12,7 +12,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalPanel")
+private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalPanel")
 
 // MARK: - Medical Panel
 
@@ -352,7 +352,7 @@ struct MedicalPanel: View {
 
     private static var storageDirectory: URL {
         let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-            .appendingPathComponent("MagnetarStudio/workspace/medical", isDirectory: true)
+            .appendingPathComponent("MedStation/workspace/medical", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "medical cases storage")
         return dir
     }
@@ -505,7 +505,7 @@ private struct MedicalCaseDetailView: View {
         HStack {
             Image(systemName: "cross.case.fill")
                 .font(.title)
-                .foregroundStyle(LinearGradient.magnetarGradient)
+                .foregroundStyle(LinearGradient.medstationGradient)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -636,7 +636,7 @@ private struct MedicalCaseDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(LinearGradient.magnetarGradient)
+                .background(LinearGradient.medstationGradient)
                 .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
@@ -1571,7 +1571,7 @@ private struct MedicalCaseDetailView: View {
                 Text("""
                 \u{2022} Zero network transmission of patient data
                 \u{2022} All inference runs on Apple Silicon via Ollama
-                \u{2022} Data stored locally: ~/Library/Application Support/MagnetarStudio/
+                \u{2022} Data stored locally: ~/Library/Application Support/MedStation/
                 \u{2022} No telemetry, no analytics, no cloud sync of medical data
                 """)
                     .font(.caption2)

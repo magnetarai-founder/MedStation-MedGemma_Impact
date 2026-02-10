@@ -1,6 +1,6 @@
 //
 //  MedicalBenchmarkHarness.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Automated evaluation harness for MedGemma medical triage accuracy.
 //  Runs clinically validated vignettes through the full 5-step workflow
@@ -13,7 +13,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalBenchmark")
+private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalBenchmark")
 
 // MARK: - Benchmark Vignette
 
@@ -337,7 +337,7 @@ final class MedicalBenchmarkHarness {
 
     private func saveBenchmarkReport(_ report: BenchmarkReport) {
         let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-            .appendingPathComponent("MagnetarStudio/workspace/medical/benchmarks", isDirectory: true)
+            .appendingPathComponent("MedStation/workspace/medical/benchmarks", isDirectory: true)
         PersistenceHelpers.ensureDirectory(at: dir, label: "benchmark reports")
         let file = dir.appendingPathComponent("benchmark-\(report.id.uuidString.prefix(8)).json")
         PersistenceHelpers.save(report, to: file, label: "benchmark report")
@@ -345,7 +345,7 @@ final class MedicalBenchmarkHarness {
 
     static func loadLatestReport() -> BenchmarkReport? {
         let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-            .appendingPathComponent("MagnetarStudio/workspace/medical/benchmarks", isDirectory: true)
+            .appendingPathComponent("MedStation/workspace/medical/benchmarks", isDirectory: true)
         let files: [URL]
         do {
             files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])

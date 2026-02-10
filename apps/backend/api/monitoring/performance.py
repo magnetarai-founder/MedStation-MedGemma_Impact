@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Monitoring for ElohimOS
+Performance Monitoring for MedStation
 Real-time tracking of tokens/s, GPU %, temperature, memory
 Critical for missionary field deployments
 """

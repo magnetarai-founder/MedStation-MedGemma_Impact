@@ -1,6 +1,6 @@
 //
 //  ImageAnalysisService.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Complete 5-layer ML pipeline (Vision, Object Detection, Segmentation, Depth, Structured Output).
 //  Wired: ChatStore.analyzeImageForContext() calls analyze() and generates AI context string.
@@ -14,7 +14,7 @@ import os
 import AppKit
 #endif
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ImageAnalysis")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ImageAnalysis")
 
 /// Main orchestrator for multi-layer image analysis
 /// Coordinates Vision, Object Detection, Segmentation, Depth, and Structured Output layers

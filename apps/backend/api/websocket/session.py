@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Workspace Session Manager for ElohimOS
+Workspace Session Manager for MedStation
 Provides unified session IDs across Chat, Terminal, Code, and Agent tabs
 """
 
@@ -24,7 +24,7 @@ PATHS = get_config_paths()
 
 class WorkspaceSessionManager:
     """
-    Manages unified workspace sessions across all ElohimOS tabs
+    Manages unified workspace sessions across all MedStation tabs
 
     A workspace session represents a single coding/work session that:
     - Spans across Chat, Terminal, Code, and Agent tabs

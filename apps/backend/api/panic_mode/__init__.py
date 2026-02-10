@@ -1,7 +1,7 @@
 """
 Panic Mode Package
 
-Emergency security system for MagnetarStudio:
+Emergency security system for MedStation:
 - Rapid data wiping for hostile situations
 - P2P connection termination
 - Database encryption/securing

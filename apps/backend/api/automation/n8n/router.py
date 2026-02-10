@@ -134,7 +134,7 @@ async def export_stage_to_n8n(
     service: N8NIntegrationService = Depends(require_n8n_enabled)
 ) -> Dict[str, Any]:
     """
-    Export ElohimOS workflow stage to n8n
+    Export MedStation workflow stage to n8n
 
     Args:
         request: Export request with workflow and stage IDs
@@ -330,11 +330,11 @@ async def execute_n8n_workflow(
 
 @router.get("/mappings")
 async def get_stage_mappings(service: N8NIntegrationService = Depends(require_n8n_enabled)) -> Dict[str, Any]:
-    """Get all ElohimOS <-> n8n stage mappings"""
+    """Get all MedStation <-> n8n stage mappings"""
     mappings = [
         {
-            "elohim_workflow_id": m.elohim_workflow_id,
-            "elohim_stage_id": m.elohim_stage_id,
+            "medstation_workflow_id": m.medstation_workflow_id,
+            "medstation_stage_id": m.medstation_stage_id,
             "n8n_workflow_id": m.n8n_workflow_id,
             "webhook_url": m.n8n_webhook_url,
             "created_at": m.created_at.isoformat()

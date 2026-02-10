@@ -539,7 +539,7 @@ class TestSessionManagement:
 
         # Check User-Agent is set
         assert "User-Agent" in session.headers
-        assert "MagnetarStudio" in session.headers["User-Agent"]
+        assert "MedStation" in session.headers["User-Agent"]
 
         await checker.close()
 

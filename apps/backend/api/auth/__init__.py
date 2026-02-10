@@ -1,7 +1,7 @@
 """
 Authentication Package
 
-Provides authentication and authorization for ElohimOS:
+Provides authentication and authorization for MedStation:
 - AuthService: Core authentication with JWT tokens
 - User model and session management
 - Rate limiting and security middleware

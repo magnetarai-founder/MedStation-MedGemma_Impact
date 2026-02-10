@@ -1,5 +1,5 @@
 """
-Model Validator for ElohimOS Agent
+Model Validator for MedStation Agent
 Validates model availability and provides intelligent defaults
 """
 

@@ -4,7 +4,7 @@ import AppKit
 #endif
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "StructuredOutput")
+private let logger = Logger(subsystem: "com.medstation.app", category: "StructuredOutput")
 
 /// Context from previous layers to guide structured output generation
 struct StructuredOutputContext: Sendable {

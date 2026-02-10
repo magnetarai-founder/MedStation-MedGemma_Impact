@@ -1,6 +1,6 @@
 //
 //  WelcomeView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Login/Register screen shown when authState == .welcome
 //
@@ -9,7 +9,7 @@ import SwiftUI
 import LocalAuthentication
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "WelcomeView")
+private let logger = Logger(subsystem: "com.medstation.app", category: "WelcomeView")
 
 struct WelcomeView: View {
     @Environment(AuthStore.self) private var authStore
@@ -26,7 +26,7 @@ struct WelcomeView: View {
     var body: some View {
         ZStack {
             // Background gradient
-            LinearGradient.magnetarGradient
+            LinearGradient.medstationGradient
                 .ignoresSafeArea()
 
             // Login/Register card
@@ -36,9 +36,9 @@ struct WelcomeView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 48))
-                            .foregroundStyle(LinearGradient.magnetarGradient)
+                            .foregroundStyle(LinearGradient.medstationGradient)
 
-                        Text("MagnetarStudio")
+                        Text("MedStation")
                             .font(.largeTitle)
                             .fontWeight(.bold)
 
@@ -219,7 +219,7 @@ struct WelcomeView: View {
         do {
             // Authenticate with biometrics
             let success = try await biometricService.authenticate(
-                reason: "Sign in to MagnetarStudio"
+                reason: "Sign in to MedStation"
             )
 
             guard success else {

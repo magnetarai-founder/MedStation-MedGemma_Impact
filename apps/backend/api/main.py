@@ -31,7 +31,7 @@ from api.core.app_settings import (
     AppSettings,
     load_app_settings,
     save_app_settings,
-    set_elohimos_memory,
+    set_medstationos_memory,
 )
 
 from api.core.state import (
@@ -49,16 +49,16 @@ except ImportError:
     from config import get_settings
 
 try:
-    from .elohimos_memory import ElohimOSMemory
+    from .medstationos_memory import MedStationMemory
 except ImportError:
-    from elohimos_memory import ElohimOSMemory
+    from medstationos_memory import MedStationMemory
 
 # Initialize configuration
 settings = get_settings()
 
 # Initialize memory system
-elohimos_memory = ElohimOSMemory()
-set_elohimos_memory(elohimos_memory)
+medstationos_memory = MedStationMemory()
+set_medstationos_memory(medstationos_memory)
 
 # Load app settings
 app_settings = load_app_settings()
@@ -96,7 +96,7 @@ except ImportError:
 __all__ = [
     "app",
     "settings",
-    "elohimos_memory",
+    "medstationos_memory",
     "app_settings",
     "load_app_settings",
     "save_app_settings",

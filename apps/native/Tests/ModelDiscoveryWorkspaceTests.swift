@@ -1,6 +1,6 @@
 //
 //  ModelDiscoveryWorkspaceTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Comprehensive test suite for ModelDiscoveryWorkspace refactoring (Phase 6.22)
 //  Tests extracted components: ModelDiscoveryFiltersPane, ModelDiscoveryListPane,
@@ -8,7 +8,7 @@
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 @MainActor
 final class ModelDiscoveryWorkspaceTests: XCTestCase {

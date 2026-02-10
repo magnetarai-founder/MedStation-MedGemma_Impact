@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Offline File Sharing for ElohimOS
+Offline File Sharing for MedStation
 Direct file transfers between devices on local network
 Perfect for sharing Bibles, datasets, documents in the field
 """

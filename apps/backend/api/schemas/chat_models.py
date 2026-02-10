@@ -1,5 +1,5 @@
 """
-Chat-related Pydantic models for ElohimOS API.
+Chat-related Pydantic models for MedStation API.
 
 Extracted from chat_service.py for service layer pattern migration.
 """

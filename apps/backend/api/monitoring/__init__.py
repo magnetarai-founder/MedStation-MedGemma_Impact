@@ -1,7 +1,7 @@
 """
 Monitoring Package
 
-Comprehensive observability and metrics for ElohimOS:
+Comprehensive observability and metrics for MedStation:
 - Lightweight operation metrics
 - Prometheus metrics export
 - Health check endpoints

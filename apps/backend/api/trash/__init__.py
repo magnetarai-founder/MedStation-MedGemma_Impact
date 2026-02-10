@@ -1,7 +1,7 @@
 """
 Trash Package
 
-Soft-delete trash system for ElohimOS:
+Soft-delete trash system for MedStation:
 - 30-day retention period
 - Restore deleted items
 - Auto-cleanup of expired items

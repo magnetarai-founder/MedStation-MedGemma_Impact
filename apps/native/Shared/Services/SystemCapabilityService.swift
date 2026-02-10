@@ -1,6 +1,6 @@
 //
 //  SystemCapabilityService.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Service for checking system capabilities and model compatibility
 //

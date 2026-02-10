@@ -2,7 +2,7 @@
 Users API - User profile management
 
 Provides endpoints for managing user profiles and settings.
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 import logging

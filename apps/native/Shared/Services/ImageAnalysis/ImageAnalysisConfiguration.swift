@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ImageAnalysisConfig")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ImageAnalysisConfig")
 
 /// Configuration for image analysis pipeline
 struct ImageAnalysisConfiguration: Codable, Sendable {

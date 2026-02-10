@@ -148,7 +148,7 @@ class EncryptedDatabase:
 
             # Write to temporary in-memory location
             # Use /tmp for security (cleared on reboot)
-            temp_dir = Path("/tmp/elohimos_encrypted_dbs")
+            temp_dir = Path("/tmp/medstationos_encrypted_dbs")
             temp_dir.mkdir(parents=True, exist_ok=True, mode=0o700)  # Owner-only permissions
 
             temp_db = temp_dir / f"{self.db_path.stem}_{secrets.token_hex(8)}.db"
@@ -370,7 +370,7 @@ def get_encrypted_database(db_name: str, passphrase: str) -> EncryptedDatabase:
     Get or create encrypted database instance
 
     Args:
-        db_name: Database name (e.g., "vault.db", "elohimos_app.db")
+        db_name: Database name (e.g., "vault.db", "medstationos_app.db")
         passphrase: User's passphrase
 
     Returns:

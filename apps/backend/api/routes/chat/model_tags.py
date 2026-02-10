@@ -4,7 +4,7 @@ Model Tags API Routes
 Provides endpoints for getting and managing model tags (auto-detected + manual).
 Supports tag detection from model names and manual tag overrides.
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 import logging

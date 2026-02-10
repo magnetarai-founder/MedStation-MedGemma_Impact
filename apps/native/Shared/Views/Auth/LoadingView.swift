@@ -1,6 +1,6 @@
 //
 //  LoadingView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Loading screen shown during auth validation (.checking state)
 //
@@ -12,7 +12,7 @@ struct LoadingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient.magnetarGradient
+            LinearGradient.medstationGradient
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {

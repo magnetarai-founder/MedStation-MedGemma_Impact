@@ -34,10 +34,10 @@ def get_user_id_mapping(conn) -> dict:
     # Get auth database connection - it's in the same .neutron_data directory
     # Try multiple possible locations
     possible_paths = [
-        Path(__file__).parent / ".neutron_data" / "elohimos_app.db",  # Same directory as this script
-        Path("apps/backend/api/.neutron_data/elohimos_app.db"),
-        Path(__file__).parent.parent.parent.parent / ".neutron_data" / "elohimos_app.db",
-        Path(".neutron_data/elohimos_app.db"),
+        Path(__file__).parent / ".neutron_data" / "medstationos_app.db",  # Same directory as this script
+        Path("apps/backend/api/.neutron_data/medstationos_app.db"),
+        Path(__file__).parent.parent.parent.parent / ".neutron_data" / "medstationos_app.db",
+        Path(".neutron_data/medstationos_app.db"),
     ]
 
     auth_db_path = None

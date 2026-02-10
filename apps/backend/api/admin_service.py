@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Admin Service Router for ElohimOS
+Admin Service Router for MedStation
 
 Thin HTTP router for Founder Rights (Founder Admin) endpoints.
 Handles:

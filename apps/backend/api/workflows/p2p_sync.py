@@ -33,7 +33,7 @@ from api.workflow_orchestrator import WorkflowOrchestrator
 logger = logging.getLogger(__name__)
 
 # Protocol ID for workflow sync
-WORKFLOW_SYNC_PROTOCOL = "/elohimos/workflow/1.0.0"
+WORKFLOW_SYNC_PROTOCOL = "/medstationos/workflow/1.0.0"
 
 
 class WorkflowP2PSync:

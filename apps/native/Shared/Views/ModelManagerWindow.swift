@@ -1,16 +1,16 @@
 //
 //  ModelManagerWindow.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Compact model loading/unloading management
 //  Slot number buttons [1][2][3][4] for intelligent loading
-//  Tag-based filtering from MagnetarHub
+//  Tag-based filtering from MedStationHub
 //
 
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelManagerWindow")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ModelManagerWindow")
 
 struct ModelManagerWindow: View {
     @State private var hotSlotManager = HotSlotManager.shared

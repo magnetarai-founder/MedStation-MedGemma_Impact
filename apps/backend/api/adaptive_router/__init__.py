@@ -1,7 +1,7 @@
 """
 Adaptive Router Package
 
-Intelligent task routing for ElohimOS:
+Intelligent task routing for MedStation:
 - Pattern matching for task classification
 - Learning-based route optimization
 - Context-aware recommendations

@@ -1,13 +1,13 @@
 //
 //  ContextOptimizationTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Comprehensive tests for the context optimization system.
 //  Tests TokenCounter, ContextOptimizer, and related components.
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 @MainActor
 final class ContextOptimizationTests: XCTestCase {

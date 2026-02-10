@@ -1,7 +1,7 @@
 """
 LAN Discovery Package
 
-Enables local network discovery of ElohimOS instances using mDNS/Bonjour.
+Enables local network discovery of MedStation instances using mDNS/Bonjour.
 Central Hub Model: One laptop acts as hub, others connect to it.
 
 Components:

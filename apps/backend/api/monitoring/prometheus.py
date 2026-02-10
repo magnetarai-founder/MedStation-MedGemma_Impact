@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class PrometheusMetricsExporter:
     """
-    Prometheus metrics exporter for ElohimOS
+    Prometheus metrics exporter for MedStation
 
     Exports metrics in Prometheus text format:
     - Metal 4 GPU metrics (utilization, memory, temperature)
@@ -110,7 +110,7 @@ class PrometheusMetricsExporter:
         metrics = []
 
         # Add header
-        metrics.append("# Prometheus metrics for ElohimOS")
+        metrics.append("# Prometheus metrics for MedStation")
         metrics.append(f"# Collected at: {datetime.now(UTC).isoformat()}")
         metrics.append("")
 
@@ -135,46 +135,46 @@ class PrometheusMetricsExporter:
         """Collect system resource metrics"""
         metrics = []
 
-        metrics.append("# HELP elohimos_system_cpu_percent System CPU usage percentage")
-        metrics.append("# TYPE elohimos_system_cpu_percent gauge")
-        metrics.append(f"elohimos_system_cpu_percent {psutil.cpu_percent(interval=0.1)}")
+        metrics.append("# HELP medstationos_system_cpu_percent System CPU usage percentage")
+        metrics.append("# TYPE medstationos_system_cpu_percent gauge")
+        metrics.append(f"medstationos_system_cpu_percent {psutil.cpu_percent(interval=0.1)}")
 
-        metrics.append("# HELP elohimos_system_memory_percent System memory usage percentage")
-        metrics.append("# TYPE elohimos_system_memory_percent gauge")
+        metrics.append("# HELP medstationos_system_memory_percent System memory usage percentage")
+        metrics.append("# TYPE medstationos_system_memory_percent gauge")
         mem = psutil.virtual_memory()
-        metrics.append(f"elohimos_system_memory_percent {mem.percent}")
+        metrics.append(f"medstationos_system_memory_percent {mem.percent}")
 
-        metrics.append("# HELP elohimos_system_memory_used_bytes System memory used in bytes")
-        metrics.append("# TYPE elohimos_system_memory_used_bytes gauge")
-        metrics.append(f"elohimos_system_memory_used_bytes {mem.used}")
+        metrics.append("# HELP medstationos_system_memory_used_bytes System memory used in bytes")
+        metrics.append("# TYPE medstationos_system_memory_used_bytes gauge")
+        metrics.append(f"medstationos_system_memory_used_bytes {mem.used}")
 
-        metrics.append("# HELP elohimos_system_memory_available_bytes System memory available in bytes")
-        metrics.append("# TYPE elohimos_system_memory_available_bytes gauge")
-        metrics.append(f"elohimos_system_memory_available_bytes {mem.available}")
+        metrics.append("# HELP medstationos_system_memory_available_bytes System memory available in bytes")
+        metrics.append("# TYPE medstationos_system_memory_available_bytes gauge")
+        metrics.append(f"medstationos_system_memory_available_bytes {mem.available}")
 
-        metrics.append("# HELP elohimos_system_disk_usage_percent Disk usage percentage")
-        metrics.append("# TYPE elohimos_system_disk_usage_percent gauge")
+        metrics.append("# HELP medstationos_system_disk_usage_percent Disk usage percentage")
+        metrics.append("# TYPE medstationos_system_disk_usage_percent gauge")
         disk = psutil.disk_usage('/')
-        metrics.append(f"elohimos_system_disk_usage_percent {disk.percent}")
+        metrics.append(f"medstationos_system_disk_usage_percent {disk.percent}")
 
-        metrics.append("# HELP elohimos_system_disk_used_bytes Disk used in bytes")
-        metrics.append("# TYPE elohimos_system_disk_used_bytes gauge")
-        metrics.append(f"elohimos_system_disk_used_bytes {disk.used}")
+        metrics.append("# HELP medstationos_system_disk_used_bytes Disk used in bytes")
+        metrics.append("# TYPE medstationos_system_disk_used_bytes gauge")
+        metrics.append(f"medstationos_system_disk_used_bytes {disk.used}")
 
-        metrics.append("# HELP elohimos_system_disk_free_bytes Disk free in bytes")
-        metrics.append("# TYPE elohimos_system_disk_free_bytes gauge")
-        metrics.append(f"elohimos_system_disk_free_bytes {disk.free}")
+        metrics.append("# HELP medstationos_system_disk_free_bytes Disk free in bytes")
+        metrics.append("# TYPE medstationos_system_disk_free_bytes gauge")
+        metrics.append(f"medstationos_system_disk_free_bytes {disk.free}")
 
         # Network I/O
         try:
             net_io = psutil.net_io_counters()
-            metrics.append("# HELP elohimos_system_network_bytes_sent_total Total network bytes sent")
-            metrics.append("# TYPE elohimos_system_network_bytes_sent_total counter")
-            metrics.append(f"elohimos_system_network_bytes_sent_total {net_io.bytes_sent}")
+            metrics.append("# HELP medstationos_system_network_bytes_sent_total Total network bytes sent")
+            metrics.append("# TYPE medstationos_system_network_bytes_sent_total counter")
+            metrics.append(f"medstationos_system_network_bytes_sent_total {net_io.bytes_sent}")
 
-            metrics.append("# HELP elohimos_system_network_bytes_recv_total Total network bytes received")
-            metrics.append("# TYPE elohimos_system_network_bytes_recv_total counter")
-            metrics.append(f"elohimos_system_network_bytes_recv_total {net_io.bytes_recv}")
+            metrics.append("# HELP medstationos_system_network_bytes_recv_total Total network bytes received")
+            metrics.append("# TYPE medstationos_system_network_bytes_recv_total counter")
+            metrics.append(f"medstationos_system_network_bytes_recv_total {net_io.bytes_recv}")
         except Exception as e:
             logger.warning(f"Failed to collect network metrics: {e}")
 
@@ -189,26 +189,26 @@ class PrometheusMetricsExporter:
             return metrics
 
         # Metal 4 availability
-        metrics.append("# HELP elohimos_metal4_available Metal 4 GPU availability (1 = available, 0 = unavailable)")
-        metrics.append("# TYPE elohimos_metal4_available gauge")
-        metrics.append(f"elohimos_metal4_available {1 if self.metal4_engine.is_available() else 0}")
+        metrics.append("# HELP medstationos_metal4_available Metal 4 GPU availability (1 = available, 0 = unavailable)")
+        metrics.append("# TYPE medstationos_metal4_available gauge")
+        metrics.append(f"medstationos_metal4_available {1 if self.metal4_engine.is_available() else 0}")
 
         # Metal version
         try:
             capabilities = self.metal4_engine.capabilities
-            metrics.append("# HELP elohimos_metal4_version Metal version (3 or 4)")
-            metrics.append("# TYPE elohimos_metal4_version gauge")
-            metrics.append(f"elohimos_metal4_version {capabilities.version.value}")
+            metrics.append("# HELP medstationos_metal4_version Metal version (3 or 4)")
+            metrics.append("# TYPE medstationos_metal4_version gauge")
+            metrics.append(f"medstationos_metal4_version {capabilities.version.value}")
 
             # Unified memory support
-            metrics.append("# HELP elohimos_metal4_unified_memory Unified memory support (1 = yes, 0 = no)")
-            metrics.append("# TYPE elohimos_metal4_unified_memory gauge")
-            metrics.append(f"elohimos_metal4_unified_memory {1 if capabilities.supports_unified_memory else 0}")
+            metrics.append("# HELP medstationos_metal4_unified_memory Unified memory support (1 = yes, 0 = no)")
+            metrics.append("# TYPE medstationos_metal4_unified_memory gauge")
+            metrics.append(f"medstationos_metal4_unified_memory {1 if capabilities.supports_unified_memory else 0}")
 
             # Recommended heap size
-            metrics.append("# HELP elohimos_metal4_heap_size_mb Recommended Metal heap size in MB")
-            metrics.append("# TYPE elohimos_metal4_heap_size_mb gauge")
-            metrics.append(f"elohimos_metal4_heap_size_mb {capabilities.recommended_heap_size_mb}")
+            metrics.append("# HELP medstationos_metal4_heap_size_mb Recommended Metal heap size in MB")
+            metrics.append("# TYPE medstationos_metal4_heap_size_mb gauge")
+            metrics.append(f"medstationos_metal4_heap_size_mb {capabilities.recommended_heap_size_mb}")
         except Exception as e:
             logger.warning(f"Failed to collect Metal 4 capabilities: {e}")
 
@@ -217,23 +217,23 @@ class PrometheusMetricsExporter:
             try:
                 stats = self.metal4_sql_engine.get_stats()
 
-                metrics.append("# HELP elohimos_metal4_sql_operations_total Total SQL operations executed")
-                metrics.append("# TYPE elohimos_metal4_sql_operations_total counter")
-                metrics.append(f"elohimos_metal4_sql_operations_total {stats.get('total_operations', 0)}")
+                metrics.append("# HELP medstationos_metal4_sql_operations_total Total SQL operations executed")
+                metrics.append("# TYPE medstationos_metal4_sql_operations_total counter")
+                metrics.append(f"medstationos_metal4_sql_operations_total {stats.get('total_operations', 0)}")
 
-                metrics.append("# HELP elohimos_metal4_sql_gpu_operations_total GPU-accelerated SQL operations")
-                metrics.append("# TYPE elohimos_metal4_sql_gpu_operations_total counter")
-                metrics.append(f"elohimos_metal4_sql_gpu_operations_total {stats.get('gpu_operations', 0)}")
+                metrics.append("# HELP medstationos_metal4_sql_gpu_operations_total GPU-accelerated SQL operations")
+                metrics.append("# TYPE medstationos_metal4_sql_gpu_operations_total counter")
+                metrics.append(f"medstationos_metal4_sql_gpu_operations_total {stats.get('gpu_operations', 0)}")
 
-                metrics.append("# HELP elohimos_metal4_sql_cpu_operations_total CPU fallback SQL operations")
-                metrics.append("# TYPE elohimos_metal4_sql_cpu_operations_total counter")
-                metrics.append(f"elohimos_metal4_sql_cpu_operations_total {stats.get('cpu_operations', 0)}")
+                metrics.append("# HELP medstationos_metal4_sql_cpu_operations_total CPU fallback SQL operations")
+                metrics.append("# TYPE medstationos_metal4_sql_cpu_operations_total counter")
+                metrics.append(f"medstationos_metal4_sql_cpu_operations_total {stats.get('cpu_operations', 0)}")
 
                 if stats.get('total_operations', 0) > 0:
                     gpu_ratio = stats.get('gpu_operations', 0) / stats['total_operations']
-                    metrics.append("# HELP elohimos_metal4_sql_gpu_ratio GPU operation ratio (0.0 to 1.0)")
-                    metrics.append("# TYPE elohimos_metal4_sql_gpu_ratio gauge")
-                    metrics.append(f"elohimos_metal4_sql_gpu_ratio {gpu_ratio:.4f}")
+                    metrics.append("# HELP medstationos_metal4_sql_gpu_ratio GPU operation ratio (0.0 to 1.0)")
+                    metrics.append("# TYPE medstationos_metal4_sql_gpu_ratio gauge")
+                    metrics.append(f"medstationos_metal4_sql_gpu_ratio {gpu_ratio:.4f}")
             except Exception as e:
                 logger.warning(f"Failed to collect Metal 4 SQL stats: {e}")
 
@@ -242,17 +242,17 @@ class PrometheusMetricsExporter:
             try:
                 stats = self.tensor_ops.get_stats()
 
-                metrics.append("# HELP elohimos_metal4_tensor_operations_total Total tensor operations")
-                metrics.append("# TYPE elohimos_metal4_tensor_operations_total counter")
-                metrics.append(f"elohimos_metal4_tensor_operations_total {stats.get('operations_executed', 0)}")
+                metrics.append("# HELP medstationos_metal4_tensor_operations_total Total tensor operations")
+                metrics.append("# TYPE medstationos_metal4_tensor_operations_total counter")
+                metrics.append(f"medstationos_metal4_tensor_operations_total {stats.get('operations_executed', 0)}")
 
-                metrics.append("# HELP elohimos_metal4_tensor_zero_copy_ops Zero-copy tensor operations")
-                metrics.append("# TYPE elohimos_metal4_tensor_zero_copy_ops counter")
-                metrics.append(f"elohimos_metal4_tensor_zero_copy_ops {stats.get('zero_copy_ops', 0)}")
+                metrics.append("# HELP medstationos_metal4_tensor_zero_copy_ops Zero-copy tensor operations")
+                metrics.append("# TYPE medstationos_metal4_tensor_zero_copy_ops counter")
+                metrics.append(f"medstationos_metal4_tensor_zero_copy_ops {stats.get('zero_copy_ops', 0)}")
 
-                metrics.append("# HELP elohimos_metal4_tensor_zero_copy_ratio Zero-copy operation ratio")
-                metrics.append("# TYPE elohimos_metal4_tensor_zero_copy_ratio gauge")
-                metrics.append(f"elohimos_metal4_tensor_zero_copy_ratio {stats.get('zero_copy_ratio', 0):.4f}")
+                metrics.append("# HELP medstationos_metal4_tensor_zero_copy_ratio Zero-copy operation ratio")
+                metrics.append("# TYPE medstationos_metal4_tensor_zero_copy_ratio gauge")
+                metrics.append(f"medstationos_metal4_tensor_zero_copy_ratio {stats.get('zero_copy_ratio', 0):.4f}")
             except Exception as e:
                 logger.warning(f"Failed to collect tensor ops stats: {e}")
 
@@ -261,21 +261,21 @@ class PrometheusMetricsExporter:
             try:
                 stats = self.metalfx_renderer.get_stats()
 
-                metrics.append("# HELP elohimos_metalfx_frames_total Total frames rendered")
-                metrics.append("# TYPE elohimos_metalfx_frames_total counter")
-                metrics.append(f"elohimos_metalfx_frames_total {stats.get('frame_count', 0)}")
+                metrics.append("# HELP medstationos_metalfx_frames_total Total frames rendered")
+                metrics.append("# TYPE medstationos_metalfx_frames_total counter")
+                metrics.append(f"medstationos_metalfx_frames_total {stats.get('frame_count', 0)}")
 
-                metrics.append("# HELP elohimos_metalfx_interpolated_frames_total Interpolated frames")
-                metrics.append("# TYPE elohimos_metalfx_interpolated_frames_total counter")
-                metrics.append(f"elohimos_metalfx_interpolated_frames_total {stats.get('interpolated_frames', 0)}")
+                metrics.append("# HELP medstationos_metalfx_interpolated_frames_total Interpolated frames")
+                metrics.append("# TYPE medstationos_metalfx_interpolated_frames_total counter")
+                metrics.append(f"medstationos_metalfx_interpolated_frames_total {stats.get('interpolated_frames', 0)}")
 
-                metrics.append("# HELP elohimos_metalfx_current_fps Current frames per second")
-                metrics.append("# TYPE elohimos_metalfx_current_fps gauge")
-                metrics.append(f"elohimos_metalfx_current_fps {stats.get('current_fps', 0):.1f}")
+                metrics.append("# HELP medstationos_metalfx_current_fps Current frames per second")
+                metrics.append("# TYPE medstationos_metalfx_current_fps gauge")
+                metrics.append(f"medstationos_metalfx_current_fps {stats.get('current_fps', 0):.1f}")
 
-                metrics.append("# HELP elohimos_metalfx_avg_frame_time_ms Average frame time in milliseconds")
-                metrics.append("# TYPE elohimos_metalfx_avg_frame_time_ms gauge")
-                metrics.append(f"elohimos_metalfx_avg_frame_time_ms {stats.get('avg_frame_time_ms', 0):.2f}")
+                metrics.append("# HELP medstationos_metalfx_avg_frame_time_ms Average frame time in milliseconds")
+                metrics.append("# TYPE medstationos_metalfx_avg_frame_time_ms gauge")
+                metrics.append(f"medstationos_metalfx_avg_frame_time_ms {stats.get('avg_frame_time_ms', 0):.2f}")
             except Exception as e:
                 logger.warning(f"Failed to collect MetalFX stats: {e}")
 
@@ -287,9 +287,9 @@ class PrometheusMetricsExporter:
 
         # Uptime
         uptime_seconds = time.time() - self.start_time
-        metrics.append("# HELP elohimos_app_uptime_seconds Application uptime in seconds")
-        metrics.append("# TYPE elohimos_app_uptime_seconds counter")
-        metrics.append(f"elohimos_app_uptime_seconds {uptime_seconds:.0f}")
+        metrics.append("# HELP medstationos_app_uptime_seconds Application uptime in seconds")
+        metrics.append("# TYPE medstationos_app_uptime_seconds counter")
+        metrics.append(f"medstationos_app_uptime_seconds {uptime_seconds:.0f}")
 
         # Database metrics (if available)
         try:
@@ -302,17 +302,17 @@ class PrometheusMetricsExporter:
             # User count
             cur.execute("SELECT COUNT(*) FROM users")
             user_count = cur.fetchone()[0]
-            metrics.append("# HELP elohimos_app_users_total Total registered users")
-            metrics.append("# TYPE elohimos_app_users_total gauge")
-            metrics.append(f"elohimos_app_users_total {user_count}")
+            metrics.append("# HELP medstationos_app_users_total Total registered users")
+            metrics.append("# TYPE medstationos_app_users_total gauge")
+            metrics.append(f"medstationos_app_users_total {user_count}")
 
             # Workflow count
             try:
                 cur.execute("SELECT COUNT(*) FROM workflows")
                 workflow_count = cur.fetchone()[0]
-                metrics.append("# HELP elohimos_app_workflows_total Total workflows")
-                metrics.append("# TYPE elohimos_app_workflows_total gauge")
-                metrics.append(f"elohimos_app_workflows_total {workflow_count}")
+                metrics.append("# HELP medstationos_app_workflows_total Total workflows")
+                metrics.append("# TYPE medstationos_app_workflows_total gauge")
+                metrics.append(f"medstationos_app_workflows_total {workflow_count}")
             except sqlite3.OperationalError:
                 pass  # Table doesn't exist
 
@@ -320,9 +320,9 @@ class PrometheusMetricsExporter:
             try:
                 cur.execute("SELECT COUNT(*) FROM vault_items")
                 vault_count = cur.fetchone()[0]
-                metrics.append("# HELP elohimos_app_vault_items_total Total vault items")
-                metrics.append("# TYPE elohimos_app_vault_items_total gauge")
-                metrics.append(f"elohimos_app_vault_items_total {vault_count}")
+                metrics.append("# HELP medstationos_app_vault_items_total Total vault items")
+                metrics.append("# TYPE medstationos_app_vault_items_total gauge")
+                metrics.append(f"medstationos_app_vault_items_total {vault_count}")
             except sqlite3.OperationalError:
                 pass  # Table doesn't exist
 
@@ -338,8 +338,8 @@ class PrometheusMetricsExporter:
         metrics = []
 
         # Overall health (1 = healthy, 0 = unhealthy)
-        metrics.append("# HELP elohimos_health_status Overall health status (1 = healthy, 0 = unhealthy)")
-        metrics.append("# TYPE elohimos_health_status gauge")
+        metrics.append("# HELP medstationos_health_status Overall health status (1 = healthy, 0 = unhealthy)")
+        metrics.append("# TYPE medstationos_health_status gauge")
 
         # Check critical components
         healthy = True
@@ -356,18 +356,18 @@ class PrometheusMetricsExporter:
             db_healthy = 0
             healthy = False
 
-        metrics.append("# HELP elohimos_health_database Database health (1 = healthy, 0 = unhealthy)")
-        metrics.append("# TYPE elohimos_health_database gauge")
-        metrics.append(f"elohimos_health_database {db_healthy}")
+        metrics.append("# HELP medstationos_health_database Database health (1 = healthy, 0 = unhealthy)")
+        metrics.append("# TYPE medstationos_health_database gauge")
+        metrics.append(f"medstationos_health_database {db_healthy}")
 
         # Metal 4 health (optional, doesn't affect overall health)
         metal4_healthy = 1 if (self.metal4_engine and self.metal4_engine.is_available()) else 0
-        metrics.append("# HELP elohimos_health_metal4 Metal 4 GPU health (1 = available, 0 = unavailable)")
-        metrics.append("# TYPE elohimos_health_metal4 gauge")
-        metrics.append(f"elohimos_health_metal4 {metal4_healthy}")
+        metrics.append("# HELP medstationos_health_metal4 Metal 4 GPU health (1 = available, 0 = unavailable)")
+        metrics.append("# TYPE medstationos_health_metal4 gauge")
+        metrics.append(f"medstationos_health_metal4 {metal4_healthy}")
 
         # Overall health
-        metrics.append(f"elohimos_health_status {1 if healthy else 0}")
+        metrics.append(f"medstationos_health_status {1 if healthy else 0}")
 
         return metrics
 

@@ -1,6 +1,6 @@
 //
 //  ChatStore.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  SPDX-License-Identifier: Proprietary
 //
@@ -9,7 +9,7 @@ import Foundation
 import Observation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ChatStore")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ChatStore")
 
 // MARK: - ChatStore
 

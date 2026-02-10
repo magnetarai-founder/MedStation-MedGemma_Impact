@@ -1,7 +1,7 @@
 """
 Undo Package
 
-Undo/redo action management for ElohimOS:
+Undo/redo action management for MedStation:
 - Action history tracking with state snapshots
 - Automatic timeout cleanup
 - State preservation for rollback

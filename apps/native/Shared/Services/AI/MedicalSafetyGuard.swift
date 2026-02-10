@@ -1,6 +1,6 @@
 //
 //  MedicalSafetyGuard.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Post-processing safety layer for medical AI outputs.
 //  Validates workflow results for clinical safety signals:
@@ -16,7 +16,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalSafetyGuard")
+private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalSafetyGuard")
 
 // MARK: - Safety Guard
 

@@ -1,5 +1,5 @@
 """
-Custom exceptions for MagnetarStudio API.
+Custom exceptions for MedStation API.
 
 Provides structured error handling with consistent error codes and messages.
 """
@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 
 
 class MagnetarException(Exception):
-    """Base exception for all MagnetarStudio errors."""
+    """Base exception for all MedStation errors."""
 
     def __init__(
         self,

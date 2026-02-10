@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Error Response System for ElohimOS
+Enhanced Error Response System for MedStation
 Provides user-friendly error messages with actionable suggestions
 """
 

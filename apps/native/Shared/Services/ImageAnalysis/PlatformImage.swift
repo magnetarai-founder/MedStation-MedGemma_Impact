@@ -1,6 +1,6 @@
 //
 //  PlatformImage.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Cross-platform image type alias for macOS/iOS compatibility.
 //

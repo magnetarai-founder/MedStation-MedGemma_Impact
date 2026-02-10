@@ -1,6 +1,6 @@
 //
 //  HotSlotSettingsTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Comprehensive test suite for HotSlotSettings refactoring (Phase 6.24)
 //  Tests extracted components: HotSlotCard, HotSlotModelPicker
@@ -8,7 +8,7 @@
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 @MainActor
 final class HotSlotSettingsTests: XCTestCase {

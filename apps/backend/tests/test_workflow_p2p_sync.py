@@ -812,7 +812,7 @@ class TestProtocolConstant:
 
     def test_protocol_id_defined(self):
         """Protocol ID is defined"""
-        assert WORKFLOW_SYNC_PROTOCOL == "/elohimos/workflow/1.0.0"
+        assert WORKFLOW_SYNC_PROTOCOL == "/medstationos/workflow/1.0.0"
 
 
 # ============================================

@@ -2,7 +2,7 @@
 One-time database consolidation migration
 
 Consolidates 7+ databases into 3:
-- elohimos_app.db (auth, users, docs, chat, workflows)
+- medstationos_app.db (auth, users, docs, chat, workflows)
 - vault.db (security-sensitive, kept separate)
 - datasets.db (user data, kept separate)
 
@@ -49,7 +49,7 @@ OLD_DBS = {
 }
 
 # New consolidated database
-NEW_APP_DB = PATHS.data_dir / "elohimos_app.db"
+NEW_APP_DB = PATHS.data_dir / "medstationos_app.db"
 
 # Backup directory
 BACKUP_DIR = PATHS.data_dir / f"db_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"

@@ -31,7 +31,7 @@ PATHS = get_config_paths()
 
 # All databases that need migration
 DATABASES = {
-    "elohimos_app.db": PATHS.data_dir / "elohimos_app.db",
+    "medstationos_app.db": PATHS.data_dir / "medstationos_app.db",
     "chat_memory.db": PATHS.memory_dir / "chat_memory.db",
     "vault.db": PATHS.data_dir / "vault.db",
     "docs.db": PATHS.data_dir / "docs.db",
@@ -42,7 +42,7 @@ DATABASES = {
 # Tables that need user_id column
 # Format: {database: [(table, has_created_by_column)]}
 TABLES_TO_MIGRATE = {
-    "elohimos_app.db": [
+    "medstationos_app.db": [
         ("chat_sessions", False),
         ("chat_messages", False),
         ("conversation_summaries", False),
@@ -259,7 +259,7 @@ def verify_migration() -> bool:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='ElohimOS User Isolation Migration')
+    parser = argparse.ArgumentParser(description='MedStation User Isolation Migration')
     parser.add_argument('--dry-run', action='store_true', help='Preview changes without executing')
     parser.add_argument('--backup', action='store_true', help='Backup databases and execute migration')
     parser.add_argument('--execute', action='store_true', help='Execute migration (requires manual backup first)')

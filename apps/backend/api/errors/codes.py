@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Standardized Error Codes for ElohimOS
+Standardized Error Codes for MedStation
 Provides consistent error codes and user-friendly messages across the platform
 
 Module structure (P2 decomposition):

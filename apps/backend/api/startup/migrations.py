@@ -20,12 +20,12 @@ async def run_startup_migrations() -> None:
     - Schema setup
 
     Raises:
-        RuntimeError: If not running on macOS (ElohimOS is macOS-only)
+        RuntimeError: If not running on macOS (MedStation is macOS-only)
         Exception: If migrations fail (prevents app from starting with broken DB state)
     """
     # macOS-only check
     if platform.system() != "Darwin":
-        raise RuntimeError(f"ElohimOS is macOS-only. Detected OS: {platform.system()}")
+        raise RuntimeError(f"MedStation is macOS-only. Detected OS: {platform.system()}")
 
     # Run startup migrations (database consolidation)
     try:

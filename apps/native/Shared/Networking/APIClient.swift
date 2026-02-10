@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "APIClient")
+private let logger = Logger(subsystem: "com.medstation.app", category: "APIClient")
 
 /// Standard API response envelope matching backend SuccessResponse<T>
 /// Note: timestamp is optional as some endpoints don't include it

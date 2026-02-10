@@ -1,6 +1,6 @@
 //
 //  MedicalAIService.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Singleton service managing MedGemma model lifecycle and medical inference.
 //  Handles auto-download via Ollama, streaming/non-streaming inference,
@@ -12,7 +12,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalAIService")
+private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalAIService")
 
 // MARK: - Medical AI Service
 

@@ -16,7 +16,7 @@ struct FeaturesSettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "cross.case.fill")
                         .font(.system(size: 32))
-                        .foregroundStyle(LinearGradient.magnetarGradient)
+                        .foregroundStyle(LinearGradient.medstationGradient)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Features")

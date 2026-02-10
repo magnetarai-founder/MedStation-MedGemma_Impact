@@ -3,15 +3,15 @@ Automatic Local Backup Service
 
 Features:
 - Auto-backup daily at 2am (when idle)
-- Save to ~/.elohimos_backups/
+- Save to ~/.medstationos_backups/
 - Keep last 7 backups (auto-delete older)
 - Encrypted with user's passphrase (AES-256-GCM)
 - Compressed with gzip
 - Checksum validation for integrity
 
 Backup File Structure:
-backup_2025-10-27_02-00.elohim-backup
-├── elohimos_app.db (encrypted)
+backup_2025-10-27_02-00.medstation-backup
+├── medstationos_app.db (encrypted)
 ├── vault.db (encrypted)
 ├── datasets.db (encrypted)
 ├── metadata.json (backup date, version, checksum)
@@ -36,15 +36,15 @@ from cryptography.hazmat.primitives import hashes
 logger = logging.getLogger(__name__)
 
 # Backup configuration
-BACKUP_DIR = Path.home() / ".elohimos_backups"
+BACKUP_DIR = Path.home() / ".medstationos_backups"
 BACKUP_RETENTION_DAYS = 7
-BACKUP_EXTENSION = ".elohim-backup"
+BACKUP_EXTENSION = ".medstation-backup"
 VERSION = "1.0.0"
 
 
 class BackupService:
     """
-    Automatic backup service for ElohimOS databases
+    Automatic backup service for MedStation databases
     """
 
     def __init__(self, passphrase: str):
@@ -101,7 +101,7 @@ class BackupService:
         Get paths to all authoritative databases that need backup
 
         Phase 0: Only backup the authoritative databases:
-        - elohimos_app.db (consolidated auth, users, docs, workflows)
+        - medstationos_app.db (consolidated auth, users, docs, workflows)
         - vault.db (secure storage)
         - datasets.db (data analysis datasets)
         - chat_memory.db (optional, in memory/ subdirectory)
@@ -116,7 +116,7 @@ class BackupService:
 
         # Phase 0: Backup only authoritative databases
         authoritative_dbs = [
-            ('elohimos_app.db', config.app_db),
+            ('medstationos_app.db', config.app_db),
             ('vault.db', config.vault_db),
             ('datasets.db', config.datasets_db),
             ('chat_memory.db', config.memory_db),  # Optional

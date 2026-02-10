@@ -54,9 +54,9 @@ try:
 except ImportError:
     # SECURITY: No hardcoded fallback - require proper secret
     import os
-    JWT_SECRET = os.getenv("ELOHIMOS_JWT_SECRET_KEY")
+    JWT_SECRET = os.getenv("MEDSTATIONOS_JWT_SECRET_KEY")
     if not JWT_SECRET:
-        raise RuntimeError("ELOHIMOS_JWT_SECRET_KEY must be set - no fallback allowed")
+        raise RuntimeError("MEDSTATIONOS_JWT_SECRET_KEY must be set - no fallback allowed")
     JWT_ALGORITHM = "HS256"
 
 

@@ -1,5 +1,5 @@
 """
-Backup Router for ElohimOS
+Backup Router for MedStation
 
 Provides RESTful API endpoints for backup operations.
 Requires backups.use permission.
@@ -65,7 +65,7 @@ async def create_backup(
     """
     Create a new backup
 
-    Creates an encrypted backup of all ElohimOS databases.
+    Creates an encrypted backup of all MedStation databases.
     Requires backups.use permission.
 
     Body:
@@ -161,7 +161,7 @@ async def verify_backup(
 
     Body:
         - backup_path: Full path to backup file (optional)
-        - backup_name: Name of backup file in ~/.elohimos_backups (optional)
+        - backup_name: Name of backup file in ~/.medstationos_backups (optional)
         - passphrase: Decryption passphrase to verify the backup
 
     Returns:
@@ -224,7 +224,7 @@ async def restore_backup(
 
     Body:
         - backup_path: Full path to backup file (optional)
-        - backup_name: Name of backup file in ~/.elohimos_backups (optional)
+        - backup_name: Name of backup file in ~/.medstationos_backups (optional)
         - passphrase: Decryption passphrase for the backup
 
     Returns:
@@ -330,7 +330,7 @@ async def download_backup(
     Download an encrypted backup file
 
     Query params:
-        - backup_name: Name of backup file in ~/.elohimos_backups
+        - backup_name: Name of backup file in ~/.medstationos_backups
 
     Returns:
         FileResponse with encrypted backup file

@@ -26,8 +26,8 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
 # Ensure test environment is set
-os.environ["ELOHIMOS_JWT_SECRET_KEY"] = "test-secret-key-for-unit-tests-only"
-os.environ["ELOHIM_ENV"] = "test"
+os.environ["MEDSTATIONOS_JWT_SECRET_KEY"] = "test-secret-key-for-unit-tests-only"
+os.environ["MEDSTATION_ENV"] = "test"
 
 # Add backend to path
 backend_root = Path(__file__).parent.parent
@@ -537,7 +537,7 @@ class TestJWTSecretManagement:
 
     def test_jwt_secret_from_env(self):
         """Test that JWT secret is loaded from environment"""
-        # Our test sets ELOHIMOS_JWT_SECRET_KEY
+        # Our test sets MEDSTATIONOS_JWT_SECRET_KEY
         assert JWT_SECRET == "test-secret-key-for-unit-tests-only"
 
     def test_jwt_algorithm_is_hs256(self):

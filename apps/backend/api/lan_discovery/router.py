@@ -37,7 +37,7 @@ router = APIRouter(
 @router.post("/discovery/start")
 async def start_discovery(request: Request) -> Dict[str, Any]:
     """
-    Start discovering ElohimOS instances on the local network
+    Start discovering MedStation instances on the local network
 
     Returns:
         Status of discovery service
@@ -76,7 +76,7 @@ async def stop_discovery(request: Request) -> Dict[str, Any]:
 @router.get("/devices")
 async def get_discovered_devices() -> Dict[str, Any]:
     """
-    Get list of discovered ElohimOS instances on the network
+    Get list of discovered MedStation instances on the network
 
     Returns:
         List of discovered devices

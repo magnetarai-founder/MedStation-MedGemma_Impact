@@ -51,11 +51,11 @@ class N8NIntegrationService:
 
     async def export_stage_to_n8n(
         self,
-        elohim_workflow: Dict[str, Any],
+        medstation_workflow: Dict[str, Any],
         stage_id: str
     ) -> str:
         """
-        Export ElohimOS workflow stage to n8n
+        Export MedStation workflow stage to n8n
 
         Returns:
             n8n workflow ID
@@ -64,7 +64,7 @@ class N8NIntegrationService:
             raise ValueError("n8n integration is disabled")
 
         # Convert to n8n format
-        n8n_workflow = N8NWorkflowConverter.elohim_to_n8n(elohim_workflow, stage_id)
+        n8n_workflow = N8NWorkflowConverter.medstation_to_n8n(medstation_workflow, stage_id)
 
         # Create in n8n
         result = await self.client.create_workflow(n8n_workflow)
@@ -72,12 +72,12 @@ class N8NIntegrationService:
 
         # Store mapping
         mapping = N8NWorkflowMapping(
-            elohim_workflow_id=elohim_workflow['id'],
-            elohim_stage_id=stage_id,
+            medstation_workflow_id=medstation_workflow['id'],
+            medstation_stage_id=stage_id,
             n8n_workflow_id=n8n_workflow_id,
             n8n_webhook_url=f"{self.config.base_url}/webhook/{n8n_workflow.get('nodes', [{}])[0].get('parameters', {}).get('path', '')}"
         )
-        self.mappings[f"{elohim_workflow['id']}:{stage_id}"] = mapping
+        self.mappings[f"{medstation_workflow['id']}:{stage_id}"] = mapping
 
         logger.info(f"✅ Exported stage {stage_id} to n8n workflow {n8n_workflow_id}")
 

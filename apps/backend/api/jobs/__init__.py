@@ -1,7 +1,7 @@
 """
 Jobs Package
 
-Background job management for ElohimOS:
+Background job management for MedStation:
 - BackgroundJobManager: Scheduled cleanup and maintenance tasks
 - Analytics aggregation jobs (hourly/daily)
 """

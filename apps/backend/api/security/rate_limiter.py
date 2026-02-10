@@ -1,5 +1,5 @@
 """
-Simple Token Bucket Rate Limiter for ElohimOS
+Simple Token Bucket Rate Limiter for MedStation
 Provides shared rate limiting across all routers
 
 USAGE PATTERN FOR NEW ENDPOINTS:
@@ -139,7 +139,7 @@ def is_dev_mode(request) -> bool:
     Detect if request is from development environment
 
     Checks for:
-    1. ELOHIM_ENV=development env var
+    1. MEDSTATION_ENV=development env var
     2. Localhost/127.0.0.1 requests
     3. Development security warning (means dev mode)
 
@@ -149,7 +149,7 @@ def is_dev_mode(request) -> bool:
     import os
 
     # Check env var first
-    if os.getenv("ELOHIM_ENV") == "development":
+    if os.getenv("MEDSTATION_ENV") == "development":
         return True
 
     # Check if request is from localhost
@@ -158,7 +158,7 @@ def is_dev_mode(request) -> bool:
         return True
 
     # If no founder password is set, we're in dev mode
-    if not os.getenv("ELOHIM_FOUNDER_PASSWORD"):
+    if not os.getenv("MEDSTATION_FOUNDER_PASSWORD"):
         return True
 
     return False

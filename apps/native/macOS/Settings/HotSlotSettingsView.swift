@@ -1,6 +1,6 @@
 //
 //  HotSlotSettingsView.swift
-//  MagnetarStudio (macOS)
+//  MedStation (macOS)
 //
 //  Hot slot management settings UI
 //  Part of Noah's Ark for the Digital Age - Intelligent model routing
@@ -12,7 +12,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "HotSlotSettingsView")
+private let logger = Logger(subsystem: "com.medstation.app", category: "HotSlotSettingsView")
 
 struct HotSlotSettingsView: View {
     @State private var hotSlotManager = HotSlotManager.shared
@@ -28,7 +28,7 @@ struct HotSlotSettingsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "memorychip.fill")
                             .font(.system(size: 32))
-                            .foregroundStyle(LinearGradient.magnetarGradient)
+                            .foregroundStyle(LinearGradient.medstationGradient)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Hot Slots")

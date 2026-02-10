@@ -1,7 +1,7 @@
 """
 Documents Package
 
-Provides document storage and syncing for ElohimOS:
+Provides document storage and syncing for MedStation:
 - Documents, Spreadsheets, and Insights Lab
 - Notion-style periodic sync with conflict resolution
 - Security level support (public, private, team, sensitive, top-secret)

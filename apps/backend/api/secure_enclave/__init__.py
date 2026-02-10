@@ -1,7 +1,7 @@
 """
 Secure Enclave Package
 
-macOS Keychain/Secure Enclave integration for ElohimOS:
+macOS Keychain/Secure Enclave integration for MedStation:
 - Hardware-backed key storage
 - PBKDF2 + AES-256-GCM envelope encryption
 - Passphrase-protected encryption keys

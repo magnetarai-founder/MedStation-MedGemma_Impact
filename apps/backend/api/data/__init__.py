@@ -1,7 +1,7 @@
 """
 Data Package
 
-Data pipeline and storage utilities for ElohimOS:
+Data pipeline and storage utilities for MedStation:
 - DataEngine: Excel/JSON → Auto-Clean → SQLite → Query Generation
 """
 

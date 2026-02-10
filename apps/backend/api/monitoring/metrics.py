@@ -1,5 +1,5 @@
 """
-Lightweight Observability Metrics for ElohimOS
+Lightweight Observability Metrics for MedStation
 Tracks operation counts and latencies for production bottleneck identification
 """
 

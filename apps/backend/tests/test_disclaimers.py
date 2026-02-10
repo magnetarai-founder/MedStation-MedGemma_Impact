@@ -529,7 +529,7 @@ class TestEdgeCases:
         assert "\n" in full
 
     def test_disclaimer_uses_consistent_product_name(self):
-        """Test disclaimers consistently use ElohimOS"""
+        """Test disclaimers consistently use MedStation"""
         disclaimers = [
             DisclaimerService.get_medical_disclaimer_full(),
             DisclaimerService.get_ai_content_disclaimer(),
@@ -540,7 +540,7 @@ class TestEdgeCases:
         ]
 
         for disclaimer in disclaimers:
-            assert "ElohimOS" in disclaimer
+            assert "MedStation" in disclaimer
 
     def test_disclaimer_bullet_points_consistent(self):
         """Test disclaimers use consistent bullet point format"""

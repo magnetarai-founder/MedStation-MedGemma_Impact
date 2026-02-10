@@ -1,5 +1,5 @@
 """
-Centralized Background Jobs for ElohimOS
+Centralized Background Jobs for MedStation
 Manages scheduled cleanup tasks and maintenance operations
 """
 

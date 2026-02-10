@@ -1,8 +1,8 @@
 //
 //  BackendManager.swift
-//  MagnetarStudio (macOS)
+//  MedStation (macOS)
 //
-//  Backend server management - Extracted from MagnetarStudioApp.swift (Phase 6.15)
+//  Backend server management - Extracted from MedStationApp.swift (Phase 6.15)
 //  Handles auto-start, health monitoring, and process lifecycle
 //
 
@@ -10,7 +10,7 @@ import Foundation
 import AppKit
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "BackendManager")
+private let logger = Logger(subsystem: "com.medstation.app", category: "BackendManager")
 
 @MainActor
 final class BackendManager {
@@ -51,7 +51,7 @@ final class BackendManager {
         isStarting = true
         defer { isStarting = false }
 
-        logger.info("Starting MagnetarStudio backend server...")
+        logger.info("Starting MedStation backend server...")
 
         // Get project root directory
         logger.debug("Looking for project root...")
@@ -91,7 +91,7 @@ final class BackendManager {
         // CRITICAL: Set environment variables for backend
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONUNBUFFERED"] = "1"
-        environment["ELOHIM_ENV"] = "development"
+        environment["MEDSTATION_ENV"] = "development"
         // Add packages/ to PYTHONPATH so neutron_core is importable
         let packagesPath = projectRoot.appendingPathComponent("packages").path
         if let existing = environment["PYTHONPATH"] {
@@ -157,7 +157,7 @@ final class BackendManager {
             // Show alert to user - Already on @MainActor, no dispatch needed
             let alert = NSAlert()
             alert.messageText = "Backend Server Failed to Start"
-            alert.informativeText = "MagnetarStudio requires the backend server to function. Please check the console logs for details."
+            alert.informativeText = "MedStation requires the backend server to function. Please check the console logs for details."
             alert.alertStyle = .critical
             alert.addButton(withTitle: "OK")
             alert.runModal()
@@ -243,8 +243,8 @@ final class BackendManager {
 
         // Method 2: Check common locations
         let commonPaths = [
-            NSHomeDirectory() + "/Documents/MagnetarStudio",
-            "/Applications/MagnetarStudio.app/Contents/Resources"
+            NSHomeDirectory() + "/Documents/MedStation",
+            "/Applications/MedStation.app/Contents/Resources"
         ]
 
         for path in commonPaths {

@@ -1,7 +1,7 @@
 """
 Permissions Package
 
-Centralized RBAC (Role-Based Access Control) permission system for ElohimOS.
+Centralized RBAC (Role-Based Access Control) permission system for MedStation.
 
 This package provides:
 - Core RBAC engine with permission evaluation

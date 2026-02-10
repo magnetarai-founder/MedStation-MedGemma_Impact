@@ -20,7 +20,7 @@ let package = Package(
             exclude: [
                 "macOS/Info.plist",
                 "macOS/Assets.xcassets",
-                "MagnetarStudio.xcodeproj",
+                "MedStation.xcodeproj",
                 "Tests",
                 "build",
                 ".build"

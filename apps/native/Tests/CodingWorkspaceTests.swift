@@ -1,6 +1,6 @@
 //
 //  CodingWorkspaceTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Comprehensive tests for the Coding workspace services:
 //  - ResponseMerger (quality scoring, selection, merging)
@@ -11,7 +11,7 @@
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 // MARK: - Response Merger Tests
 

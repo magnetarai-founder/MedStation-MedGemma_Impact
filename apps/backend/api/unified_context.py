@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unified Context Manager for ElohimOS
+Unified Context Manager for MedStation
 Shares context across Chat, Terminal, and Code tabs with 200k+ rolling window
 """
 
@@ -35,7 +35,7 @@ class ContextEntry:
 
 class UnifiedContextManager:
     """
-    Manages shared context across all ElohimOS components
+    Manages shared context across all MedStation components
 
     - Chat messages persist and are visible to terminal/code
     - Terminal commands/output persist and are visible to chat/code

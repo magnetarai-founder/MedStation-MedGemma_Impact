@@ -564,7 +564,7 @@ def migrate_phase2_permissions_rbac(app_db_path: Path) -> bool:
     Creates RBAC schema, seeds permissions and profiles.
 
     Args:
-        app_db_path: Path to app database (elohimos_app.db)
+        app_db_path: Path to app database (medstationos_app.db)
 
     Returns:
         True if migration succeeded, False otherwise
@@ -622,7 +622,7 @@ if __name__ == "__main__":
         paths = get_config_paths()
         app_db = paths.app_db
     except Exception:
-        app_db = Path(__file__).parent.parent.parent.parent / ".neutron_data" / "elohimos_app.db"
+        app_db = Path(__file__).parent.parent.parent.parent / ".neutron_data" / "medstationos_app.db"
 
     print(f"\nUsing app_db: {app_db}\n")
 

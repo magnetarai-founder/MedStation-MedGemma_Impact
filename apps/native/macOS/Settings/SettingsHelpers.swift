@@ -1,6 +1,6 @@
 //
 //  SettingsHelpers.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Shared helpers for settings views.
 //

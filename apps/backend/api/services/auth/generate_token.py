@@ -8,7 +8,7 @@ Usage:
     python generate_token.py <client_id> [description]
 
 Example:
-    python generate_token.py magnetar-studio "MagnetarStudio integration"
+    python generate_token.py magnetar-studio "MedStation integration"
 
 Environment Variables:
     JWT_SECRET_KEY - Secret key for signing tokens (auto-generated if not set)
@@ -27,7 +27,7 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python generate_token.py <client_id> [description]")
         print("\nExample:")
-        print('  python generate_token.py magnetar-studio "MagnetarStudio integration"')
+        print('  python generate_token.py magnetar-studio "MedStation integration"')
         sys.exit(1)
 
     client_id = sys.argv[1]

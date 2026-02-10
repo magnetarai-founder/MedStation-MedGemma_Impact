@@ -1,6 +1,6 @@
 //
 //  OllamaAPIModels.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Ollama API response models extracted from ContextBundle.swift.
 //  Part of Phase 7 refactoring for maintainability.

@@ -37,7 +37,7 @@ from .role_baselines import get_role_baseline
 logger = logging.getLogger(__name__)
 
 # Phase 2.5: Enable diagnostics with environment variable
-DIAGNOSTICS_ENABLED = os.getenv('ELOHIMOS_PERMS_EXPLAIN', '0') == '1'
+DIAGNOSTICS_ENABLED = os.getenv('MEDSTATIONOS_PERMS_EXPLAIN', '0') == '1'
 
 
 class PermissionEngine:
@@ -57,7 +57,7 @@ class PermissionEngine:
         Initialize permission engine
 
         Args:
-            db_path: Path to app_db (elohimos_app.db)
+            db_path: Path to app_db (medstationos_app.db)
         """
         self.db_path = db_path
         # Phase 2.5: In-memory cache for effective permissions
@@ -548,7 +548,7 @@ class PermissionEngine:
         """
         Explain why a permission was granted or denied (Phase 2.5)
 
-        Only enabled when ELOHIMOS_PERMS_EXPLAIN=1 environment variable is set.
+        Only enabled when MEDSTATIONOS_PERMS_EXPLAIN=1 environment variable is set.
         Never includes secrets or sensitive data.
 
         Args:
@@ -568,7 +568,7 @@ class PermissionEngine:
         """
         if not DIAGNOSTICS_ENABLED:
             return {
-                "error": "Diagnostics disabled. Set ELOHIMOS_PERMS_EXPLAIN=1 to enable."
+                "error": "Diagnostics disabled. Set MEDSTATIONOS_PERMS_EXPLAIN=1 to enable."
             }
 
         decision = self.has_permission(user_ctx, permission_key, required_level)

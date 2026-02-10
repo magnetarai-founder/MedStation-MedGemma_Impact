@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Authentication Middleware for ElohimOS
+Authentication Middleware for MedStation
 Offline-first, device-based authentication with JWT tokens
 """
 
@@ -34,17 +34,17 @@ def _get_or_create_jwt_secret() -> str:
     global _jwt_secret_warning_shown
 
     # Check env vars first (production override)
-    # Preferred: ELOHIMOS_JWT_SECRET_KEY (standardized)
-    env_secret = os.getenv("ELOHIMOS_JWT_SECRET_KEY")
+    # Preferred: MEDSTATIONOS_JWT_SECRET_KEY (standardized)
+    env_secret = os.getenv("MEDSTATIONOS_JWT_SECRET_KEY")
     if env_secret:
         return env_secret
 
-    # Backwards-compat: ELOHIM_JWT_SECRET (deprecated)
-    legacy_secret = os.getenv("ELOHIM_JWT_SECRET")
+    # Backwards-compat: MEDSTATION_JWT_SECRET (deprecated)
+    legacy_secret = os.getenv("MEDSTATION_JWT_SECRET")
     if legacy_secret:
         # Only warn once per session
         if not _jwt_secret_warning_shown:
-            logger.warning("Using deprecated env var ELOHIM_JWT_SECRET; prefer ELOHIMOS_JWT_SECRET_KEY")
+            logger.warning("Using deprecated env var MEDSTATION_JWT_SECRET; prefer MEDSTATIONOS_JWT_SECRET_KEY")
             _jwt_secret_warning_shown = True
         return legacy_secret
 
@@ -74,7 +74,7 @@ def _get_or_create_jwt_secret() -> str:
         logger.info(f"✅ Generated and persisted new JWT secret to {jwt_secret_file}")
     except Exception as e:
         logger.error(f"Failed to persist JWT secret: {e}")
-        if os.getenv("ELOHIM_ENV") != "development":
+        if os.getenv("MEDSTATION_ENV") != "development":
             raise RuntimeError("Cannot persist JWT secret in production - sessions would reset on restart")
 
     return secret
@@ -87,7 +87,7 @@ JWT_SECRET = _get_or_create_jwt_secret()
 
 JWT_ALGORITHM = "HS256"
 
-# MED-05: Access token lifetime configurable via ELOHIMOS_JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+# MED-05: Access token lifetime configurable via MEDSTATIONOS_JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 # Short-lived access tokens reduce window of compromise if token is leaked
 # Use refresh token endpoint (/api/v1/auth/refresh) to get new access token
 # Default: 60 minutes (1 hour, OWASP recommended: 15min-1hr)

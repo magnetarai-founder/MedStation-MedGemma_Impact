@@ -1,5 +1,5 @@
 """
-Unified Error Handler for ElohimOS
+Unified Error Handler for MedStation
 Provides consistent error handling across all services
 
 Module structure (P2 decomposition):
@@ -14,7 +14,7 @@ from fastapi import HTTPException
 # Import from sibling module (P3 decomposition)
 from api.errors.types import (
     ErrorType,
-    ElohimOSError,
+    MedStationError,
     OllamaError,
     ValidationError,
     AuthError,
@@ -74,8 +74,8 @@ class ErrorHandler:
         )
 
     @staticmethod
-    def to_http_exception(error: ElohimOSError) -> HTTPException:
-        """Convert ElohimOSError to FastAPI HTTPException"""
+    def to_http_exception(error: MedStationError) -> HTTPException:
+        """Convert MedStationError to FastAPI HTTPException"""
         return HTTPException(
             status_code=error.status_code,
             detail={
@@ -240,7 +240,7 @@ class ErrorHandler:
     @staticmethod
     def record_error_analytics(
         user_id: str,
-        error: ElohimOSError,
+        error: MedStationError,
         session_id: Optional[str] = None,
         team_id: Optional[str] = None
     ):
@@ -249,7 +249,7 @@ class ErrorHandler:
 
         Args:
             user_id: User experiencing the error
-            error: ElohimOSError instance
+            error: MedStationError instance
             session_id: Associated session ID
             team_id: Associated team ID
         """
@@ -279,7 +279,7 @@ __all__ = [
     "ErrorHandler",
     # Re-exported from error_handler_types
     "ErrorType",
-    "ElohimOSError",
+    "MedStationError",
     "OllamaError",
     "ValidationError",
     "AuthError",

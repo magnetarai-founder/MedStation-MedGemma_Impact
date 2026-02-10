@@ -15,7 +15,7 @@ This module combines all chat service functionality into focused sub-modules:
 The original 1,255-line core.py has been refactored into focused modules
 for better maintainability and code organization.
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 # Import all functions from sub-modules

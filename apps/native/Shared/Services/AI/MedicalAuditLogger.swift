@@ -1,6 +1,6 @@
 //
 //  MedicalAuditLogger.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  HAI-DEF compliant audit logging for medical AI decisions.
 //  Records model inputs, outputs, safety checks, and performance
@@ -13,7 +13,7 @@ import Foundation
 import CryptoKit
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "MedicalAuditLogger")
+private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalAuditLogger")
 
 // MARK: - Audit Logger
 
@@ -93,7 +93,7 @@ struct MedicalAuditLogger {
 
     private static var auditDirectory: URL {
         (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-            .appendingPathComponent("MagnetarStudio/workspace/medical/audit", isDirectory: true)
+            .appendingPathComponent("MedStation/workspace/medical/audit", isDirectory: true)
     }
 
     // MARK: - Hashing (privacy-preserving)

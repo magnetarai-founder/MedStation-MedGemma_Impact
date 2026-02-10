@@ -4,11 +4,11 @@ Phase 0 Migration: Database Architecture Consolidation
 Created: 2025-11-02
 
 This migration consolidates the multi-database user architecture into a single
-authoritative database (elohimos_app.db) following Option B: Multi-user system.
+authoritative database (medstationos_app.db) following Option B: Multi-user system.
 
 Changes:
 1. Ensures auth.users table has role and job_role columns
-2. Creates user_profiles table in elohimos_app.db for profile data
+2. Creates user_profiles table in medstationos_app.db for profile data
 3. Migrates any existing data from legacy users.db into user_profiles
 4. Leaves docs.db and workflows.db unchanged (future phases)
 
@@ -29,7 +29,7 @@ def migrate_phase0_user_db(app_db_path: Path, legacy_users_db_path: Path) -> boo
     Run Phase 0 database consolidation migration
 
     Args:
-        app_db_path: Path to elohimos_app.db (authoritative database)
+        app_db_path: Path to medstationos_app.db (authoritative database)
         legacy_users_db_path: Path to legacy .neutron_data/users.db
 
     Returns:
@@ -336,7 +336,7 @@ def check_migration_applied(app_db_path: Path) -> bool:
     Check if Phase 0 migration has already been applied
 
     Args:
-        app_db_path: Path to elohimos_app.db
+        app_db_path: Path to medstationos_app.db
 
     Returns:
         True if migration has been applied, False otherwise

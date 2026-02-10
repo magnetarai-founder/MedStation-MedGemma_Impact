@@ -118,7 +118,7 @@ class TestMetal4SparseEmbeddingsInit:
 
         path = store._get_default_backing_file()
 
-        assert ".elohimos" in path
+        assert ".medstationos" in path
         assert "embedding_cache" in path
         assert "384d" in path
 

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 @router.get("/")
 async def root() -> dict:
     """Root endpoint"""
-    return {"message": "ElohimOS API", "version": "1.0.0"}
+    return {"message": "MedStation API", "version": "1.0.0"}
 
 
 @router.get("/api/system/info")

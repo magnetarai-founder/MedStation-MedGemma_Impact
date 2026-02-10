@@ -1,5 +1,5 @@
 """
-Database migrations for ElohimOS
+Database migrations for MedStation
 
 - run_startup_migrations: Runs all pending migrations on app startup
 """

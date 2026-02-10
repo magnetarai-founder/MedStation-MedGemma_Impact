@@ -1,6 +1,6 @@
 //
 //  SmartModelPicker.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Smart model dropdown that shows:
 //  1. Intelligent routing
@@ -11,7 +11,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "SmartModelPicker")
+private let logger = Logger(subsystem: "com.medstation.app", category: "SmartModelPicker")
 
 struct SmartModelPicker: View {
     @Binding var selectedMode: String  // "intelligent" or specific model

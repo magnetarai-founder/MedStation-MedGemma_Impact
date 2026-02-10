@@ -1,6 +1,6 @@
 //
 //  NetworkApprovalModal.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Modal for approving/denying network connection requests
 //  Part of Little Snitch-style network firewall
@@ -19,7 +19,7 @@ struct NetworkApprovalModal: View {
     var body: some View {
         ZStack {
             // Background gradient
-            LinearGradient.magnetarGradient
+            LinearGradient.medstationGradient
                 .opacity(0.3)
                 .ignoresSafeArea()
 
@@ -29,13 +29,13 @@ struct NetworkApprovalModal: View {
                     VStack(spacing: 8) {
                         Image(systemName: "network")
                             .font(.system(size: 40))
-                            .foregroundStyle(LinearGradient.magnetarGradient)
+                            .foregroundStyle(LinearGradient.medstationGradient)
 
                         Text("Network Connection Request")
                             .font(.title2)
                             .fontWeight(.bold)
 
-                        Text("MagnetarStudio wants to connect")
+                        Text("MedStation wants to connect")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

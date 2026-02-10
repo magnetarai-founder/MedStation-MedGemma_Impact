@@ -1,7 +1,7 @@
 """
 Chat Service Package
 
-Modular chat service for ElohimOS with session management,
+Modular chat service for MedStation with session management,
 message handling, file uploads, model management, and analytics.
 
 Public API for routes:

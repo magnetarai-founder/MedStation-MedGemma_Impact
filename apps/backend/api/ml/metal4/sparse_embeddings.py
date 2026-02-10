@@ -102,7 +102,7 @@ class Metal4SparseEmbeddings:
 
     def _get_default_backing_file(self) -> str:
         """Get default path for backing file"""
-        cache_dir = Path.home() / ".elohimos" / "embedding_cache"
+        cache_dir = Path.home() / ".medstationos" / "embedding_cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
         return str(cache_dir / f"sparse_embeddings_{self.embed_dim}d.mmap")
 

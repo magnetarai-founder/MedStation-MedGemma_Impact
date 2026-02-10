@@ -5,7 +5,7 @@ Extracted from adaptive_router.py during P2 decomposition.
 Contains:
 - TaskType and ToolType enums
 - RoutePattern and RouteResult dataclasses
-- DEFAULT_ROUTE_PATTERNS for ElohimOS routing
+- DEFAULT_ROUTE_PATTERNS for MedStation routing
 """
 
 from dataclasses import dataclass, field
@@ -28,11 +28,11 @@ class TaskType(str, Enum):
     SYSTEM_COMMAND = "system_command"
     GIT_OPERATION = "git_operation"
     FILE_OPERATION = "file_operation"
-    CHAT = "chat"  # ElohimOS-specific: general chat
+    CHAT = "chat"  # MedStation-specific: general chat
 
 
 class ToolType(str, Enum):
-    """Available tools in ElohimOS"""
+    """Available tools in MedStation"""
     OLLAMA = "ollama"  # Local LLM via Ollama
     SYSTEM = "system"  # System commands
     P2P = "p2p"  # P2P messaging (for missionaries)
@@ -73,7 +73,7 @@ class RouteResult:
     context: Dict = None
 
 
-# ===== Default Route Patterns for ElohimOS =====
+# ===== Default Route Patterns for MedStation =====
 
 DEFAULT_ROUTE_PATTERNS: List[RoutePattern] = [
     # ===== Data Analysis =====

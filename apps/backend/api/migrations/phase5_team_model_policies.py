@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # Test migration
     from config_paths import get_data_dir
     data_dir = get_data_dir()
-    db_path = data_dir / "elohim.db"
+    db_path = data_dir / "medstation.db"
 
     logging.basicConfig(level=logging.INFO)
     success = run_migration(db_path)

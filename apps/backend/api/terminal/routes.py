@@ -120,7 +120,7 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
 
     This endpoint:
     1. Detects user's preferred terminal application
-    2. Creates wrapper script (.elohim_bridge.sh) for I/O capture
+    2. Creates wrapper script (.medstation_bridge.sh) for I/O capture
     3. Spawns system terminal with bridge
     4. Tracks active terminal count (max 3)
 
@@ -148,7 +148,7 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
 
         # Create bridge script in user's home directory
         home_dir = os.path.expanduser('~')
-        bridge_script_path = os.path.join(home_dir, '.elohim_bridge.sh')
+        bridge_script_path = os.path.join(home_dir, '.medstation_bridge.sh')
 
         # Get workspace root from marker file if exists
         from api.config_paths import PATHS
@@ -199,7 +199,7 @@ async def spawn_system_terminal(current_user: dict = Depends(get_current_user)):
         # Use shlex.quote() to prevent shell injection via workspace path
         safe_workspace = shlex.quote(workspace_root)
         bridge_script_content = f"""#!/bin/bash
-# ElohimOS Terminal Bridge
+# MedStation Terminal Bridge
 # This script transparently captures terminal I/O while maintaining normal shell behavior
 
 # Source user's shell config
@@ -212,7 +212,7 @@ fi
 # Change to workspace directory (path is shell-escaped for security)
 cd {safe_workspace}
 
-# TODO: Set up socket connection to ElohimOS backend
+# TODO: Set up socket connection to MedStation backend
 # For now, just spawn shell normally
 exec $SHELL
 """

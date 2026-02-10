@@ -44,15 +44,15 @@ def _generate_machine_id() -> str:
     - Is reasonably unique per machine
 
     Strategy:
-    1. Try to read existing machine_id from .elohimos/machine_id
+    1. Try to read existing machine_id from .medstationos/machine_id
     2. If not found, generate from hardware characteristics
-    3. Cache to .elohimos/machine_id for stability
+    3. Cache to .medstationos/machine_id for stability
 
     Returns:
         A stable machine identifier (hex string)
     """
     # Try to read cached machine_id first
-    cache_dir = Path.home() / ".elohimos"
+    cache_dir = Path.home() / ".medstationos"
     cache_file = cache_dir / "machine_id"
 
     if cache_file.exists():
@@ -232,7 +232,7 @@ def ensure_device_identity(conn: sqlite3.Connection) -> str:
             conn.commit()
 
             logger.info(f"Created new device identity: {device_id}")
-            logger.info(f"  Machine ID: {machine_id[:16]}... (cached to ~/.elohimos/machine_id)")
+            logger.info(f"  Machine ID: {machine_id[:16]}... (cached to ~/.medstationos/machine_id)")
             logger.info(f"  Platform: {platform.system()} {platform.machine()}")
 
             return device_id

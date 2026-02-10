@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 from starlette.responses import Response
 
 # Ensure test environment
-os.environ["ELOHIM_ENV"] = "test"
+os.environ["MEDSTATION_ENV"] = "test"
 
 # Add backend to path
 backend_root = Path(__file__).parent.parent
@@ -338,7 +338,7 @@ class TestDevModeDetection:
         mock_request.client = MagicMock()
         mock_request.client.host = "10.0.0.5"  # Non-localhost
 
-        with patch.dict(os.environ, {"ELOHIM_ENV": "development"}):
+        with patch.dict(os.environ, {"MEDSTATION_ENV": "development"}):
             result = is_dev_mode(mock_request)
 
         assert result is True
@@ -349,9 +349,9 @@ class TestDevModeDetection:
         mock_request.client = MagicMock()
         mock_request.client.host = "127.0.0.1"
 
-        with patch.dict(os.environ, {"ELOHIM_ENV": "production"}, clear=False):
-            # Remove ELOHIM_FOUNDER_PASSWORD to ensure we're testing localhost detection
-            os.environ.pop("ELOHIM_FOUNDER_PASSWORD", None)
+        with patch.dict(os.environ, {"MEDSTATION_ENV": "production"}, clear=False):
+            # Remove MEDSTATION_FOUNDER_PASSWORD to ensure we're testing localhost detection
+            os.environ.pop("MEDSTATION_FOUNDER_PASSWORD", None)
             result = is_dev_mode(mock_request)
 
         assert result is True

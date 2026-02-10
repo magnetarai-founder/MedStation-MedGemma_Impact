@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bash Intelligence for ElohimOS Terminal
+Bash Intelligence for MedStation Terminal
 Powered by Codex patterns + local models
 
 Extracted modules (P2 decomposition):

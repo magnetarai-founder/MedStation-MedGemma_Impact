@@ -137,7 +137,7 @@ class TestDevFounderUser:
 
     def test_skips_in_production(self, db_with_users_table):
         """Test founder creation is skipped in production"""
-        with patch.dict(os.environ, {"ELOHIM_ENV": "production"}, clear=False):
+        with patch.dict(os.environ, {"MEDSTATION_ENV": "production"}, clear=False):
             ensure_dev_founder_user(db_with_users_table)
 
         cur = db_with_users_table.cursor()
@@ -147,10 +147,10 @@ class TestDevFounderUser:
         assert count == 0
 
     def test_skips_when_env_not_set(self, db_with_users_table):
-        """Test founder creation skipped when ELOHIM_ENV not development"""
-        # Ensure ELOHIM_ENV is not set or not "development"
+        """Test founder creation skipped when MEDSTATION_ENV not development"""
+        # Ensure MEDSTATION_ENV is not set or not "development"
         env_copy = os.environ.copy()
-        env_copy.pop("ELOHIM_ENV", None)
+        env_copy.pop("MEDSTATION_ENV", None)
 
         with patch.dict(os.environ, env_copy, clear=True):
             ensure_dev_founder_user(db_with_users_table)
@@ -164,9 +164,9 @@ class TestDevFounderUser:
     def test_creates_founder_in_dev_mode(self, db_with_users_table):
         """Test founder user is created in development mode"""
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "test_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "test_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             ensure_dev_founder_user(db_with_users_table)
 
@@ -183,31 +183,31 @@ class TestDevFounderUser:
     def test_uses_default_username(self, db_with_users_table):
         """Test default username is used when not provided"""
         env_vars = {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }
-        # Remove ELOHIM_FOUNDER_USERNAME if set
+        # Remove MEDSTATION_FOUNDER_USERNAME if set
         with patch.dict(os.environ, env_vars, clear=False):
             # Ensure the username env var is not set
-            os.environ.pop("ELOHIM_FOUNDER_USERNAME", None)
+            os.environ.pop("MEDSTATION_FOUNDER_USERNAME", None)
             ensure_dev_founder_user(db_with_users_table)
 
         cur = db_with_users_table.cursor()
         cur.execute("SELECT username FROM users WHERE username = ?",
-                   ("elohim_founder",))
+                   ("medstation_founder",))
         row = cur.fetchone()
 
         assert row is not None
-        assert row[0] == "elohim_founder"
+        assert row[0] == "medstation_founder"
 
     def test_generates_password_when_not_provided(self, db_with_users_table):
         """Test random password is generated when not provided"""
         env_vars = {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "gen_pass_founder"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "gen_pass_founder"
         }
         with patch.dict(os.environ, env_vars, clear=False):
-            os.environ.pop("ELOHIM_FOUNDER_PASSWORD", None)
+            os.environ.pop("MEDSTATION_FOUNDER_PASSWORD", None)
             ensure_dev_founder_user(db_with_users_table)
 
         cur = db_with_users_table.cursor()
@@ -223,9 +223,9 @@ class TestDevFounderUser:
     def test_idempotent_does_not_duplicate(self, db_with_users_table):
         """Test calling multiple times doesn't create duplicates"""
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "idempotent_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "idempotent_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             # Call twice
             ensure_dev_founder_user(db_with_users_table)
@@ -250,9 +250,9 @@ class TestDevFounderUser:
         db_with_users_table.commit()
 
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "role_update_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "role_update_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             ensure_dev_founder_user(db_with_users_table)
 
@@ -273,9 +273,9 @@ class TestDevFounderUser:
         db_with_users_table.commit()
 
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "correct_role_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "correct_role_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             ensure_dev_founder_user(db_with_users_table)
 
@@ -368,7 +368,7 @@ class TestExplicitFounderCreation:
     def test_works_in_any_environment(self, db_with_users_table):
         """Test explicit creation works regardless of environment"""
         # Test in production
-        with patch.dict(os.environ, {"ELOHIM_ENV": "production"}, clear=False):
+        with patch.dict(os.environ, {"MEDSTATION_ENV": "production"}, clear=False):
             user_id = create_founder_user_explicit(
                 db_with_users_table,
                 username="prod_founder",
@@ -548,9 +548,9 @@ class TestRaceConditions:
 
         # Now call ensure_dev_founder_user - should not raise
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "race_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "race_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             # Should not raise, should detect existing user
             ensure_dev_founder_user(db_with_users_table)
@@ -646,9 +646,9 @@ class TestErrorHandling:
         ]
 
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "error_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "error_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             with pytest.raises(Exception, match="Simulated database error"):
                 ensure_dev_founder_user(mock_conn)
@@ -672,9 +672,9 @@ class TestErrorHandling:
         ]
 
         with patch.dict(os.environ, {
-            "ELOHIM_ENV": "development",
-            "ELOHIM_FOUNDER_USERNAME": "race_insert_founder",
-            "ELOHIM_FOUNDER_PASSWORD": "TestPassword123!"
+            "MEDSTATION_ENV": "development",
+            "MEDSTATION_FOUNDER_USERNAME": "race_insert_founder",
+            "MEDSTATION_FOUNDER_PASSWORD": "TestPassword123!"
         }, clear=False):
             # Should not raise - IntegrityError is caught as race condition
             ensure_dev_founder_user(mock_conn)

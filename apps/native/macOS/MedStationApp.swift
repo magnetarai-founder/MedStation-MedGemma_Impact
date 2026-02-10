@@ -10,7 +10,7 @@ import SwiftData
 import AppKit
 
 @main
-struct MagnetarStudioApp: App {
+struct MedStationApp: App {
     @State private var navigationStore = NavigationStore()
     @State private var chatStore = ChatStore()
     @State private var authStore = AuthStore.shared

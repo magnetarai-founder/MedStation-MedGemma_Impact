@@ -85,17 +85,17 @@ class TestGenerateMachineId:
         assert all(c in '0123456789abcdef' for c in machine_id)
 
     def test_caches_to_file(self, mock_home_dir):
-        """Test machine_id is cached to ~/.elohimos/machine_id"""
+        """Test machine_id is cached to ~/.medstationos/machine_id"""
         machine_id = _generate_machine_id()
 
-        cache_file = mock_home_dir / ".elohimos" / "machine_id"
+        cache_file = mock_home_dir / ".medstationos" / "machine_id"
         assert cache_file.exists()
         assert cache_file.read_text().strip() == machine_id
 
     def test_reads_from_cache(self, mock_home_dir):
         """Test machine_id is read from cache if exists"""
         # Pre-create cache with known value
-        cache_dir = mock_home_dir / ".elohimos"
+        cache_dir = mock_home_dir / ".medstationos"
         cache_dir.mkdir(parents=True)
         cache_file = cache_dir / "machine_id"
         cached_id = "a" * 64  # Valid 64-char hex
@@ -108,7 +108,7 @@ class TestGenerateMachineId:
     def test_regenerates_if_cache_invalid_length(self, mock_home_dir):
         """Test regenerates if cached value has wrong length"""
         # Pre-create cache with invalid value
-        cache_dir = mock_home_dir / ".elohimos"
+        cache_dir = mock_home_dir / ".medstationos"
         cache_dir.mkdir(parents=True)
         cache_file = cache_dir / "machine_id"
         cache_file.write_text("too_short")
@@ -121,7 +121,7 @@ class TestGenerateMachineId:
 
     def test_regenerates_if_cache_empty(self, mock_home_dir):
         """Test regenerates if cache file is empty"""
-        cache_dir = mock_home_dir / ".elohimos"
+        cache_dir = mock_home_dir / ".medstationos"
         cache_dir.mkdir(parents=True)
         cache_file = cache_dir / "machine_id"
         cache_file.write_text("")
@@ -133,7 +133,7 @@ class TestGenerateMachineId:
     def test_handles_cache_read_error(self, mock_home_dir):
         """Test handles errors when reading cache"""
         # Create unreadable cache file
-        cache_dir = mock_home_dir / ".elohimos"
+        cache_dir = mock_home_dir / ".medstationos"
         cache_dir.mkdir(parents=True)
         cache_file = cache_dir / "machine_id"
         cache_file.write_text("a" * 64)
@@ -159,7 +159,7 @@ class TestGenerateMachineId:
             id1 = _generate_machine_id()
 
         # Clear cache
-        cache_file = mock_home_dir / ".elohimos" / "machine_id"
+        cache_file = mock_home_dir / ".medstationos" / "machine_id"
         if cache_file.exists():
             cache_file.unlink()
 
@@ -175,7 +175,7 @@ class TestGenerateMachineId:
         machine_id = _generate_machine_id()
 
         # Verify it's deterministic for same machine
-        cache_file = mock_home_dir / ".elohimos" / "machine_id"
+        cache_file = mock_home_dir / ".medstationos" / "machine_id"
         cache_file.unlink()  # Clear cache
 
         machine_id_2 = _generate_machine_id()
@@ -426,7 +426,7 @@ class TestIntegration:
         device_id = ensure_device_identity(temp_db)
 
         # Get machine_id from cache
-        cache_file = mock_home_dir / ".elohimos" / "machine_id"
+        cache_file = mock_home_dir / ".medstationos" / "machine_id"
         cached_machine_id = cache_file.read_text().strip()
 
         # Get machine_id from database
@@ -505,7 +505,7 @@ class TestEdgeCases:
     def test_machine_id_deterministic(self, mock_home_dir):
         """Test machine_id is deterministic for same inputs"""
         # Clear any existing cache
-        cache_file = mock_home_dir / ".elohimos" / "machine_id"
+        cache_file = mock_home_dir / ".medstationos" / "machine_id"
         if cache_file.exists():
             cache_file.unlink()
 

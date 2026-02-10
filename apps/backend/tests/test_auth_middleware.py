@@ -878,7 +878,7 @@ class TestJWTSecretManagement:
 
     def test_jwt_secret_from_env_var(self):
         """Test JWT secret loaded from environment variable"""
-        with patch.dict('os.environ', {'ELOHIMOS_JWT_SECRET_KEY': 'test-secret-from-env'}):
+        with patch.dict('os.environ', {'MEDSTATIONOS_JWT_SECRET_KEY': 'test-secret-from-env'}):
             from importlib import reload
             import api.auth_middleware as module
 
@@ -888,19 +888,19 @@ class TestJWTSecretManagement:
 
     def test_jwt_secret_legacy_env_var(self):
         """Test JWT secret from legacy environment variable"""
-        with patch.dict('os.environ', {'ELOHIM_JWT_SECRET': 'legacy-secret'}, clear=False):
-            with patch.dict('os.environ', {'ELOHIMOS_JWT_SECRET_KEY': ''}, clear=False):
+        with patch.dict('os.environ', {'MEDSTATION_JWT_SECRET': 'legacy-secret'}, clear=False):
+            with patch.dict('os.environ', {'MEDSTATIONOS_JWT_SECRET_KEY': ''}, clear=False):
                 from api.auth_middleware import _get_or_create_jwt_secret
                 # Clear env var for primary
                 import os
-                old_val = os.environ.pop('ELOHIMOS_JWT_SECRET_KEY', None)
+                old_val = os.environ.pop('MEDSTATIONOS_JWT_SECRET_KEY', None)
                 try:
-                    os.environ['ELOHIM_JWT_SECRET'] = 'legacy-secret'
+                    os.environ['MEDSTATION_JWT_SECRET'] = 'legacy-secret'
                     result = _get_or_create_jwt_secret()
                     # Will return primary if set, or legacy
                 finally:
                     if old_val:
-                        os.environ['ELOHIMOS_JWT_SECRET_KEY'] = old_val
+                        os.environ['MEDSTATIONOS_JWT_SECRET_KEY'] = old_val
 
     def test_jwt_algorithm_is_hs256(self):
         """Test that JWT algorithm is HS256"""
@@ -1080,12 +1080,12 @@ class TestJWTSecretFileStorage:
         from api.auth_middleware import _get_or_create_jwt_secret
 
         # Set env var and test
-        os.environ['ELOHIMOS_JWT_SECRET_KEY'] = 'test-env-secret-at-least-32-chars!'
+        os.environ['MEDSTATIONOS_JWT_SECRET_KEY'] = 'test-env-secret-at-least-32-chars!'
         try:
             result = _get_or_create_jwt_secret()
             assert result == 'test-env-secret-at-least-32-chars!'
         finally:
-            del os.environ['ELOHIMOS_JWT_SECRET_KEY']
+            del os.environ['MEDSTATIONOS_JWT_SECRET_KEY']
 
     def test_jwt_secret_legacy_env_var_warns(self):
         """Test legacy env var shows warning"""
@@ -1093,21 +1093,21 @@ class TestJWTSecretFileStorage:
         import api.auth.middleware as module
 
         # Clear primary env var if set
-        primary = os.environ.pop('ELOHIMOS_JWT_SECRET_KEY', None)
+        primary = os.environ.pop('MEDSTATIONOS_JWT_SECRET_KEY', None)
         # Reset warning flag
         module._jwt_secret_warning_shown = False
 
         try:
-            os.environ['ELOHIM_JWT_SECRET'] = 'legacy-secret-at-least-32-characters'
+            os.environ['MEDSTATION_JWT_SECRET'] = 'legacy-secret-at-least-32-characters'
             result = module._get_or_create_jwt_secret()
             assert result == 'legacy-secret-at-least-32-characters'
             # Warning should be shown once
             assert module._jwt_secret_warning_shown is True
         finally:
-            if 'ELOHIM_JWT_SECRET' in os.environ:
-                del os.environ['ELOHIM_JWT_SECRET']
+            if 'MEDSTATION_JWT_SECRET' in os.environ:
+                del os.environ['MEDSTATION_JWT_SECRET']
             if primary:
-                os.environ['ELOHIMOS_JWT_SECRET_KEY'] = primary
+                os.environ['MEDSTATIONOS_JWT_SECRET_KEY'] = primary
             module._jwt_secret_warning_shown = False
 
 

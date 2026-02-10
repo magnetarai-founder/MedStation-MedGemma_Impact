@@ -1,6 +1,6 @@
 //
 //  GlassButton.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Liquid Glass button with hover effects and haptic feedback.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "GlassButton")
+private let logger = Logger(subsystem: "com.medstation.app", category: "GlassButton")
 
 struct GlassButton: View {
     let title: String
@@ -47,7 +47,7 @@ struct GlassButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: shadowColor, radius: isHovered ? 12 : 8, y: 4)
             .scaleEffect(isHovered ? 1.02 : 1.0)
-            .animation(.magnetarSpring, value: isHovered)
+            .animation(.medstationSpring, value: isHovered)
         }
         .buttonStyle(.plain)
         .onHover { hovering in
@@ -59,7 +59,7 @@ struct GlassButton: View {
     private var backgroundView: some View {
         switch style {
         case .primary:
-            LinearGradient.magnetarGradient
+            LinearGradient.medstationGradient
                 .opacity(isHovered ? 1.0 : 0.9)
 
         case .secondary:
@@ -95,7 +95,7 @@ struct GlassButton: View {
     private var shadowColor: Color {
         switch style {
         case .primary:
-            return Color.magnetarPrimary.opacity(0.3)
+            return Color.medstationPrimary.opacity(0.3)
         case .destructive:
             return Color.red.opacity(0.3)
         case .secondary, .ghost:
@@ -115,7 +115,7 @@ struct GlassButton: View {
 
 #Preview {
     ZStack {
-        LinearGradient.magnetarGradient
+        LinearGradient.medstationGradient
             .ignoresSafeArea()
 
         VStack(spacing: 20) {

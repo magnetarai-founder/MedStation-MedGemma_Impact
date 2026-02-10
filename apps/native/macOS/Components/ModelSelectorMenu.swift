@@ -115,7 +115,7 @@ struct ModelSelectorMenu: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 18, height: 18)
-                    .background(Circle().fill(Color.magnetarPrimary))
+                    .background(Circle().fill(Color.medstationPrimary))
 
                 Text(slot.modelName ?? slot.modelId ?? "Unknown")
 
@@ -186,7 +186,7 @@ struct ModelSelectorMenu: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.magnetarPrimary)
+                        .background(Color.medstationPrimary)
                         .cornerRadius(4)
                 }
 

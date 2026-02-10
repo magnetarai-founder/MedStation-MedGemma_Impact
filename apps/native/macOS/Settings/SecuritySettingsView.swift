@@ -1,6 +1,6 @@
 //
 //  SecuritySettingsView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Settings panel for security configuration.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "SecuritySettingsView")
+private let logger = Logger(subsystem: "com.medstation.app", category: "SecuritySettingsView")
 
 // MARK: - Security Settings
 

@@ -1,13 +1,13 @@
 """
 Main application configuration modules.
 
-This package contains focused configuration modules for the MagnetarStudio API:
+This package contains focused configuration modules for the MedStation API:
 - state: Global application state and caching
 - logging_config: Logging configuration
 - app_settings: Application settings models and management
 """
 
-from .app_settings import AppSettings, load_app_settings, save_app_settings, set_elohimos_memory
+from .app_settings import AppSettings, load_app_settings, save_app_settings, set_medstationos_memory
 from .logging_config import configure_logging
 from .state import (
     DEDUP_WINDOW_SECONDS,
@@ -44,5 +44,5 @@ __all__ = [
     "AppSettings",
     "load_app_settings",
     "save_app_settings",
-    "set_elohimos_memory",
+    "set_medstationos_memory",
 ]

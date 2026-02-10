@@ -1,6 +1,6 @@
 //
 //  KeychainManager.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Secure storage for JWT tokens and sensitive data using macOS/iOS Keychain.
 //  Supports biometric protection (Face ID / Touch ID).
@@ -26,7 +26,7 @@ final class KeychainManager {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrService as String: "com.magnetar.studio",
+            kSecAttrService as String: "com.medstation.app",
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
 
@@ -47,7 +47,7 @@ final class KeychainManager {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecAttrService as String: "com.magnetar.studio",
+            kSecAttrService as String: "com.medstation.app",
             kSecReturnData as String: true
         ]
 
@@ -71,7 +71,7 @@ final class KeychainManager {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecAttrService as String: "com.magnetar.studio"
+            kSecAttrService as String: "com.medstation.app"
         ]
 
         let status = SecItemDelete(query as CFDictionary)

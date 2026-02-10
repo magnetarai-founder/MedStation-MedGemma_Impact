@@ -1,4 +1,4 @@
-# MagnetarStudio Backend
+# MedStation Backend
 
 **A production-ready, high-performance API backend built with systems engineering principles**
 
@@ -24,7 +24,7 @@
 
 ## 🎯 Overview
 
-MagnetarStudio backend is a FastAPI-based API server designed for **scale, observability, and maintainability**. Built from the ground up with proper separation of concerns and systems engineering principles.
+MedStation backend is a FastAPI-based API server designed for **scale, observability, and maintainability**. Built from the ground up with proper separation of concerns and systems engineering principles.
 
 ### Key Features
 

@@ -7,7 +7,7 @@ Provides endpoints for managing chat messages:
 - Semantic search across conversations
 - Session and global analytics
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 import logging

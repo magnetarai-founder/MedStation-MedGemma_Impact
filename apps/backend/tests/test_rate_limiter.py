@@ -277,20 +277,20 @@ class TestIsDevMode:
 
     def test_dev_mode_env_var(self, mock_request):
         """Test dev mode detection via environment variable"""
-        with patch.dict("os.environ", {"ELOHIM_ENV": "development"}):
+        with patch.dict("os.environ", {"MEDSTATION_ENV": "development"}):
             assert is_dev_mode(mock_request) is True
 
     def test_not_dev_mode_production_env(self, mock_request):
         """Test production mode with env var set"""
         with patch.dict("os.environ", {
-            "ELOHIM_ENV": "production",
-            "ELOHIM_FOUNDER_PASSWORD": "secret123"
+            "MEDSTATION_ENV": "production",
+            "MEDSTATION_FOUNDER_PASSWORD": "secret123"
         }, clear=True):
             assert is_dev_mode(mock_request) is False
 
     def test_dev_mode_localhost(self, mock_request_localhost):
         """Test dev mode detection via localhost"""
-        with patch.dict("os.environ", {"ELOHIM_FOUNDER_PASSWORD": "secret"}, clear=True):
+        with patch.dict("os.environ", {"MEDSTATION_FOUNDER_PASSWORD": "secret"}, clear=True):
             assert is_dev_mode(mock_request_localhost) is True
 
     def test_dev_mode_ipv6_localhost(self):
@@ -298,7 +298,7 @@ class TestIsDevMode:
         request = MagicMock()
         request.client = MagicMock()
         request.client.host = "::1"
-        with patch.dict("os.environ", {"ELOHIM_FOUNDER_PASSWORD": "secret"}, clear=True):
+        with patch.dict("os.environ", {"MEDSTATION_FOUNDER_PASSWORD": "secret"}, clear=True):
             assert is_dev_mode(request) is True
 
     def test_dev_mode_no_founder_password(self, mock_request):

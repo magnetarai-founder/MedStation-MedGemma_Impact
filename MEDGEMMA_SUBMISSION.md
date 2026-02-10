@@ -1,8 +1,8 @@
-# MedGemma Impact Challenge — MagnetarStudio Medical Triage Assistant
+# MedGemma Impact Challenge — MedStation Medical Triage Assistant
 
 > **On-device, privacy-first medical triage using MedGemma 4B with a 5-step agentic workflow, HAI-DEF safety validation, and automated clinical benchmarking.**
 
-**Team:** MagnetarStudio
+**Team:** MedStation
 **Model:** `alibayram/medgemma:4b` (4B parameters, GGUF quantized)
 **Platform:** macOS native (SwiftUI), 100% on-device inference via Ollama
 **Codebase:** 7 files, 5,046 lines of Swift
@@ -33,7 +33,7 @@ Emergency department overcrowding is a global crisis. In the US alone, over 130 
 
 ### Our Approach
 
-MagnetarStudio's Medical Triage Assistant addresses this through **on-device AI pre-triage** — a privacy-preserving system that:
+MedStation's Medical Triage Assistant addresses this through **on-device AI pre-triage** — a privacy-preserving system that:
 
 - Accepts structured patient intake (demographics, symptoms, vitals, history, medications, allergies, medical images)
 - Runs a **5-step agentic reasoning workflow** powered by MedGemma 4B
@@ -237,7 +237,7 @@ After each analysis, users can rate triage accuracy (Accurate / Partially Helpfu
 
 ```
 ┌─────────────────────────────────────────┐
-│  MagnetarStudio (macOS native app)      │
+│  MedStation (macOS native app)      │
 │                                         │
 │  SwiftUI UI Layer                       │
 │    ↕                                    │
@@ -253,7 +253,7 @@ After each analysis, users can rate triage accuracy (Accurate / Partially Helpfu
 └─────────────────────────────────────────┘
 ```
 
-**Zero patient data leaves the device.** All inference, safety validation, audit logging, and storage happen locally in `~/Library/Application Support/MagnetarStudio/workspace/medical/`.
+**Zero patient data leaves the device.** All inference, safety validation, audit logging, and storage happen locally in `~/Library/Application Support/MedStation/workspace/medical/`.
 
 ### Hardware Requirements
 
@@ -361,7 +361,7 @@ The benchmark produces a 5×5 triage confusion matrix showing:
 
 ### Running the Benchmark
 
-1. Open MagnetarStudio → Workspace → Medical panel
+1. Open MedStation → Workspace → Medical panel
 2. Click **Benchmark** (toolbar, chart icon)
 3. Click **Run Benchmark** — takes ~5-10 minutes for all 10 vignettes
 4. View results: composite score, per-vignette drill-down, confusion matrix
@@ -393,13 +393,13 @@ git clone magnetar-studio
 cd magnetar-studio
 
 # Build
-xcodebuild -project apps/native/MagnetarStudio.xcodeproj \
-  -scheme MagnetarStudio \
+xcodebuild -project apps/native/MedStation.xcodeproj \
+  -scheme MedStation \
   -destination 'platform=macOS' \
   build
 
 # Or open in Xcode
-open apps/native/MagnetarStudio.xcodeproj
+open apps/native/MedStation.xcodeproj
 # ⌘R to build and run
 ```
 
@@ -417,9 +417,9 @@ open apps/native/MagnetarStudio.xcodeproj
 
 | Data | Path |
 |---|---|
-| Cases | `~/Library/Application Support/MagnetarStudio/workspace/medical/*.json` |
-| Audit Logs | `~/Library/Application Support/MagnetarStudio/workspace/medical/audit/*.json` |
-| Benchmarks | `~/Library/Application Support/MagnetarStudio/workspace/medical/benchmarks/*.json` |
+| Cases | `~/Library/Application Support/MedStation/workspace/medical/*.json` |
+| Audit Logs | `~/Library/Application Support/MedStation/workspace/medical/audit/*.json` |
+| Benchmarks | `~/Library/Application Support/MedStation/workspace/medical/benchmarks/*.json` |
 
 ---
 

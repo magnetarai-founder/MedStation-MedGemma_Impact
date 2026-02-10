@@ -2,7 +2,7 @@
 
 from api.errors.types import (
     ErrorType,
-    ElohimOSError,
+    MedStationError,
     OllamaError,
     ValidationError,
     AuthError,
@@ -12,7 +12,7 @@ from api.errors.types import (
 
 __all__ = [
     "ErrorType",
-    "ElohimOSError",
+    "MedStationError",
     "OllamaError",
     "ValidationError",
     "AuthError",

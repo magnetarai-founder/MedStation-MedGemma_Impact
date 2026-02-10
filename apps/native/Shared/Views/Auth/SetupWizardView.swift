@@ -1,6 +1,6 @@
 //
 //  SetupWizardView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Setup wizard shown when authState == .setupNeeded
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "SetupWizardView")
+private let logger = Logger(subsystem: "com.medstation.app", category: "SetupWizardView")
 
 struct SetupWizardView: View {
     @Environment(AuthStore.self) private var authStore
@@ -22,7 +22,7 @@ struct SetupWizardView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient.magnetarGradient
+            LinearGradient.medstationGradient
                 .ignoresSafeArea()
 
             LiquidGlassPanel(material: .thick) {
@@ -31,9 +31,9 @@ struct SetupWizardView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 48))
-                            .foregroundStyle(LinearGradient.magnetarGradient)
+                            .foregroundStyle(LinearGradient.medstationGradient)
 
-                        Text("Welcome to MagnetarStudio")
+                        Text("Welcome to MedStation")
                             .font(.title)
                             .fontWeight(.bold)
 

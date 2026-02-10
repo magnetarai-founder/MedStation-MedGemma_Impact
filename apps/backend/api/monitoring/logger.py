@@ -1,5 +1,5 @@
 """
-Structured Logging Utilities for ElohimOS
+Structured Logging Utilities for MedStation
 Provides request ID propagation and structured log output
 """
 

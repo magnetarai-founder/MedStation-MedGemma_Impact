@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Adaptive Learning Engine for ElohimOS
+Adaptive Learning Engine for MedStation
 Tracks model usage patterns and provides intelligent recommendations
 
 Copyright (c) 2025 MagnetarAI, LLC

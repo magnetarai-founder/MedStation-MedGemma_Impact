@@ -1,7 +1,7 @@
 """
 Models Package
 
-Model management for ElohimOS:
+Model management for MedStation:
 - Model filtering and classification
 - Favorites and status tracking
 - Auto-loading functionality

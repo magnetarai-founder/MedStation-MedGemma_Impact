@@ -1,5 +1,5 @@
 """
-SQL Safety Utilities for ElohimOS
+SQL Safety Utilities for MedStation
 
 Provides secure SQL operations to prevent SQL injection attacks.
 All table/column names MUST be validated before use in SQL statements.

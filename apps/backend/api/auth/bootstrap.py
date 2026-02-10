@@ -45,11 +45,11 @@ def ensure_dev_founder_user(conn: sqlite3.Connection) -> None:
     """
     Ensure Founder user exists in development mode.
 
-    In development (ELOHIM_ENV=development):
+    In development (MEDSTATION_ENV=development):
     - Creates Founder user if not present
     - Uses env-configurable credentials:
-      - ELOHIM_FOUNDER_USERNAME (default: elohim_founder)
-      - ELOHIM_FOUNDER_PASSWORD (default: ElohimOS_2024_Founder)
+      - MEDSTATION_FOUNDER_USERNAME (default: medstation_founder)
+      - MEDSTATION_FOUNDER_PASSWORD (default: MedStation_2024_Founder)
     - Assigns 'founder_rights' role
     - Idempotent: safe to call multiple times
 
@@ -63,14 +63,14 @@ def ensure_dev_founder_user(conn: sqlite3.Connection) -> None:
         ValueError: If in production and trying to auto-create Founder
     """
     # Only run in development mode
-    env = os.getenv("ELOHIM_ENV")
+    env = os.getenv("MEDSTATION_ENV")
     if env != "development":
         logger.debug(f"Skipping Founder bootstrap in {env} mode (dev-only feature)")
         return
 
     # Get Founder credentials from env
-    founder_username = os.getenv("ELOHIM_FOUNDER_USERNAME", "elohim_founder")
-    founder_password = os.getenv("ELOHIM_FOUNDER_PASSWORD")
+    founder_username = os.getenv("MEDSTATION_FOUNDER_USERNAME", "medstation_founder")
+    founder_password = os.getenv("MEDSTATION_FOUNDER_PASSWORD")
 
     # Generate random password if not provided (dev convenience, logged for user)
     password_was_generated = False
@@ -122,9 +122,9 @@ def ensure_dev_founder_user(conn: sqlite3.Connection) -> None:
         logger.info("✅ Founder user created successfully")
         logger.info(f"   Username: {founder_username}")
         if password_was_generated:
-            logger.info(f"   Password: {founder_password}  (auto-generated, set ELOHIM_FOUNDER_PASSWORD to customize)")
+            logger.info(f"   Password: {founder_password}  (auto-generated, set MEDSTATION_FOUNDER_PASSWORD to customize)")
         else:
-            logger.info("   Password: (from ELOHIM_FOUNDER_PASSWORD env var)")
+            logger.info("   Password: (from MEDSTATION_FOUNDER_PASSWORD env var)")
         logger.info(f"   User ID: {user_id}")
         logger.info(f"   Role: founder_rights")
         logger.info("=" * 80)

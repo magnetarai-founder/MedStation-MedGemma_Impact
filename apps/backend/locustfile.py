@@ -1,5 +1,5 @@
 """
-ElohimOS Load Testing with Locust
+MedStation Load Testing with Locust
 
 Performance baseline testing for v1.0.0-rc1
 
@@ -32,11 +32,11 @@ class VaultUser(HttpUser):
     def on_start(self):
         """Login and get auth token"""
         # Get founder password from environment
-        password = os.getenv("ELOHIM_FOUNDER_PASSWORD", "ElohimOS_2024_Founder")
+        password = os.getenv("MEDSTATION_FOUNDER_PASSWORD", "MedStation_2024_Founder")
 
         response = self.client.post(
             "/api/v1/auth/login",
-            data={"username": "elohim_founder", "password": password},
+            data={"username": "medstation_founder", "password": password},
             name="/auth/login"
         )
 
@@ -160,7 +160,7 @@ class ShareAccessUser(HttpUser):
 def on_test_start(environment, **kwargs):
     """Print test start info"""
     print("\n" + "="*80)
-    print("ElohimOS Load Test - v1.0.0-rc1")
+    print("MedStation Load Test - v1.0.0-rc1")
     print("="*80)
     print(f"Start time: {datetime.now().isoformat()}")
     print(f"Host: {environment.host}")

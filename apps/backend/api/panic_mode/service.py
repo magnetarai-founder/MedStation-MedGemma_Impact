@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Panic Mode for ElohimOS
+Panic Mode for MedStation
 Emergency security system for missionaries in hostile situations
 Rapidly wipes sensitive data, closes connections, encrypts databases
 """
@@ -169,8 +169,8 @@ class PanicMode:
 
         # Add known additional DBs
         db_paths.extend([
-            Path.home() / ".elohimos" / "elohimos_memory.db",
-            Path.home() / ".elohimos" / "learning.db",
+            Path.home() / ".medstationos" / "medstationos_memory.db",
+            Path.home() / ".medstationos" / "learning.db",
             paths.data_dir / "memory" / "chat_memory.db",
             paths.data_dir / "vault" / "vault.db",
             paths.data_dir / "users.db",

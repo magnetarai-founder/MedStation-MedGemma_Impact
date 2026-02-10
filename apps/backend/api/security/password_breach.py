@@ -15,7 +15,7 @@ Security Features:
 - Offline mode support for air-gapped environments
 
 OFFLINE MODE (Tier 10.3):
-When ELOHIM_OFFLINE_MODE=true or MAGNETAR_AIRGAP_MODE=true:
+When MEDSTATION_OFFLINE_MODE=true or MAGNETAR_AIRGAP_MODE=true:
 - Password breach checks are skipped
 - A warning is logged on each check attempt
 - Registration proceeds without breach validation
@@ -69,7 +69,7 @@ class PasswordBreachChecker:
         if self._session is None or self._session.closed:
             # Set User-Agent as requested by HIBP API guidelines
             headers = {
-                "User-Agent": "MagnetarStudio-PasswordChecker/1.0",
+                "User-Agent": "MedStation-PasswordChecker/1.0",
                 "Accept": "text/plain"
             }
             timeout = aiohttp.ClientTimeout(total=5)  # 5 second timeout
@@ -155,7 +155,7 @@ class PasswordBreachChecker:
             - is_breached: True if password found in breach database
             - breach_count: Number of times password appears in breaches (0 if not found)
 
-        In offline mode (ELOHIM_OFFLINE_MODE=true):
+        In offline mode (MEDSTATION_OFFLINE_MODE=true):
             - Always returns (False, 0) - assumes password is safe
             - Logs a warning about skipped breach check
             - This enables air-gapped deployments
@@ -174,7 +174,7 @@ class PasswordBreachChecker:
         if is_offline_mode():
             logger.warning(
                 "⚠️  Password breach check SKIPPED (offline mode enabled). "
-                "Set ELOHIM_OFFLINE_MODE=false to enable breach checking."
+                "Set MEDSTATION_OFFLINE_MODE=false to enable breach checking."
             )
             return (False, 0)
 

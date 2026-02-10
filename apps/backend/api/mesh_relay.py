@@ -1,5 +1,5 @@
 """
-Mesh Relay Routing for ElohimOS - Backwards Compatibility Shim
+Mesh Relay Routing for MedStation - Backwards Compatibility Shim
 
 This file provides backwards compatibility after the mesh_relay module
 was decomposed into a package during P2 monolithic file fixes.

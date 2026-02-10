@@ -229,14 +229,14 @@ class TestKeyManagement:
         """Test loading key from environment variable"""
         test_key_hex = secrets.token_bytes(32).hex()
 
-        with patch.dict(os.environ, {'ELOHIMOS_AUDIT_ENCRYPTION_KEY': test_key_hex}):
+        with patch.dict(os.environ, {'MEDSTATIONOS_AUDIT_ENCRYPTION_KEY': test_key_hex}):
             logger = EncryptedAuditLogger(db_path=temp_db)
 
         assert logger.encryption_key == bytes.fromhex(test_key_hex)
 
     def test_key_invalid_hex_format(self, temp_db):
         """Test handling invalid hex format in env var"""
-        with patch.dict(os.environ, {'ELOHIMOS_AUDIT_ENCRYPTION_KEY': 'not-valid-hex'}):
+        with patch.dict(os.environ, {'MEDSTATIONOS_AUDIT_ENCRYPTION_KEY': 'not-valid-hex'}):
             # Should generate new key, not crash
             logger = EncryptedAuditLogger(db_path=temp_db)
 
@@ -247,7 +247,7 @@ class TestKeyManagement:
         """Test handling wrong key length"""
         short_key = secrets.token_bytes(16).hex()  # 16 bytes instead of 32
 
-        with patch.dict(os.environ, {'ELOHIMOS_AUDIT_ENCRYPTION_KEY': short_key}):
+        with patch.dict(os.environ, {'MEDSTATIONOS_AUDIT_ENCRYPTION_KEY': short_key}):
             logger = EncryptedAuditLogger(db_path=temp_db)
 
         # Should generate new key due to wrong length
@@ -258,7 +258,7 @@ class TestKeyManagement:
         """Test key generation when no env var"""
         with patch.dict(os.environ, {}, clear=False):
             # Remove the env var if it exists
-            env_key = os.environ.pop('ELOHIMOS_AUDIT_ENCRYPTION_KEY', None)
+            env_key = os.environ.pop('MEDSTATIONOS_AUDIT_ENCRYPTION_KEY', None)
             try:
                 logger = EncryptedAuditLogger(db_path=temp_db)
 
@@ -266,14 +266,14 @@ class TestKeyManagement:
                 assert len(logger.encryption_key) == 32
             finally:
                 if env_key:
-                    os.environ['ELOHIMOS_AUDIT_ENCRYPTION_KEY'] = env_key
+                    os.environ['MEDSTATIONOS_AUDIT_ENCRYPTION_KEY'] = env_key
 
     def test_explicit_key_overrides_env(self, temp_db):
         """Test that explicit key parameter overrides env var"""
         env_key = secrets.token_bytes(32)
         explicit_key = secrets.token_bytes(32)
 
-        with patch.dict(os.environ, {'ELOHIMOS_AUDIT_ENCRYPTION_KEY': env_key.hex()}):
+        with patch.dict(os.environ, {'MEDSTATIONOS_AUDIT_ENCRYPTION_KEY': env_key.hex()}):
             logger = EncryptedAuditLogger(db_path=temp_db, encryption_key=explicit_key)
 
         assert logger.encryption_key == explicit_key

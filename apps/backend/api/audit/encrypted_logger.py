@@ -12,7 +12,7 @@ Security Features:
 
 Usage:
     # Set environment variable:
-    # export ELOHIMOS_AUDIT_ENCRYPTION_KEY=$(openssl rand -hex 32)
+    # export MEDSTATIONOS_AUDIT_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
     from encrypted_audit_logger import get_encrypted_audit_logger
 
@@ -78,7 +78,7 @@ class EncryptedAuditLogger:
             32-byte AES-256 key
         """
         # Try to get from environment
-        key_hex = os.getenv('ELOHIMOS_AUDIT_ENCRYPTION_KEY')
+        key_hex = os.getenv('MEDSTATIONOS_AUDIT_ENCRYPTION_KEY')
 
         if key_hex:
             try:
@@ -89,11 +89,11 @@ class EncryptedAuditLogger:
                 else:
                     logger.warning(f"Invalid key length from environment: {len(key)} bytes, expected 32")
             except ValueError:
-                logger.warning("Invalid hex format for ELOHIMOS_AUDIT_ENCRYPTION_KEY")
+                logger.warning("Invalid hex format for MEDSTATIONOS_AUDIT_ENCRYPTION_KEY")
 
         # Generate new key and warn
         logger.warning("⚠️  SECURITY WARNING: No encryption key found in environment!")
-        logger.warning("⚠️  Generating temporary key. Set ELOHIMOS_AUDIT_ENCRYPTION_KEY for production!")
+        logger.warning("⚠️  Generating temporary key. Set MEDSTATIONOS_AUDIT_ENCRYPTION_KEY for production!")
         logger.warning("⚠️  Generate with: openssl rand -hex 32")
 
         new_key = secrets.token_bytes(32)

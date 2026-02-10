@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="MagnetarStudio Network API",
-    description="LAN Discovery and P2P Mesh networking for MagnetarStudio",
+    title="MedStation Network API",
+    description="LAN Discovery and P2P Mesh networking for MedStation",
     version="1.0.0"
 )
 
@@ -51,7 +51,7 @@ except Exception as e:
 @app.get("/")
 async def root() -> Dict[str, Any]:
     return {
-        "service": "ElohimOS Network API",
+        "service": "MedStation Network API",
         "status": "running",
         "endpoints": {
             "lan": "/api/v1/lan",

@@ -1,6 +1,6 @@
 //
 //  GeneralSettingsView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Settings panel for general application preferences.
 //
@@ -52,7 +52,7 @@ struct GeneralSettingsView: View {
                         }
                     ))
 
-                    Text("Automatically start Ollama server when MagnetarStudio launches")
+                    Text("Automatically start Ollama server when MedStation launches")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -1,7 +1,7 @@
 """
 LLM Package
 
-Language model utilities for ElohimOS:
+Language model utilities for MedStation:
 - Ollama configuration and tuning for Apple Silicon
 - Token counting with tiktoken
 - Template orchestration for multi-step workflows

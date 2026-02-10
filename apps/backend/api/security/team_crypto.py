@@ -43,11 +43,11 @@ def get_device_secret() -> bytes:
     Returns:
         32-byte device secret
     """
-    secret = os.getenv("ELOHIMOS_DEVICE_SECRET")
+    secret = os.getenv("MEDSTATIONOS_DEVICE_SECRET")
 
     if not secret:
         logger.warning(
-            "ELOHIMOS_DEVICE_SECRET not set - generating ephemeral device secret. "
+            "MEDSTATIONOS_DEVICE_SECRET not set - generating ephemeral device secret. "
             "Team keys will not persist across restarts."
         )
         # Generate ephemeral secret (not persisted)
@@ -206,5 +206,5 @@ def rotate_team_key(team_id: str, new_device_secret: bytes) -> bytes:
     """
     raise NotImplementedError(
         "Team key rotation is a Phase 3.5 feature. "
-        "Phase 3 MVP uses ephemeral keys derived from ELOHIMOS_DEVICE_SECRET."
+        "Phase 3 MVP uses ephemeral keys derived from MEDSTATIONOS_DEVICE_SECRET."
     )

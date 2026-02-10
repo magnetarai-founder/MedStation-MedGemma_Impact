@@ -31,7 +31,7 @@ def migrate_phase1_5_per_user_models(app_db_path: Path, config_dir: Path) -> boo
     Run Phase 1.5 per-user model preferences migration
 
     Args:
-        app_db_path: Path to elohim.db (authoritative database)
+        app_db_path: Path to medstation.db (authoritative database)
         config_dir: Path to config directory (for hot_slots.json)
 
     Returns:
@@ -248,7 +248,7 @@ def check_migration_applied(app_db_path: Path) -> bool:
     Check if Phase 1.5 migration has already been applied
 
     Args:
-        app_db_path: Path to elohim.db
+        app_db_path: Path to medstation.db
 
     Returns:
         True if migration has been applied, False otherwise

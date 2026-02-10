@@ -1,7 +1,7 @@
 """
 P2P Mesh Package
 
-Peer-to-peer mesh networking for ElohimOS:
+Peer-to-peer mesh networking for MedStation:
 - Connection code management
 - Peer discovery and diagnostics
 - Mesh network API endpoints

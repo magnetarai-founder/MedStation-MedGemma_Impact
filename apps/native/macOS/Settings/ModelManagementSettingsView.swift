@@ -1,6 +1,6 @@
 //
 //  ModelManagementSettingsView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Settings panel for model management and configuration.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelManagementSettingsView")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ModelManagementSettingsView")
 
 // MARK: - Model Management Settings
 

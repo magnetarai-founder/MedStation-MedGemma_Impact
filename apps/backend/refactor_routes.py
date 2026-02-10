@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated route refactoring script for ElohimOS backend.
+Automated route refactoring script for MedStation backend.
 
 This script splits monolithic route files into focused submodules:
 - api/vault/routes.py → api/routes/vault/

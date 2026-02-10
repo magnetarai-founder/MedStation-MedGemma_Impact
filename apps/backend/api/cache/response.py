@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-In-Memory Response Cache for ElohimOS API
+In-Memory Response Cache for MedStation API
 
 Provides fast in-memory caching for frequently accessed endpoints to reduce
 database load and improve response times.

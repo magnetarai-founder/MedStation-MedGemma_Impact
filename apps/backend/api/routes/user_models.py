@@ -3,7 +3,7 @@ User Models API Routes
 
 Per-user model preferences and hot slots endpoints.
 
-Follows MagnetarStudio API standards (see API_STANDARDS.md).
+Follows MedStation API standards (see API_STANDARDS.md).
 """
 
 import logging
@@ -252,7 +252,7 @@ async def update_user_model_preferences(
         import sqlite3
         from pathlib import Path
 
-        db_path = Path.home() / ".elohim" / "app_db.sqlite3"
+        db_path = Path.home() / ".medstation" / "app_db.sqlite3"
         conn = sqlite3.connect(str(db_path))
 
         try:

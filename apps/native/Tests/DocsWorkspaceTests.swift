@@ -1,13 +1,13 @@
 //
 //  DocsWorkspaceTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Comprehensive test suite for DocsWorkspace refactoring (Phase 6.21)
 //  Tests extracted components: DocsSidebarView, DocsEditorView, DocsDataManager
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 @MainActor
 final class DocsWorkspaceTests: XCTestCase {

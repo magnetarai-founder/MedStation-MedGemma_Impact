@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Authentication Routes for ElohimOS API
+Authentication Routes for MedStation API
 
 Module structure (P2 decomposition):
 - auth_types.py: Request/response models
@@ -154,7 +154,7 @@ async def login(request: Request, body: LoginRequest) -> LoginResponse:
     # Apply rate limiting only to non-privileged accounts
     if not is_privileged:
         client_ip = get_client_ip(request)
-        max_login_attempts = 30 if os.getenv("ELOHIM_ENV") == "development" else 10
+        max_login_attempts = 30 if os.getenv("MEDSTATION_ENV") == "development" else 10
         if not rate_limiter.check_rate_limit(f"auth:login:{client_ip}", max_requests=max_login_attempts, window_seconds=60):
             raise too_many_requests(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED, retry_after=60)
 

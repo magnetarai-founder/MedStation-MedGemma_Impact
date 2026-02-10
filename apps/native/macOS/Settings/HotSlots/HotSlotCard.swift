@@ -1,6 +1,6 @@
 //
 //  HotSlotCard.swift
-//  MagnetarStudio (macOS)
+//  MedStation (macOS)
 //
 //  Hot slot card component - Extracted from HotSlotSettingsView.swift (Phase 6.24)
 //
@@ -25,7 +25,7 @@ struct HotSlotCard: View {
                         .frame(width: 48, height: 48)
                 } else {
                     Circle()
-                        .fill(LinearGradient.magnetarGradient)
+                        .fill(LinearGradient.medstationGradient)
                         .frame(width: 48, height: 48)
                 }
 
@@ -106,7 +106,7 @@ struct HotSlotCard: View {
                         Text(slot.isEmpty ? "Assign Model" : "Replace")
                             .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundStyle(Color.magnetarPrimary)
+                    .foregroundStyle(Color.medstationPrimary)
                 }
                 .buttonStyle(.plain)
             }

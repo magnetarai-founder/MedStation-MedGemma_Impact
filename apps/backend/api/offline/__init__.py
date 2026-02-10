@@ -1,7 +1,7 @@
 """
 Offline Package
 
-Offline-first data synchronization for ElohimOS:
+Offline-first data synchronization for MedStation:
 - CRDT-based conflict-free sync
 - Database sync utilities
 - Peer discovery for mesh networks

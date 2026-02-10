@@ -1,7 +1,7 @@
 """
 Hot Slots Package
 
-Model hot slot management for ElohimOS:
+Model hot slot management for MedStation:
 - 4 slots with LRU eviction
 - Pinning support
 - REST API endpoints

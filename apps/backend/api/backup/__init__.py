@@ -1,7 +1,7 @@
 """
 Backup Package
 
-Provides encrypted backup and restore functionality for ElohimOS:
+Provides encrypted backup and restore functionality for MedStation:
 - BackupService: Core backup creation, verification, and restoration
 - Router: RESTful API endpoints for backup operations
 - Types: Pydantic request/response models

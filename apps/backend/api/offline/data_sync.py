@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Offline Data Sync for ElohimOS - Facade Module
+Offline Data Sync for MedStation - Facade Module
 
 Sync databases, query results, chat history across missionary team
 Uses CRDTs for conflict-free synchronization.

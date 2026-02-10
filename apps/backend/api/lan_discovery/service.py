@@ -36,7 +36,7 @@ class LANDiscoveryService:
     - All communication is local network only
     """
 
-    def __init__(self, device_name: str = "ElohimOS", version: str = "1.0.0"):
+    def __init__(self, device_name: str = "MedStation", version: str = "1.0.0"):
         self.device_name = device_name
         self.version = version
         self.device_id = self._generate_device_id()
@@ -135,7 +135,7 @@ class LANDiscoveryService:
         return "127.0.0.1"
 
     async def start_discovery(self) -> None:
-        """Start discovering other ElohimOS instances on the network"""
+        """Start discovering other MedStation instances on the network"""
         logger.info("Starting LAN discovery...")
 
         self.zeroconf = AsyncZeroconf()

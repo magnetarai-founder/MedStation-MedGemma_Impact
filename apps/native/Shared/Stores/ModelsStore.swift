@@ -1,6 +1,6 @@
 //
 //  ModelsStore.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  SPDX-License-Identifier: Proprietary
 //
@@ -9,7 +9,7 @@ import Foundation
 import Observation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsStore")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ModelsStore")
 
 // MARK: - ModelsStore
 
@@ -17,7 +17,7 @@ private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelsS
 ///
 /// ## Overview
 /// ModelsStore manages the local Ollama model registry - fetching available models,
-/// pulling new models from Ollama Hub, and deleting models. Used by MagnetarHub
+/// pulling new models from Ollama Hub, and deleting models. Used by MedStationHub
 /// and model selection UI across the app.
 ///
 /// ## Architecture

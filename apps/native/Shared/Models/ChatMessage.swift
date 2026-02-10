@@ -1,6 +1,6 @@
 //
 //  ChatMessage.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Chat message model for AI conversations.
 //

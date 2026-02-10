@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Trash Service for ElohimOS
+Trash Service for MedStation
 30-day soft delete system for vault items
 All deleted items are recoverable for 30 days before permanent deletion
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ElohimOS Data Engine
+MedStation Data Engine
 Complete data pipeline: Excel/JSON → Auto-Clean → SQLite → Query Generation
 
 Features:

@@ -1,13 +1,13 @@
 //
 //  ContextIntegrationTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Integration tests for the full context preservation and optimization flow.
 //  Tests EnhancedContextBridge, CrossWorkspaceIntelligence, and end-to-end scenarios.
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 @MainActor
 final class ContextIntegrationTests: XCTestCase {

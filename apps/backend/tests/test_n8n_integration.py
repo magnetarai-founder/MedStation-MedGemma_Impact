@@ -113,14 +113,14 @@ class TestN8NWorkflowMapping:
     def test_mapping_creation(self):
         """Test creating mapping"""
         mapping = N8NWorkflowMapping(
-            elohim_workflow_id="wf1",
-            elohim_stage_id="stage1",
+            medstation_workflow_id="wf1",
+            medstation_stage_id="stage1",
             n8n_workflow_id="n8n-wf1",
             n8n_webhook_url="http://localhost:5678/webhook/abc123"
         )
 
-        assert mapping.elohim_workflow_id == "wf1"
-        assert mapping.elohim_stage_id == "stage1"
+        assert mapping.medstation_workflow_id == "wf1"
+        assert mapping.medstation_stage_id == "stage1"
         assert mapping.n8n_workflow_id == "n8n-wf1"
         assert mapping.created_at is not None
 
@@ -155,8 +155,8 @@ class TestN8NIntegrationService:
     def test_add_mapping(self, service):
         """Test adding a workflow mapping"""
         mapping = N8NWorkflowMapping(
-            elohim_workflow_id="wf1",
-            elohim_stage_id="stage1",
+            medstation_workflow_id="wf1",
+            medstation_stage_id="stage1",
             n8n_workflow_id="n8n-wf1",
             n8n_webhook_url="http://localhost/webhook"
         )

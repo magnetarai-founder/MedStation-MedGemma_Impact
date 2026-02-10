@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Adaptive Router with Learning Integration for ElohimOS
+Adaptive Router with Learning Integration for MedStation
 Combines enhanced routing with learning system for intelligent, adaptive behavior
-Ported from Jarvis Agent with ElohimOS-specific adaptations
+Ported from Jarvis Agent with MedStation-specific adaptations
 
 Module structure (P2 decomposition):
 - adaptive_router_patterns.py: Enums, dataclasses, and DEFAULT_ROUTE_PATTERNS
@@ -47,7 +47,7 @@ class EnhancedRouter:
         self._compile_regex_patterns()
 
     def _initialize_patterns(self) -> List[RoutePattern]:
-        """Initialize comprehensive routing patterns for ElohimOS.
+        """Initialize comprehensive routing patterns for MedStation.
 
         Returns DEFAULT_ROUTE_PATTERNS from extracted module (P2 decomposition).
         """

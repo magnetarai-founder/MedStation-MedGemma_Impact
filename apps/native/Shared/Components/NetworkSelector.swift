@@ -1,6 +1,6 @@
 //
 //  NetworkSelector.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Network mode selector for Team workspace
 //  - Toggle between Local/P2P/Cloud modes

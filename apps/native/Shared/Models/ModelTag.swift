@@ -1,6 +1,6 @@
 //
 //  ModelTag.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Model tag system for categorizing model capabilities
 //  Supports auto-detection and manual overrides

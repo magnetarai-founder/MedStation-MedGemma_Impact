@@ -1,6 +1,6 @@
 //
 //  APIConfiguration.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Centralized API configuration with HTTPS enforcement
 //
@@ -8,7 +8,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "APIConfiguration")
+private let logger = Logger(subsystem: "com.medstation.app", category: "APIConfiguration")
 
 /// Centralized API configuration with security enforcement
 final class APIConfiguration {

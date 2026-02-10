@@ -1,5 +1,5 @@
 """
-User-related Pydantic models for ElohimOS API.
+User-related Pydantic models for MedStation API.
 """
 
 from typing import Optional

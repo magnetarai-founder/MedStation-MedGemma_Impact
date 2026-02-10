@@ -1,6 +1,6 @@
 //
 //  PersistenceHelpers.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Shared save/load utilities that replace the try?-on-persistence anti-pattern.
 //  All operations log errors instead of silently swallowing them.
@@ -9,7 +9,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "Persistence")
+private let logger = Logger(subsystem: "com.medstation.app", category: "Persistence")
 
 enum PersistenceHelpers {
 

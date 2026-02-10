@@ -1,6 +1,6 @@
 //
 //  Colors.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Liquid Glass color system for macOS 26 / iPadOS 26.
 //  Adaptive colors that work in light and dark mode.
@@ -14,14 +14,14 @@ import AppKit
 extension Color {
     // MARK: - Brand Colors
 
-    /// Magnetar Primary - Electric Blue (#3B82F6)
-    static let magnetarPrimary = Color(red: 0.231, green: 0.510, blue: 0.965)
+    /// MedStation Primary - Electric Blue (#3B82F6)
+    static let medstationPrimary = Color(red: 0.231, green: 0.510, blue: 0.965)
 
-    /// Magnetar Secondary - Purple (#A855F7)
-    static let magnetarSecondary = Color(red: 0.659, green: 0.333, blue: 0.969)
+    /// MedStation Secondary - Purple (#A855F7)
+    static let medstationSecondary = Color(red: 0.659, green: 0.333, blue: 0.969)
 
-    /// Magnetar Accent - Cyan (#06B6D4)
-    static let magnetarAccent = Color(red: 0.024, green: 0.714, blue: 0.831)
+    /// MedStation Accent - Cyan (#06B6D4)
+    static let medstationAccent = Color(red: 0.024, green: 0.714, blue: 0.831)
 
     // MARK: - Liquid Glass Materials
 
@@ -99,9 +99,9 @@ extension Color {
 // MARK: - Gradient Helpers
 
 extension LinearGradient {
-    /// Magnetar brand gradient
-    static let magnetarGradient = LinearGradient(
-        colors: [Color.magnetarPrimary, Color.magnetarSecondary],
+    /// MedStation brand gradient
+    static let medstationGradient = LinearGradient(
+        colors: [Color.medstationPrimary, Color.medstationSecondary],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -122,37 +122,37 @@ extension LinearGradient {
 
 extension Animation {
     /// Quick animation for UI state changes (150ms)
-    static let magnetarQuick = Animation.easeInOut(duration: 0.15)
+    static let medstationQuick = Animation.easeInOut(duration: 0.15)
 
     /// Standard animation for most UI transitions (200ms)
-    static let magnetarStandard = Animation.easeInOut(duration: 0.2)
+    static let medstationStandard = Animation.easeInOut(duration: 0.2)
 
     /// Smooth animation for larger transitions (300ms)
-    static let magnetarSmooth = Animation.easeInOut(duration: 0.3)
+    static let medstationSmooth = Animation.easeInOut(duration: 0.3)
 
     /// Spring animation for interactive elements (hover, press)
-    static let magnetarSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
+    static let medstationSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
 
     /// Gentle spring for subtle interactive feedback
-    static let magnetarGentleSpring = Animation.spring(response: 0.25, dampingFraction: 0.8)
+    static let medstationGentleSpring = Animation.spring(response: 0.25, dampingFraction: 0.8)
 }
 
 extension AnyTransition {
     /// Standard fade transition
-    static let magnetarFade = AnyTransition.opacity.animation(.magnetarQuick)
+    static let medstationFade = AnyTransition.opacity.animation(.medstationQuick)
 
     /// Slide from trailing edge
-    static let magnetarSlideTrailing = AnyTransition.move(edge: .trailing)
+    static let medstationSlideTrailing = AnyTransition.move(edge: .trailing)
         .combined(with: .opacity)
-        .animation(.magnetarStandard)
+        .animation(.medstationStandard)
 
     /// Slide from bottom edge
-    static let magnetarSlideBottom = AnyTransition.move(edge: .bottom)
+    static let medstationSlideBottom = AnyTransition.move(edge: .bottom)
         .combined(with: .opacity)
-        .animation(.magnetarStandard)
+        .animation(.medstationStandard)
 
     /// Scale and fade
-    static let magnetarScale = AnyTransition.scale(scale: 0.95)
+    static let medstationScale = AnyTransition.scale(scale: 0.95)
         .combined(with: .opacity)
-        .animation(.magnetarSmooth)
+        .animation(.medstationSmooth)
 }

@@ -456,7 +456,7 @@ if __name__ == "__main__":
         paths = get_config_paths()
         db_path = paths.app_db
     except Exception:
-        db_path = Path("elohimos.db")
+        db_path = Path("medstationos.db")
 
     if len(sys.argv) > 1 and sys.argv[1] == "rollback":
         success = rollback_phase4_performance_indexes(db_path)

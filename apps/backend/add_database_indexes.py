@@ -2,7 +2,7 @@
 """
 Add Database Indexes - Performance Foundation
 
-This script analyzes and adds missing indexes to all MagnetarStudio databases.
+This script analyzes and adds missing indexes to all MedStation databases.
 Focus on:
 1. Foreign keys (for JOINs)
 2. Frequently filtered columns (user_id, team_id, session_id)
@@ -155,8 +155,8 @@ def optimize_teams_db():
 
 
 def optimize_app_db():
-    """Add indexes to elohimos_app.db (users, sessions, permissions)"""
-    print("\n📊 Optimizing elohimos_app.db...")
+    """Add indexes to medstationos_app.db (users, sessions, permissions)"""
+    print("\n📊 Optimizing medstationos_app.db...")
 
     db_path = PATHS.app_db
     if not db_path.exists():
@@ -184,7 +184,7 @@ def optimize_app_db():
     conn.commit()
     conn.close()
 
-    print(f"   📈 Added {added} new indexes to elohimos_app.db")
+    print(f"   📈 Added {added} new indexes to medstationos_app.db")
 
 
 def analyze_index_impact():

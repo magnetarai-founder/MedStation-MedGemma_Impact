@@ -1,5 +1,5 @@
 """
-Logging configuration for MagnetarStudio API.
+Logging configuration for MedStation API.
 
 Suppresses verbose DEBUG and INFO logs from various services to reduce terminal noise.
 """

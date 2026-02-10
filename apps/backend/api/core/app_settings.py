@@ -2,19 +2,19 @@
 Application settings models and management.
 
 This module defines the AppSettings model and provides functions to load/save
-settings from the ElohimOS memory system.
+settings from the MedStation memory system.
 """
 
 from pydantic import BaseModel
 
-# Import ElohimOS memory (will be initialized in main.py)
-_elohimos_memory = None
+# Import MedStation memory (will be initialized in main.py)
+_medstationos_memory = None
 
 
-def set_elohimos_memory(memory) -> None:
-    """Set the ElohimOS memory instance (called from main.py during initialization)"""
-    global _elohimos_memory
-    _elohimos_memory = memory
+def set_medstationos_memory(memory) -> None:
+    """Set the MedStation memory instance (called from main.py during initialization)"""
+    global _medstationos_memory
+    _medstationos_memory = memory
 
 
 class AppSettings(BaseModel):
@@ -75,10 +75,10 @@ def load_app_settings() -> AppSettings:
     Returns:
         AppSettings instance with stored settings or defaults
     """
-    if _elohimos_memory is None:
+    if _medstationos_memory is None:
         return AppSettings()
 
-    stored = _elohimos_memory.get_all_settings()
+    stored = _medstationos_memory.get_all_settings()
     if stored:
         # Merge stored settings with defaults
         defaults = AppSettings().dict()
@@ -94,7 +94,7 @@ def save_app_settings(settings: AppSettings) -> None:
     Args:
         settings: AppSettings instance to save
     """
-    if _elohimos_memory is None:
-        raise RuntimeError("ElohimOS memory not initialized")
+    if _medstationos_memory is None:
+        raise RuntimeError("MedStation memory not initialized")
 
-    _elohimos_memory.set_all_settings(settings.dict())
+    _medstationos_memory.set_all_settings(settings.dict())

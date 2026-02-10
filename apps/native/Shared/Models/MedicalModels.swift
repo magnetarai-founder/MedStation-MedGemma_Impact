@@ -1,6 +1,6 @@
 //
 //  MedicalModels.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Data models for the MedGemma-powered agentic medical workflow.
 //  Supports patient intake, multi-step reasoning, triage, and case persistence.

@@ -1,6 +1,6 @@
 //
 //  EmptyState.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Reusable empty state component with consistent styling
 //
@@ -33,7 +33,7 @@ struct EmptyState: View {
             // Icon
             Image(systemName: icon)
                 .font(.system(size: 56))
-                .foregroundStyle(LinearGradient.magnetarGradient.opacity(0.7))
+                .foregroundStyle(LinearGradient.medstationGradient.opacity(0.7))
                 .symbolRenderingMode(.hierarchical)
 
             // Text content
@@ -58,8 +58,8 @@ struct EmptyState: View {
                         .font(.system(size: 14, weight: .medium))
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
-                        .background(Color.magnetarPrimary.opacity(0.1))
-                        .foregroundStyle(Color.magnetarPrimary)
+                        .background(Color.medstationPrimary.opacity(0.1))
+                        .foregroundStyle(Color.medstationPrimary)
                         .cornerRadius(8)
                 }
                 .buttonStyle(.plain)

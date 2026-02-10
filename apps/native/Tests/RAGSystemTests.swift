@@ -1,13 +1,13 @@
 //
 //  RAGSystemTests.swift
-//  MagnetarStudio Tests
+//  MedStation Tests
 //
 //  Comprehensive tests for the RAG (Retrieval Augmented Generation) system.
 //  Tests HashEmbedder, VectorStore, SemanticSearchService, and related components.
 //
 
 import XCTest
-@testable import MagnetarStudio
+@testable import MedStation
 
 @MainActor
 final class HashEmbedderTests: XCTestCase {

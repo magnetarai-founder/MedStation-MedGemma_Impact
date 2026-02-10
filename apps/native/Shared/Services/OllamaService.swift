@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "OllamaService")
+private let logger = Logger(subsystem: "com.medstation.app", category: "OllamaService")
 
 /// Service for managing Ollama server lifecycle
 @MainActor

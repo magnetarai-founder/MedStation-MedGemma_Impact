@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ElohimOS Memory System
+MedStation Memory System
 Copyright (c) 2025 MagnetarAI, LLC
 Adapter for Jarvis BigQuery Memory to handle SQL/JSON query history
 
@@ -33,15 +33,15 @@ from api.jarvis_bigquery_memory import JarvisBigQueryMemory
 logger = logging.getLogger(__name__)
 
 
-class ElohimOSMemory:
+class MedStationMemory:
     """
-    ElohimOS-specific memory layer built on Jarvis BigQuery Memory
+    MedStation-specific memory layer built on Jarvis BigQuery Memory
     Handles SQL and JSON query history with semantic search and patterns
     """
 
     def __init__(self, db_path: Path = None):
         if db_path is None:
-            db_path = Path.home() / ".elohimos" / "query_history.db"
+            db_path = Path.home() / ".medstationos" / "query_history.db"
 
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self.memory = JarvisBigQueryMemory(db_path)
@@ -49,15 +49,15 @@ class ElohimOSMemory:
         # Thread lock for database operations (use underlying memory's lock for consistency)
         self._db_lock = self.memory._write_lock
 
-        self._setup_elohimos_tables()
+        self._setup_medstationos_tables()
 
         # In-memory cache for history queries
         self._history_cache: Dict[str, Dict[str, Any]] = {}
         self._cache_ttl = 300  # 5 minutes TTL
         self._cache_timestamps: Dict[str, float] = {}
 
-    def _setup_elohimos_tables(self) -> None:
-        """Create ElohimOS-specific tables"""
+    def _setup_medstationos_tables(self) -> None:
+        """Create MedStation-specific tables"""
 
         with self._db_lock:
             # Query history table (replaces localStorage)

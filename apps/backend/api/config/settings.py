@@ -1,8 +1,8 @@
 """
-Unified Configuration Management for ElohimOS
+Unified Configuration Management for MedStation
 
 Consolidates all configuration into a single source of truth using Pydantic BaseSettings.
-All settings can be overridden via environment variables with ELOHIMOS_ prefix.
+All settings can be overridden via environment variables with MEDSTATIONOS_ prefix.
 
 Usage:
     from config import get_settings
@@ -24,16 +24,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import psutil
 
 
-class ElohimOSSettings(BaseSettings):
+class MedStationSettings(BaseSettings):
     """
-    Unified configuration for ElohimOS
+    Unified configuration for MedStation
 
-    All settings can be overridden via environment variables with ELOHIMOS_ prefix.
-    Example: ELOHIMOS_JWT_SECRET_KEY=mysecret
+    All settings can be overridden via environment variables with MEDSTATIONOS_ prefix.
+    Example: MEDSTATIONOS_JWT_SECRET_KEY=mysecret
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="ELOHIMOS_",
+        env_prefix="MEDSTATIONOS_",
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -89,7 +89,7 @@ class ElohimOSSettings(BaseSettings):
 
     jwt_secret_key: str = Field(
         default="",
-        description="JWT signing secret key (REQUIRED - set via ELOHIMOS_JWT_SECRET_KEY)"
+        description="JWT signing secret key (REQUIRED - set via MEDSTATIONOS_JWT_SECRET_KEY)"
     )
 
     jwt_algorithm: Literal["HS256", "HS384", "HS512"] = Field(
@@ -136,7 +136,7 @@ class ElohimOSSettings(BaseSettings):
     )
 
     webauthn_rp_name: str = Field(
-        default="ElohimOS",
+        default="MedStation",
         description="WebAuthn Relying Party name (displayed to user)"
     )
 
@@ -151,7 +151,7 @@ class ElohimOSSettings(BaseSettings):
 
     data_dir: Path = Field(
         default_factory=lambda: Path.cwd() / ".neutron_data",
-        description="Base data directory for all ElohimOS data"
+        description="Base data directory for all MedStation data"
     )
 
     @field_validator("data_dir", mode="after")
@@ -162,7 +162,7 @@ class ElohimOSSettings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def validate_jwt_secret(self) -> "ElohimOSSettings":
+    def validate_jwt_secret(self) -> "MedStationSettings":
         """Validate JWT secret is properly configured"""
         insecure_defaults = [
             "",
@@ -175,7 +175,7 @@ class ElohimOSSettings(BaseSettings):
             if self.environment == "production":
                 raise ValueError(
                     "JWT_SECRET_KEY must be set in production! "
-                    "Set ELOHIMOS_JWT_SECRET_KEY environment variable to a secure random string (at least 32 chars)"
+                    "Set MEDSTATIONOS_JWT_SECRET_KEY environment variable to a secure random string (at least 32 chars)"
                 )
             else:
                 # In development, auto-generate a random secret
@@ -184,7 +184,7 @@ class ElohimOSSettings(BaseSettings):
                 warnings.warn(
                     "JWT_SECRET_KEY not set - using auto-generated secret. "
                     "This is fine for development but tokens will be invalidated on restart. "
-                    "Set ELOHIMOS_JWT_SECRET_KEY for persistent sessions.",
+                    "Set MEDSTATIONOS_JWT_SECRET_KEY for persistent sessions.",
                     UserWarning,
                     stacklevel=2
                 )
@@ -486,7 +486,7 @@ class ElohimOSSettings(BaseSettings):
     @property
     def app_db(self) -> Path:
         """Main application database path"""
-        return self.data_dir / "elohimos_app.db"
+        return self.data_dir / "medstationos_app.db"
 
     @property
     def vault_db(self) -> Path:
@@ -631,14 +631,14 @@ class ElohimOSSettings(BaseSettings):
 # ============================================
 
 @lru_cache()
-def get_settings() -> ElohimOSSettings:
+def get_settings() -> MedStationSettings:
     """
     Get cached settings instance (singleton pattern)
 
     Returns:
-        ElohimOSSettings: Application settings
+        MedStationSettings: Application settings
     """
-    return ElohimOSSettings()
+    return MedStationSettings()
 
 
 # ============================================
@@ -659,9 +659,9 @@ def is_airgap_mode() -> bool:
     Check if air-gap mode is enabled (no external network calls allowed).
 
     Returns True if any of these conditions are met:
-    - ELOHIMOS_AIRGAP_MODE=true
+    - MEDSTATIONOS_AIRGAP_MODE=true
     - MAGNETAR_AIRGAP_MODE=true
-    - ELOHIM_OFFLINE_MODE=true (deprecated, for compatibility)
+    - MEDSTATION_OFFLINE_MODE=true (deprecated, for compatibility)
 
     In air-gap mode:
     - All external HTTP calls are skipped
@@ -676,7 +676,7 @@ def is_airgap_mode() -> bool:
         return True
 
     # Check legacy env vars for backwards compatibility
-    legacy_vars = ["MAGNETAR_AIRGAP_MODE", "ELOHIM_OFFLINE_MODE"]
+    legacy_vars = ["MAGNETAR_AIRGAP_MODE", "MEDSTATION_OFFLINE_MODE"]
     truthy_values = {"true", "1", "yes", "on"}
 
     for var in legacy_vars:
@@ -693,8 +693,8 @@ def is_offline_mode() -> bool:
 
     Returns True if:
     - Air-gap mode is enabled (which implies offline mode)
-    - ELOHIMOS_OFFLINE_MODE=true
-    - ELOHIM_OFFLINE_MODE=true (deprecated)
+    - MEDSTATIONOS_OFFLINE_MODE=true
+    - MEDSTATION_OFFLINE_MODE=true (deprecated)
 
     In offline mode:
     - Password breach checking is skipped with warning
@@ -711,5 +711,5 @@ def is_offline_mode() -> bool:
         return True
 
     # Check legacy env var
-    value = os.getenv("ELOHIM_OFFLINE_MODE", "").lower().strip()
+    value = os.getenv("MEDSTATION_OFFLINE_MODE", "").lower().strip()
     return value in {"true", "1", "yes", "on"}

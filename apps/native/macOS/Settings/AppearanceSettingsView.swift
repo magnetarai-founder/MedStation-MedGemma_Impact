@@ -1,6 +1,6 @@
 //
 //  AppearanceSettingsView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Settings panel for appearance customization.
 //

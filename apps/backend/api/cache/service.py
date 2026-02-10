@@ -1,5 +1,5 @@
 """
-Redis Cache Service for MagnetarStudio
+Redis Cache Service for MedStation
 
 Provides high-performance caching layer with:
 - Connection pooling for efficiency

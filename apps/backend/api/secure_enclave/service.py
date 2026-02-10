@@ -59,7 +59,7 @@ router = APIRouter(
 # keyring automatically uses the best backend available (macOS Keychain on macOS)
 # No need to explicitly set it - it detects the platform
 
-SERVICE_NAME = "com.magnetarai.elohimos"
+SERVICE_NAME = "com.magnetarai.medstationos"
 
 
 # ===== Secure Enclave Key Management =====

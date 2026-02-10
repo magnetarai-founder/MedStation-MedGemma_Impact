@@ -501,7 +501,7 @@ class TestPermissionExplanation:
                 effective_permissions={"chat.use": True}
             )
 
-            # Should return error since ELOHIMOS_PERMS_EXPLAIN not set
+            # Should return error since MEDSTATIONOS_PERMS_EXPLAIN not set
             result = engine.explain_permission(ctx, "chat.use")
             assert "error" in result
             assert "Diagnostics disabled" in result["error"]

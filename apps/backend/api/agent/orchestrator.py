@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent Orchestrator API for ElohimOS - Thin Router
+Agent Orchestrator API for MedStation - Thin Router
 
 BACKWARDS COMPATIBILITY LAYER
 This router delegates all business logic to the orchestration/ package.
@@ -27,7 +27,7 @@ from typing import Dict, Any
 
 from api.errors import http_400, http_403, http_404, http_429, http_500
 
-# ElohimOS imports
+# MedStation imports
 from ..auth_middleware import get_current_user
 from ..rate_limiter import rate_limiter, get_client_ip
 from ..permission_engine import require_perm

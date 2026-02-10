@@ -50,7 +50,7 @@ class UndoService:
         if db_path is None:
             from config_paths import get_data_dir
             data_dir = get_data_dir()
-            db_path = data_dir / "elohimos_app.db"
+            db_path = data_dir / "medstationos_app.db"
 
         self.db_path = db_path
         self.default_timeout = default_timeout

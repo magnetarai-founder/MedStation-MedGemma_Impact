@@ -1,6 +1,6 @@
 //
 //  BiometricAuthService.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Handles Touch ID / Face ID authentication
 //

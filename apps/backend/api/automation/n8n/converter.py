@@ -1,11 +1,11 @@
 """
 n8n Workflow Converter
 
-Converts between ElohimOS and n8n workflow formats.
+Converts between MedStation and n8n workflow formats.
 
 Supports bidirectional conversion:
-- elohim_to_n8n: Export ElohimOS workflow stage to n8n
-- n8n_to_elohim_stage: Import n8n workflow as automation stage
+- medstation_to_n8n: Export MedStation workflow stage to n8n
+- n8n_to_medstation_stage: Import n8n workflow as automation stage
 
 Extracted from n8n_integration.py during P2 decomposition.
 """
@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 class N8NWorkflowConverter:
-    """Converts between ElohimOS and n8n workflow formats"""
+    """Converts between MedStation and n8n workflow formats"""
 
     @staticmethod
-    def elohim_to_n8n(elohim_workflow: Dict[str, Any], stage_id: str) -> Dict[str, Any]:
+    def medstation_to_n8n(medstation_workflow: Dict[str, Any], stage_id: str) -> Dict[str, Any]:
         """
-        Convert ElohimOS workflow stage to n8n workflow
+        Convert MedStation workflow stage to n8n workflow
 
         Creates an n8n workflow that:
         1. Receives data via webhook
@@ -30,7 +30,7 @@ class N8NWorkflowConverter:
         3. Returns results via webhook response
         """
         stage = next(
-            (s for s in elohim_workflow.get('stages', []) if s['id'] == stage_id),
+            (s for s in medstation_workflow.get('stages', []) if s['id'] == stage_id),
             None
         )
 
@@ -39,12 +39,12 @@ class N8NWorkflowConverter:
 
         # Build n8n workflow structure
         n8n_workflow = {
-            "name": f"{elohim_workflow['name']} - {stage['name']} (Automation)",
+            "name": f"{medstation_workflow['name']} - {stage['name']} (Automation)",
             "nodes": [
                 {
                     "parameters": {
                         "httpMethod": "POST",
-                        "path": f"elohim/{elohim_workflow['id']}/{stage_id}",
+                        "path": f"medstation/{medstation_workflow['id']}/{stage_id}",
                         "responseMode": "responseNode",
                         "options": {}
                     },
@@ -52,7 +52,7 @@ class N8NWorkflowConverter:
                     "type": "n8n-nodes-base.webhook",
                     "typeVersion": 1.1,
                     "position": [250, 300],
-                    "webhookId": f"elohim_{stage_id}"
+                    "webhookId": f"medstation_{stage_id}"
                 },
                 {
                     "parameters": {
@@ -86,15 +86,15 @@ class N8NWorkflowConverter:
             "settings": {
                 "executionOrder": "v1"
             },
-            "tags": ["elohimos", "automation", elohim_workflow['id']]
+            "tags": ["medstationos", "automation", medstation_workflow['id']]
         }
 
         return n8n_workflow
 
     @staticmethod
-    def n8n_to_elohim_stage(n8n_workflow: Dict[str, Any]) -> Dict[str, Any]:
+    def n8n_to_medstation_stage(n8n_workflow: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Convert n8n workflow to ElohimOS automation stage
+        Convert n8n workflow to MedStation automation stage
 
         Extracts webhook URL and creates automation config
         """

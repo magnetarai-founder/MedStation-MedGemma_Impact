@@ -1,6 +1,6 @@
 //
 //  Logger.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Centralized logging utility with proper levels and formatting
 //  NOTE: Renamed to AppLogger to avoid shadowing os.Logger
@@ -10,7 +10,7 @@ import Foundation
 import OSLog
 
 enum AppLogger {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.magnetar.studio"
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.medstation.app"
 
     // MARK: - Log Categories
 

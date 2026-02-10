@@ -1,5 +1,5 @@
 """
-Permission-related Pydantic models for ElohimOS API.
+Permission-related Pydantic models for MedStation API.
 
 Models for RBAC system including permissions, profiles, and permission sets.
 """

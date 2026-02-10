@@ -210,7 +210,7 @@ def migrate_phase1_workflows_user_id(
     Main migration function for Phase 1: Workflow User Isolation
 
     Args:
-        app_db_path: Path to elohimos_app.db (for user mapping and migration tracking)
+        app_db_path: Path to medstationos_app.db (for user mapping and migration tracking)
         workflows_db_path: Path to workflows.db
 
     Returns:

@@ -1,6 +1,6 @@
 //
 //  NetworkFirewallProtocol.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Custom URLProtocol that intercepts all network requests and enforces firewall rules
 //  Part of Little Snitch-style network firewall implementation

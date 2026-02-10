@@ -1,7 +1,7 @@
 """
 Accessibility Package
 
-Accessibility preferences management for ElohimOS:
+Accessibility preferences management for MedStation:
 - Colorblind mode support
 - High contrast themes
 - Font size adjustments
