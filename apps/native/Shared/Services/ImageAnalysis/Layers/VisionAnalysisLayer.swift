@@ -209,11 +209,11 @@ actor VisionAnalysisLayer {
         var currentList: [String] = []
 
         let bulletPatterns = ["• ", "- ", "* ", "◦ "]
-        let numberPattern = /^\d+[.)]\s/
+        let numberRegex = try? NSRegularExpression(pattern: "^\\d+[.)]\\s")
 
         for paragraph in paragraphs {
             let isBullet = bulletPatterns.contains { paragraph.hasPrefix($0) }
-            let isNumbered = paragraph.firstMatch(of: numberPattern) != nil
+            let isNumbered = numberRegex?.firstMatch(in: paragraph, range: NSRange(paragraph.startIndex..., in: paragraph)) != nil
 
             if isBullet || isNumbered {
                 // Remove bullet/number prefix and add to list
@@ -225,8 +225,10 @@ actor VisionAnalysisLayer {
                             break
                         }
                     }
-                } else if let match = paragraph.firstMatch(of: numberPattern) {
-                    item = String(paragraph[match.range.upperBound...])
+                } else if let regex = numberRegex,
+                          let match = regex.firstMatch(in: paragraph, range: NSRange(paragraph.startIndex..., in: paragraph)),
+                          let range = Range(match.range, in: paragraph) {
+                    item = String(paragraph[range.upperBound...])
                 }
                 currentList.append(item.trimmingCharacters(in: .whitespaces))
             } else if !currentList.isEmpty {

@@ -1,27 +1,20 @@
 //
-//  MagnetarStudioApp.swift
-//  MagnetarStudio (macOS)
+//  MedStationApp.swift
+//  MedStation
 //
-//  Main app entry point for macOS 26.
-//  Refactored in Phase 6.15 - extracted backend management, lifecycle, commands, and palette
+//  Main app entry point for macOS.
 //
 
 import SwiftUI
 import SwiftData
 import AppKit
 
-// MARK: - Import shared modules
-// All shared code is in the Shared/ folder
-
 @main
 struct MagnetarStudioApp: App {
     @State private var navigationStore = NavigationStore()
     @State private var chatStore = ChatStore()
-    @State private var databaseStore = DatabaseStore.shared
     @State private var authStore = AuthStore.shared
-    @State private var permissionManager = VaultPermissionManager.shared
     @NSApplicationDelegateAdaptor(AppLifecycleManager.self) var appDelegate
-    @State private var commandPaletteManager = CommandPaletteManager()
     @AppStorage("theme") private var theme = "system"
 
     init() {
@@ -34,53 +27,36 @@ struct MagnetarStudioApp: App {
             "enableBlurEffects": true,
             "autoLockEnabled": true,
             "autoLockTimeout": 15,
-            "showLineNumbers": true,
-            "editorFontSize": 14
         ])
     }
 
     var body: some Scene {
-        // Main window
+        // Main window — opens directly into Medical AI
         WindowGroup {
             ContentView()
-                .frame(minWidth: 1300, minHeight: 750)
+                .frame(minWidth: 1100, minHeight: 650)
                 .onAppear {
                     applyTheme()
-                    // Set window size constraints
                     if let window = NSApplication.shared.windows.first {
-                        window.setContentSize(NSSize(width: 1400, height: 850))
-                        window.minSize = NSSize(width: 1300, height: 750)
+                        window.setContentSize(NSSize(width: 1300, height: 800))
+                        window.minSize = NSSize(width: 1100, height: 650)
                         window.isMovableByWindowBackground = true
                     }
                 }
                 .onChange(of: theme) {
                     applyTheme()
                 }
-                .sheet(isPresented: $commandPaletteManager.isPresented) {
-                    CommandPaletteView(
-                        manager: commandPaletteManager,
-                        navigationStore: navigationStore,
-                        chatStore: chatStore,
-                        databaseStore: databaseStore
-                    )
-                }
-                .windowOpenerConfigurator()
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
-        .defaultSize(width: 1400, height: 850)
+        .defaultSize(width: 1300, height: 800)
         .environment(navigationStore)
         .environment(chatStore)
-        .environment(databaseStore)
         .environment(authStore)
-        .environment(permissionManager)
-        .environment(commandPaletteManager)
         .commands {
             MagnetarMenuCommands(
                 navigationStore: navigationStore,
-                chatStore: chatStore,
-                databaseStore: databaseStore,
-                commandPaletteManager: commandPaletteManager
+                chatStore: chatStore
             )
         }
 
@@ -89,7 +65,7 @@ struct MagnetarStudioApp: App {
             SettingsView()
         }
 
-        // Model Manager window (floating, separate)
+        // Model Manager window (for managing MedGemma and other models)
         WindowGroup("Model Manager", id: "model-manager") {
             ModelManagerWindow()
         }
@@ -97,86 +73,7 @@ struct MagnetarStudioApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 520, height: 580)
 
-        // Workspace Settings window (opened from workspace popover)
-        WindowGroup("Workspace Settings", id: "workspace-settings") {
-            WorkspaceSettingsWindow()
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentSize)
-        .defaultSize(width: 400, height: 500)
-
-        // MARK: - Phase 2C: Spawnable Workspaces
-        //
-        // Non-core workspaces open as separate windows via Quick Action menu
-
-        WindowGroup("Code IDE", id: "workspace-code") {
-            CodeWorkspace()
-                .environment(navigationStore)
-                .environment(chatStore)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1200, height: 800)
-
-        WindowGroup("Team", id: "workspace-team") {
-            TeamWorkspace()
-                .environment(navigationStore)
-                .environment(chatStore)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1100, height: 750)
-
-        WindowGroup("Kanban", id: "workspace-kanban") {
-            KanbanWorkspace()
-                .environment(navigationStore)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1200, height: 800)
-
-        WindowGroup("Data Workspace", id: "workspace-database") {
-            DatabaseWorkspace()
-                .environment(databaseStore)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1100, height: 750)
-
-        WindowGroup("Insights", id: "workspace-insights") {
-            InsightsWorkspace()
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 900, height: 700)
-
-        WindowGroup("MagnetarTrust", id: "workspace-trust") {
-            TrustWorkspace()
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1000, height: 750)
-
-        WindowGroup("MagnetarHub", id: "workspace-hub") {
-            MagnetarHubWorkspace()
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1100, height: 800)
-
-        // MARK: - Phase 2D: Detached Documents
-        //
-        // New notes and chats opened from Quick Action menu
-
-        WindowGroup("New Note", id: "detached-note") {
-            DetachedNoteWindow()
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 700, height: 550)
-
-        WindowGroup("New Chat", id: "detached-chat") {
-            DetachedChatWindow()
-                .environment(chatStore)
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 700, height: 600)
-
-        // AI Assistant window (⇧⌘P) — floating, usable from any workspace
+        // AI Assistant window (⇧⌘P) — floating, usable from any context
         WindowGroup("AI Assistant", id: "detached-ai") {
             DetachedAIWindow()
                 .environment(chatStore)
@@ -184,70 +81,10 @@ struct MagnetarStudioApp: App {
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
         .defaultSize(width: 650, height: 750)
-
-        // Founder Admin window — role-gated, accessible from + menu
-        WindowGroup("Founder Admin", id: "admin-window") {
-            AdminWindow()
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 600, height: 500)
-
-        // MARK: - Phase 6: Pop-Out Workspace Documents
-
-        WindowGroup("Document Editor", for: DetachedDocEditInfo.self) { $docInfo in
-            if let info = docInfo {
-                DetachedDocEditWindow(info: info)
-            } else {
-                Text("No document selected")
-                    .frame(width: 400, height: 300)
-            }
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 800, height: 650)
-
-        WindowGroup("Spreadsheet", for: DetachedSheetInfo.self) { $sheetInfo in
-            if let info = sheetInfo {
-                DetachedSheetWindow(info: info)
-            } else {
-                Text("No spreadsheet selected")
-                    .frame(width: 400, height: 300)
-            }
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 1000, height: 700)
-
-        WindowGroup("PDF Viewer", for: DetachedPDFViewInfo.self) { $pdfInfo in
-            if let info = pdfInfo {
-                DetachedPDFViewWindow(info: info)
-            } else {
-                Text("No PDF selected")
-                    .frame(width: 400, height: 300)
-            }
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 800, height: 900)
-
-        // Detached Document Window - opens vault files in separate windows
-        WindowGroup("Document", for: DetachedDocumentInfo.self) { $documentInfo in
-            if let info = documentInfo {
-                DetachedDocumentWindow(documentInfo: info)
-            } else {
-                Text("No document selected")
-                    .frame(width: 400, height: 300)
-            }
-        }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 800, height: 600)
     }
 
     // MARK: - Theme
 
-    /// Apply theme globally via NSApp.appearance — affects all windows at once
     private func applyTheme() {
         switch theme {
         case "light":
@@ -255,7 +92,7 @@ struct MagnetarStudioApp: App {
         case "dark":
             NSApp.appearance = NSAppearance(named: .darkAqua)
         default:
-            NSApp.appearance = nil // Follow system
+            NSApp.appearance = nil
         }
     }
 }

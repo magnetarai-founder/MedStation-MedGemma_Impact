@@ -31,6 +31,9 @@ struct ErrorResponse: Decodable, Sendable {
     }
 }
 
+/// Empty response for endpoints that return no data
+struct EmptyResponse: Codable, Sendable {}
+
 /// Shared HTTP client with auth header injection
 final class ApiClient {
     static let shared = ApiClient()

@@ -1194,17 +1194,7 @@ private struct MedicalCaseDetailView: View {
             medicalCase.status = .completed
             onUpdate(medicalCase)
 
-            // Fire automation trigger
-            await AutomationStore.shared.evaluate(
-                context: TriggerContext(
-                    trigger: .onMedicalAnalysisComplete,
-                    fields: [
-                        "caseId": medicalCase.id.uuidString,
-                        "patientId": medicalCase.intake.patientId,
-                        "triageLevel": result.triageLevel.rawValue
-                    ]
-                )
-            )
+            // Workflow complete - audit logged by MedicalAuditLogger
 
         } catch {
             logger.error("Workflow failed: \(error)")

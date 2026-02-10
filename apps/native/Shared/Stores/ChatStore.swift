@@ -863,16 +863,13 @@ final class ChatStore {
 
     /// Build context bundle for orchestrator routing
     private func buildContextBundle(query: String, sessionId: String) async -> ContextBundle {
-        // Get app context
-        let appContext = await AppContext.current()
-
         // Convert messages to ConversationMessage format
         let conversationHistory = messages.map { msg in
             ConversationMessage(
                 id: msg.id.uuidString,
                 role: msg.role == .user ? "user" : "assistant",
                 content: msg.content,
-                modelId: msg.modelId,  // Track which model generated each response
+                modelId: msg.modelId,
                 timestamp: msg.createdAt,
                 tokenCount: nil
             )
@@ -882,8 +879,7 @@ final class ChatStore {
         let hotSlotManager = HotSlotManager.shared
         let memoryTracker = ModelMemoryTracker.shared
 
-        let availableModels: [AvailableModel] = availableModels.enumerated().map { index, modelName in
-            // Check if in hot slot
+        let bundledModels: [AvailableModel] = availableModels.map { modelName in
             let slot = hotSlotManager.hotSlots.first { $0.modelId == modelName }
 
             return AvailableModel(
@@ -905,62 +901,18 @@ final class ChatStore {
             )
         }
 
-        // Phase 5: Get RAG documents from ANE Context Engine
-        let ragDocuments = await ContextService.shared.getRAGDocuments(for: query, limit: 5)
-
-        // Phase 3: Get vault context (file permissions and access)
-        let vaultContext = await VaultContext.current()
-
-        // Phase 5: Get relevant vault files via semantic search
-        let vaultSearchResults = await ContextService.shared.searchVaultFiles(for: query, limit: 5)
-        let relevantVaultFiles: [RelevantVaultFile]? = vaultSearchResults.isEmpty ? nil : vaultSearchResults.map { result in
-            RelevantVaultFile(
-                fileId: result.fileId,
-                fileName: result.fileName,
-                filePath: result.filePath ?? "",
-                snippet: result.snippet,
-                relevanceScore: result.relevanceScore
-            )
-        }
-
-        // Convert VaultContext to BundledVaultContext
-        let bundledVaultContext = BundledVaultContext(
-            unlockedVaultType: vaultContext.unlockedVaultType,
-            recentlyAccessedFiles: vaultContext.recentFiles,
-            currentlyGrantedPermissions: vaultContext.activePermissions,
-            relevantFiles: relevantVaultFiles
-        )
-
-        // Convert RAGDocuments to BundledRAGDocuments
-        let bundledRAGDocuments: [BundledRAGDocument] = ragDocuments.map { doc in
-            BundledRAGDocument(
-                id: doc.id.uuidString,
-                content: doc.content,
-                source: doc.source.rawValue,
-                sourceId: doc.metadata.fileId?.uuidString,
-                relevanceScore: 0.8,  // Default relevance since RAGDocument doesn't have relevanceScore
-                metadata: nil
-            )
-        }
-
         return ContextBundle(
             userQuery: query,
             sessionId: sessionId,
-            workspaceType: "chat",
+            workspaceType: "medical",
             conversationHistory: conversationHistory,
             totalMessagesInSession: messages.count,
-            vaultContext: bundledVaultContext,
-            dataContext: nil,
-            kanbanContext: nil,
-            workflowContext: nil,
-            teamContext: nil,
-            codeContext: nil,
-            ragDocuments: bundledRAGDocuments.isEmpty ? nil : bundledRAGDocuments,
+            ragDocuments: nil,
             vectorSearchResults: nil,
-            userPreferences: appContext.userPreferences,
+            userPreferences: .default,
             activeModelId: selectedModelId,
-            systemResources: appContext.systemResources,
-            availableModels: availableModels,
+            systemResources: .default,
+            availableModels: bundledModels,
             bundledAt: Date(),
             ttl: 60
         )

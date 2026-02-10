@@ -174,7 +174,7 @@ The backend is built on a **solid foundation** following systems engineering pri
 
 ```bash
 # Clone repository
-git clone https://github.com/magnetarai-founder/magnetar-studio.git
+git clone magnetar-studio
 cd magnetar-studio/apps/backend
 
 # Create virtual environment

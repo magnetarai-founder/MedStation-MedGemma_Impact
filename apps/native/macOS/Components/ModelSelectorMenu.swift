@@ -1,25 +1,21 @@
 //
 //  ModelSelectorMenu.swift
-//  MagnetarStudio (macOS)
+//  MedStation
 //
-//  Enhanced model selector with intelligent routing and hot slots
-//  Part of Noah's Ark for the Digital Age - Intelligent model routing
-//
-//  Foundation: Matthew 7:24-25 - Built on the rock, not sand
+//  Model selector with hot slots and intelligent routing.
 //
 
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.magnetar.studio", category: "ModelSelectorMenu")
+private let logger = Logger(subsystem: "com.medstation.app", category: "ModelSelectorMenu")
 
 struct ModelSelectorMenu: View {
-    @Binding var selectedMode: String  // "intelligent" or "manual"
+    @Binding var selectedMode: String
     @Binding var selectedModelId: String?
     let availableModels: [String]
     let onRefresh: () async -> Void
 
-    // Per-session override support (backward compatible — defaults to no override)
     var hasOverride: Bool = false
     var onClearOverride: (() -> Void)? = nil
 
@@ -31,218 +27,244 @@ struct ModelSelectorMenu: View {
 
     var body: some View {
         Menu {
-            // "Use Default" — only shown when a per-session override is active
-            if hasOverride, let clearAction = onClearOverride {
-                Button {
-                    clearAction()
-                } label: {
-                    HStack {
-                        Image(systemName: "arrow.uturn.backward")
-                        Text("Use Default")
-                    }
-                }
-
-                Divider()
-            }
-
-            // Intelligent Mode (Apple FM Orchestrator)
-            Button {
-                selectedMode = "intelligent"
-                selectedModelId = nil
-            } label: {
-                HStack {
-                    Image(systemName: "sparkles")
-                    Text("Intelligent (Apple FM)")
-                    if selectedMode == "intelligent" {
-                        Spacer()
-                        Image(systemName: "checkmark")
-                    }
-                }
-            }
-
-            Divider()
-
-            // Hot Slot Models Section
-            if !hotSlotManager.hotSlots.filter({ !$0.isEmpty }).isEmpty {
-                Section("Hot Slots (Preloaded)") {
-                    ForEach(hotSlotManager.hotSlots.filter { !$0.isEmpty }) { slot in
-                        Button {
-                            selectedMode = "manual"
-                            selectedModelId = slot.modelId
-                        } label: {
-                            HStack(spacing: 8) {
-                                // Slot badge
-                                Text("\(slot.slotNumber)")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 18, height: 18)
-                                    .background(Circle().fill(Color.magnetarPrimary))
-
-                                // Model name
-                                Text(slot.modelName ?? slot.modelId ?? "Unknown")
-
-                                // Pin indicator
-                                if slot.isPinned {
-                                    Image(systemName: "pin.fill")
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(.orange)
-                                }
-
-                                // Selection checkmark
-                                if selectedMode == "manual" && selectedModelId == slot.modelId {
-                                    Spacer()
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                        .contextMenu {
-                            // Right-click pin/unpin
-                            Button {
-                                togglePinForSlot(slot.slotNumber)
-                            } label: {
-                                Label(
-                                    slot.isPinned ? "Unpin from Slot \(slot.slotNumber)" : "Pin to Slot \(slot.slotNumber)",
-                                    systemImage: slot.isPinned ? "pin.slash" : "pin"
-                                )
-                            }
-
-                            Button(role: .destructive) {
-                                Task {
-                                    do {
-                                        try await hotSlotManager.removeFromSlot(slotNumber: slot.slotNumber)
-                                    } catch {
-                                        logger.error("Failed to remove from slot \(slot.slotNumber): \(error)")
-                                    }
-                                }
-                            } label: {
-                                Label("Remove from Slot \(slot.slotNumber)", systemImage: "xmark.circle")
-                            }
-                        }
-                    }
-                }
-
-                Divider()
-            }
-
-            // All Available Models Section
-            Section("All Models") {
-                if availableModels.isEmpty {
-                    Text("Loading models...")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(availableModels, id: \.self) { model in
-                        Button {
-                            selectedMode = "manual"
-                            selectedModelId = model
-                        } label: {
-                            HStack {
-                                Text(model)
-
-                                // Show if in hot slot
-                                if let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == model }) {
-                                    Text("Slot \(slot.slotNumber)")
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.magnetarPrimary)
-                                        .cornerRadius(4)
-                                }
-
-                                if selectedMode == "manual" && selectedModelId == model {
-                                    Spacer()
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                        .contextMenu {
-                            // Right-click to load into hot slot
-                            if hotSlotManager.hotSlots.first(where: { $0.modelId == model }) == nil {
-                                Button {
-                                    Task {
-                                        await loadModelIntoHotSlot(model)
-                                    }
-                                } label: {
-                                    Label("Load into Hot Slot", systemImage: "memorychip")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Divider()
-
-            // Actions
-            Button {
-                Task {
-                    await onRefresh()
-                }
-            } label: {
-                Label("Refresh Models", systemImage: "arrow.clockwise")
-            }
-
+            menuContent
         } label: {
-            HStack(spacing: 6) {
-                // Icon
-                Image(systemName: selectedMode == "intelligent" ? "sparkles" : "cpu")
-                    .font(.system(size: 13))
-
-                // Label
-                Text(displayText)
-                    .font(.system(size: 13))
-                    .lineLimit(1)
-
-                // Chevron
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.surfaceSecondary)
-            .cornerRadius(6)
+            menuLabel
         }
         .buttonStyle(.plain)
         .task {
             await hotSlotManager.loadHotSlots()
         }
         .alert("Unpin Model?", isPresented: $showPinConfirmation) {
-            Button("Cancel", role: .cancel) {
-                modelToPinToggle = nil
-            }
-            Button("Unpin", role: .destructive) {
-                if let model = modelToPinToggle,
-                   let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == model }) {
-                    Task { await hotSlotManager.unpinSlot(slot.slotNumber) }
-                }
-                modelToPinToggle = nil
-            }
+            unpinAlertButtons
         } message: {
             Text("Are you sure you want to unpin this model? It may be automatically evicted when loading other models.")
         }
         .sheet(isPresented: $showEvictionDialog) {
-            ModelEvictionDialog(
-                modelToLoad: evictionModelId,
-                hotSlots: hotSlotManager.hotSlots,
-                onAutoReplace: {
-                    showEvictionDialog = false
-                    Task {
-                        if let candidate = hotSlotManager.findEvictionCandidate() {
-                            try? await hotSlotManager.assignToSlot(slotNumber: candidate, modelId: evictionModelId)
-                        }
-                    }
-                },
-                onManualSelect: { slotNumber in
-                    showEvictionDialog = false
-                    Task {
-                        try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: evictionModelId)
-                    }
-                },
-                onCancel: {
-                    showEvictionDialog = false
-                }
-            )
+            evictionSheet
         }
+    }
+
+    // MARK: - Menu Content
+
+    @ViewBuilder
+    private var menuContent: some View {
+        if hasOverride, let clearAction = onClearOverride {
+            Button {
+                clearAction()
+            } label: {
+                Label("Use Default", systemImage: "arrow.uturn.backward")
+            }
+
+            Divider()
+        }
+
+        Button {
+            selectedMode = "intelligent"
+            selectedModelId = nil
+        } label: {
+            HStack {
+                Image(systemName: "sparkles")
+                Text("Intelligent (Apple FM)")
+                if selectedMode == "intelligent" {
+                    Spacer()
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+
+        Divider()
+
+        hotSlotsSection
+
+        allModelsSection
+
+        Divider()
+
+        Button {
+            Task { await onRefresh() }
+        } label: {
+            Label("Refresh Models", systemImage: "arrow.clockwise")
+        }
+    }
+
+    // MARK: - Hot Slots Section
+
+    @ViewBuilder
+    private var hotSlotsSection: some View {
+        let loadedSlots = hotSlotManager.hotSlots.filter { !$0.isEmpty }
+        if !loadedSlots.isEmpty {
+            Section("Hot Slots (Preloaded)") {
+                ForEach(loadedSlots) { slot in
+                    hotSlotButton(for: slot)
+                }
+            }
+
+            Divider()
+        }
+    }
+
+    @ViewBuilder
+    private func hotSlotButton(for slot: HotSlot) -> some View {
+        Button {
+            selectedMode = "manual"
+            selectedModelId = slot.modelId
+        } label: {
+            HStack(spacing: 8) {
+                Text("\(slot.slotNumber)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(Color.magnetarPrimary))
+
+                Text(slot.modelName ?? slot.modelId ?? "Unknown")
+
+                if slot.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.orange)
+                }
+
+                if selectedMode == "manual" && selectedModelId == slot.modelId {
+                    Spacer()
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        .contextMenu {
+            Button {
+                togglePinForSlot(slot.slotNumber)
+            } label: {
+                Label(
+                    slot.isPinned ? "Unpin from Slot \(slot.slotNumber)" : "Pin to Slot \(slot.slotNumber)",
+                    systemImage: slot.isPinned ? "pin.slash" : "pin"
+                )
+            }
+
+            Button(role: .destructive) {
+                Task {
+                    do {
+                        try await hotSlotManager.removeFromSlot(slotNumber: slot.slotNumber)
+                    } catch {
+                        logger.error("Failed to remove from slot \(slot.slotNumber): \(error)")
+                    }
+                }
+            } label: {
+                Label("Remove from Slot \(slot.slotNumber)", systemImage: "xmark.circle")
+            }
+        }
+    }
+
+    // MARK: - All Models Section
+
+    @ViewBuilder
+    private var allModelsSection: some View {
+        Section("All Models") {
+            if availableModels.isEmpty {
+                Text("Loading models...")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(availableModels, id: \.self) { model in
+                    modelButton(for: model)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func modelButton(for model: String) -> some View {
+        Button {
+            selectedMode = "manual"
+            selectedModelId = model
+        } label: {
+            HStack {
+                Text(model)
+
+                if let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == model }) {
+                    Text("Slot \(slot.slotNumber)")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.magnetarPrimary)
+                        .cornerRadius(4)
+                }
+
+                if selectedMode == "manual" && selectedModelId == model {
+                    Spacer()
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        .contextMenu {
+            if hotSlotManager.hotSlots.first(where: { $0.modelId == model }) == nil {
+                Button {
+                    Task { await loadModelIntoHotSlot(model) }
+                } label: {
+                    Label("Load into Hot Slot", systemImage: "memorychip")
+                }
+            }
+        }
+    }
+
+    // MARK: - Menu Label
+
+    private var menuLabel: some View {
+        HStack(spacing: 6) {
+            Image(systemName: selectedMode == "intelligent" ? "sparkles" : "cpu")
+                .font(.system(size: 13))
+
+            Text(displayText)
+                .font(.system(size: 13))
+                .lineLimit(1)
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: 10))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.surfaceSecondary)
+        .cornerRadius(6)
+    }
+
+    // MARK: - Alert & Sheet
+
+    @ViewBuilder
+    private var unpinAlertButtons: some View {
+        Button("Cancel", role: .cancel) {
+            modelToPinToggle = nil
+        }
+        Button("Unpin", role: .destructive) {
+            if let model = modelToPinToggle,
+               let slot = hotSlotManager.hotSlots.first(where: { $0.modelId == model }) {
+                Task { await hotSlotManager.unpinSlot(slot.slotNumber) }
+            }
+            modelToPinToggle = nil
+        }
+    }
+
+    private var evictionSheet: some View {
+        ModelEvictionDialog(
+            modelToLoad: evictionModelId,
+            hotSlots: hotSlotManager.hotSlots,
+            onAutoReplace: {
+                showEvictionDialog = false
+                Task {
+                    if let candidate = hotSlotManager.findEvictionCandidate() {
+                        try? await hotSlotManager.assignToSlot(slotNumber: candidate, modelId: evictionModelId)
+                    }
+                }
+            },
+            onManualSelect: { slotNumber in
+                showEvictionDialog = false
+                Task {
+                    try? await hotSlotManager.assignToSlot(slotNumber: slotNumber, modelId: evictionModelId)
+                }
+            },
+            onCancel: {
+                showEvictionDialog = false
+            }
+        )
     }
 
     // MARK: - Helpers
@@ -265,22 +287,18 @@ struct ModelSelectorMenu: View {
         let slot = hotSlotManager.hotSlots.first { $0.slotNumber == slotNumber }
 
         if slot?.isPinned == true && hotSlotManager.askBeforeUnpinning {
-            // Show confirmation
             modelToPinToggle = slot?.modelId
             showPinConfirmation = true
         } else {
-            // Toggle directly
             Task { await hotSlotManager.togglePin(slotNumber) }
         }
     }
 
     private func loadModelIntoHotSlot(_ modelId: String) async {
         if hotSlotManager.areAllSlotsFull {
-            // Show eviction dialog — let user choose auto-replace or manual
             evictionModelId = modelId
             showEvictionDialog = true
         } else {
-            // Find first empty slot
             if let emptySlot = hotSlotManager.hotSlots.first(where: { $0.isEmpty }) {
                 do {
                     try await hotSlotManager.assignToSlot(slotNumber: emptySlot.slotNumber, modelId: modelId)
@@ -292,17 +310,15 @@ struct ModelSelectorMenu: View {
     }
 }
 
-// MARK: - Preview
-
 #Preview {
     @Previewable @State var selectedMode = "intelligent"
     @Previewable @State var selectedModelId: String? = nil
 
-    return ModelSelectorMenu(
+    ModelSelectorMenu(
         selectedMode: $selectedMode,
         selectedModelId: $selectedModelId,
-        availableModels: ["llama3.2:3b", "phi-3.5:3.8b", "qwen2.5-coder:3b", "deepseek-r1:8b"],
-        onRefresh: { logger.debug("Refresh requested") }
+        availableModels: ["llama3.2:3b", "phi-3.5:3.8b", "medgemma:4b"],
+        onRefresh: { }
     )
     .padding()
     .frame(width: 400)

@@ -36,12 +36,6 @@ struct ModelRoutingDecision: Codable, Sendable {
 
     // Context filtering
     let relevantContext: [String]  // Which context keys are relevant
-    let shouldIncludeVault: Bool
-    let shouldIncludeData: Bool
-    let shouldIncludeKanban: Bool
-    let shouldIncludeWorkflows: Bool
-    let shouldIncludeTeam: Bool
-    let shouldIncludeCode: Bool
 
     // Metadata
     let decidedAt: Date
@@ -265,12 +259,6 @@ class MockOrchestrator: ModelOrchestrator {
             wouldCauseEviction: false,
             evictionCandidate: nil,
             relevantContext: ["conversationHistory"],
-            shouldIncludeVault: bundle.vaultContext != nil,
-            shouldIncludeData: bundle.dataContext != nil,
-            shouldIncludeKanban: bundle.kanbanContext != nil,
-            shouldIncludeWorkflows: bundle.workflowContext != nil,
-            shouldIncludeTeam: bundle.teamContext != nil,
-            shouldIncludeCode: bundle.codeContext != nil,
             decidedAt: Date(),
             orchestratorModel: "mock-orchestrator"
         )

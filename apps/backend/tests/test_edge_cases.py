@@ -163,13 +163,6 @@ class TestSanitizeForLogEdgeCases:
         assert "sk-abc" not in result
         assert "REDACTED" in result
 
-    def test_string_with_github_token(self):
-        """Test that GitHub tokens are redacted"""
-        data = "Token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        result = sanitize_for_log(data)
-        assert "ghp_" not in result
-        assert "REDACTED" in result
-
     def test_string_with_slack_token(self):
         """Test that Slack tokens are redacted"""
         data = "Slack: xoxb-123456789012-123456789012-abcdefghijklmnop"

@@ -389,7 +389,7 @@ The benchmark produces a 5×5 triage confusion matrix showing:
 ### Build & Run
 
 ```bash
-git clone https://github.com/magnetarai-founder/magnetar-studio.git
+git clone magnetar-studio
 cd magnetar-studio
 
 # Build

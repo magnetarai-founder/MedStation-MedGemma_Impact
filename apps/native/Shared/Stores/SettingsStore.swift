@@ -140,11 +140,9 @@ final class SettingsStore {
         }
     }
 
-    /// Load a saved query into the DatabaseStore editor
+    /// Load a saved query into the editor (no-op when database workspace is removed)
     nonisolated func loadIntoEditor(_ savedQuery: SavedQuery) {
-        Task { @MainActor in
-            DatabaseStore.shared.loadEditorText(savedQuery.query, contentType: .sql)
-        }
+        // Database workspace removed for MedStation
     }
 
     /// Find exact match for current query

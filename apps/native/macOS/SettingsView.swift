@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  MagnetarStudio
+//  MedStation
 //
 //  Settings panel accessible via menu bar.
 //
@@ -13,7 +13,7 @@ import Observation
 
 /// Settings tab identifiers — used for programmatic tab selection
 enum SettingsTab: String {
-    case general, features, api, security, appearance, models, cloud
+    case general, features, api, security, appearance, models
 }
 
 struct SettingsView: View {
@@ -61,12 +61,6 @@ struct SettingsView: View {
                     Label("Models", systemImage: "cpu")
                 }
                 .tag(SettingsTab.models.rawValue)
-
-            MagnetarCloudSettingsView()
-                .tabItem {
-                    Label("MagnetarCloud", systemImage: "cloud")
-                }
-                .tag(SettingsTab.cloud.rawValue)
         }
         .frame(minWidth: 600, idealWidth: 600, maxWidth: .infinity,
                minHeight: 500, idealHeight: 500, maxHeight: .infinity)
@@ -255,7 +249,7 @@ final class MenuBarManager {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "cube.box.fill", accessibilityDescription: "MagnetarStudio")
+            button.image = NSImage(systemSymbolName: "cube.box.fill", accessibilityDescription: "MedStation")
             button.action = #selector(handleMenuBarClick)
             button.target = self
         }
@@ -263,7 +257,7 @@ final class MenuBarManager {
         // Create menu
         let menu = NSMenu()
 
-        menu.addItem(NSMenuItem(title: "Open MagnetarStudio", action: #selector(openMainWindow), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "Open MedStation", action: #selector(openMainWindow), keyEquivalent: "o"))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())

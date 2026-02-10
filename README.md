@@ -23,7 +23,7 @@ MagnetarStudio is a secure, privacy-first AI platform designed for mission-criti
 
 ```bash
 # Clone repository
-git clone https://github.com/magnetarai-founder/magnetar-studio.git
+git clone magnetar-studio
 cd magnetarstudio
 
 # Backend setup
@@ -377,8 +377,8 @@ See [LICENSE](./LICENSE) for details.
 
 ### Issues
 - Report security issues privately to: security@magnetarstudio.com
-- File bugs: GitHub Issues
-- Feature requests: GitHub Discussions
+- File bugs: https://magnetar.studio/support
+- Feature requests: https://magnetar.studio/support
 
 ---
 
@@ -425,7 +425,7 @@ See `/Users/indiedevhipps/Desktop/MagnetarStudio Roadmap/` for details.
 
 - **Website:** https://magnetarstudio.com
 - **Email:** support@magnetarstudio.com
-- **GitHub:** https://github.com/magnetarai-founder/magnetar-studio
+- **Repository:** https://magnetar.studio
 
 ---
 

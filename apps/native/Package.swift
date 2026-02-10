@@ -2,35 +2,36 @@
 import PackageDescription
 
 let package = Package(
-    name: "MagnetarStudio",
+    name: "MedStation",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .executable(
-            name: "MagnetarStudio",
-            targets: ["MagnetarStudioApp"]
+            name: "MedStation",
+            targets: ["MedStation"]
         )
     ],
     targets: [
-        // Main macOS app target
+        // Single target: macOS + Shared code in one module
         .executableTarget(
-            name: "MagnetarStudioApp",
-            dependencies: ["MagnetarShared"],
-            path: "macOS",
-            exclude: ["Info.plist"]
-        ),
-
-        // Shared code (80% shared between macOS/iOS)
-        .target(
-            name: "MagnetarShared",
-            path: "Shared"
+            name: "MedStation",
+            path: ".",
+            exclude: [
+                "macOS/Info.plist",
+                "macOS/Assets.xcassets",
+                "MagnetarStudio.xcodeproj",
+                "Tests",
+                "build",
+                ".build"
+            ],
+            sources: ["macOS", "Shared"]
         ),
 
         // Tests
         .testTarget(
-            name: "MagnetarStudioTests",
-            dependencies: ["MagnetarShared"],
+            name: "MedStationTests",
+            dependencies: ["MedStation"],
             path: "Tests"
         ),
     ]
