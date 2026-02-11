@@ -1,35 +1,26 @@
 """
-Chat routes package - Aggregates all chat sub-routers
+Chat routes package for MedStation.
+
+Only includes MedGemma inference and Ollama proxy (fallback).
 """
 
 __all__ = ["router", "public_router"]
 
-from fastapi import APIRouter, Depends
-from api.auth_middleware import get_current_user
+from fastapi import APIRouter
 
-from . import sessions, messages, files, ollama_proxy, medgemma
-from .models import router as models_router
+from . import ollama_proxy, medgemma
 
-# Authenticated router
+# Authenticated router (unused for now, kept for structure)
 router = APIRouter(
     prefix="/api/v1/chat",
     tags=["chat"],
-    dependencies=[Depends(get_current_user)]
 )
 
-# Public router (health checks, model list)
+# Public router (native app calls directly)
 public_router = APIRouter(
     prefix="/api/v1/chat",
     tags=["chat-public"]
 )
-
-# Include sub-routers
-router.include_router(sessions.router)
-router.include_router(messages.router)
-router.include_router(files.router)
-
-# Models router is public
-public_router.include_router(models_router)
 
 # Ollama proxy is public (native app calls directly)
 public_router.include_router(ollama_proxy.router)

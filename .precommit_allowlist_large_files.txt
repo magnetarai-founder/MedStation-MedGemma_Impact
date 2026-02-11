@@ -1,3 +1,0 @@
-apps/backend/api/main.py
-apps/backend/api/template_library_full.py
-apps/backend/api/routes/team.py
