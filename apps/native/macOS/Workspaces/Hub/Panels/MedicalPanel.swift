@@ -20,7 +20,7 @@ struct MedicalPanel: View {
     @State private var cases: [MedicalCase] = []
     @State private var selectedCaseID: UUID?
     @State private var isLoading = true
-    @State private var showNewCaseSheet = false
+    @State private var showCheckInFlow = false
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
     @AppStorage("medical.onboarding.shown") private var hasShownOnboarding = false
@@ -46,7 +46,7 @@ struct MedicalPanel: View {
                     icon: "cross.case",
                     title: "Select a Case",
                     message: "Choose a medical case from the sidebar or create a new one",
-                    action: { showNewCaseSheet = true },
+                    action: { showCheckInFlow = true },
                     actionLabel: "New Case"
                 )
             }
@@ -62,7 +62,7 @@ struct MedicalPanel: View {
                     .accessibilityLabel("Run evaluation benchmark")
 
                     Button {
-                        showNewCaseSheet = true
+                        showCheckInFlow = true
                     } label: {
                         Label("New Case", systemImage: "plus.circle.fill")
                     }
@@ -70,9 +70,9 @@ struct MedicalPanel: View {
                 }
             }
         }
-        .sheet(isPresented: $showNewCaseSheet) {
-            NewCaseSheet { intake in
-                createNewCase(intake: intake)
+        .sheet(isPresented: $showCheckInFlow) {
+            PatientCheckInFlow { completedCase in
+                addCompletedCase(completedCase)
             }
         }
         .sheet(isPresented: $showBenchmark) {
@@ -320,7 +320,14 @@ struct MedicalPanel: View {
         cases.insert(newCase, at: 0)
         selectedCaseID = newCase.id
         saveCaseToFile(newCase)
-        showNewCaseSheet = false
+        showCheckInFlow = false
+    }
+
+    private func addCompletedCase(_ medicalCase: MedicalCase) {
+        cases.insert(medicalCase, at: 0)
+        selectedCaseID = medicalCase.id
+        saveCaseToFile(medicalCase)
+        showCheckInFlow = false
     }
 
     private func saveCaseToFile(_ medicalCase: MedicalCase) {
@@ -1833,262 +1840,6 @@ private struct MedicalCaseDetailView: View {
         case .medium: return .blue
         case .low: return .green
         }
-    }
-}
-
-// MARK: - New Case Sheet
-
-private struct NewCaseSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let onCreate: (PatientIntake) -> Void
-
-    @State private var patientId = ""
-    @State private var age = ""
-    @State private var sex: BiologicalSex? = nil
-    @State private var isPregnant = false
-    @State private var chiefComplaint = ""
-    @State private var onsetTime = ""
-    @State private var severity: PatientIntake.Severity = .moderate
-    @State private var symptomsText = ""
-    @State private var medicalHistoryText = ""
-    @State private var medicationsText = ""
-    @State private var allergiesText = ""
-
-    @State private var includeVitals = false
-    @State private var heartRate = ""
-    @State private var bloodPressure = ""
-    @State private var temperature = ""
-    @State private var respiratoryRate = ""
-    @State private var oxygenSaturation = ""
-    @State private var attachedImagePaths: [String] = []
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Patient Information") {
-                    TextField("Patient ID (optional)", text: $patientId)
-                    TextField("Chief Complaint", text: $chiefComplaint, axis: .vertical)
-                        .lineLimit(2...4)
-                    TextField("Onset (e.g., '2 hours ago', '3 days')", text: $onsetTime)
-                    Picker("Severity", selection: $severity) {
-                        ForEach(PatientIntake.Severity.allCases, id: \.self) { sev in
-                            Text(sev.rawValue).tag(sev)
-                        }
-                    }
-                }
-
-                Section("Demographics") {
-                    HStack(spacing: 12) {
-                        TextField("Age", text: $age)
-                            .frame(width: 60)
-                        Picker("Biological Sex", selection: $sex) {
-                            Text("Not specified").tag(nil as BiologicalSex?)
-                            ForEach(BiologicalSex.allCases, id: \.self) { s in
-                                Text(s.rawValue).tag(s as BiologicalSex?)
-                            }
-                        }
-                        .frame(width: 180)
-                    }
-                    if sex == .female {
-                        Toggle("Currently Pregnant", isOn: $isPregnant)
-                    }
-                }
-
-                Section("Symptoms") {
-                    TextField("Symptoms (comma-separated)", text: $symptomsText, axis: .vertical)
-                        .lineLimit(2...4)
-                }
-
-                Section("Vital Signs") {
-                    Toggle("Include Vital Signs", isOn: $includeVitals)
-
-                    if includeVitals {
-                        TextField("Heart Rate (bpm)", text: $heartRate)
-                        TextField("Blood Pressure (e.g., 120/80)", text: $bloodPressure)
-                        TextField("Temperature (°F)", text: $temperature)
-                        TextField("Respiratory Rate (per min)", text: $respiratoryRate)
-                        TextField("SpO2 (%)", text: $oxygenSaturation)
-
-                        // Inline validation warnings
-                        ForEach(vitalValidationWarnings, id: \.self) { warning in
-                            HStack(spacing: 4) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                    .font(.caption2)
-                                    .accessibilityHidden(true)
-                                Text(warning)
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            }
-                            .accessibilityElement(children: .combine)
-                        }
-                    }
-                }
-
-                Section("Medical History") {
-                    TextField("Medical History (comma-separated)", text: $medicalHistoryText, axis: .vertical)
-                        .lineLimit(2...4)
-                    TextField("Current Medications (comma-separated)", text: $medicationsText, axis: .vertical)
-                        .lineLimit(2...4)
-                    TextField("Allergies (comma-separated)", text: $allergiesText, axis: .vertical)
-                        .lineLimit(2...4)
-                }
-
-                Section("Medical Images") {
-                    Button {
-                        pickImages()
-                    } label: {
-                        Label("Attach Images", systemImage: "photo.badge.plus")
-                    }
-                    .accessibilityLabel("Attach medical images such as X-rays or lab results")
-
-                    if !attachedImagePaths.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(attachedImagePaths, id: \.self) { path in
-                                    ZStack(alignment: .topTrailing) {
-                                        if let img = NSImage(contentsOfFile: path) {
-                                            Image(nsImage: img)
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 80, height: 80)
-                                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                                        } else {
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.gray.opacity(0.2))
-                                                .frame(width: 80, height: 80)
-                                                .overlay {
-                                                    Image(systemName: "photo")
-                                                        .foregroundStyle(.tertiary)
-                                                        .accessibilityHidden(true)
-                                                }
-                                        }
-
-                                        Button {
-                                            attachedImagePaths.removeAll { $0 == path }
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 16))
-                                                .foregroundStyle(.white, .red)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .offset(x: 4, y: -4)
-                                        .accessibilityLabel("Remove attached image")
-                                    }
-                                }
-                            }
-                        }
-                        Text("\(attachedImagePaths.count) image(s) attached — will be analyzed by on-device Vision pipeline")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("New Medical Case")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { createIntake() }
-                        .disabled(chiefComplaint.isEmpty)
-                }
-            }
-        }
-        .frame(width: 600, height: 700)
-    }
-
-    private var vitalValidationWarnings: [String] {
-        guard includeVitals else { return [] }
-        var warnings: [String] = []
-        if let hr = Int(heartRate) {
-            if hr < 20 || hr > 300 { warnings.append("Heart rate \(hr) is outside physiologic range (20-300)") }
-        }
-        if let spo2 = Int(oxygenSaturation) {
-            if spo2 > 100 { warnings.append("SpO2 cannot exceed 100%") }
-            if spo2 < 0 { warnings.append("SpO2 cannot be negative") }
-        }
-        if let temp = Double(temperature) {
-            if temp <= 50 {
-                // Likely Celsius — auto-convert hint
-                warnings.append("Temperature \(String(format: "%.1f", temp)) looks like Celsius. Will auto-convert to \(String(format: "%.1f°F", temp * 9.0 / 5.0 + 32))")
-            } else if temp < 80 || temp > 115 {
-                warnings.append("Temperature \(String(format: "%.1f", temp))°F is outside expected range")
-            }
-        }
-        if let rr = Int(respiratoryRate) {
-            if rr < 4 || rr > 60 { warnings.append("Respiratory rate \(rr) is outside expected range (4-60)") }
-        }
-        // Blood pressure format validation
-        if !bloodPressure.isEmpty {
-            let bpParts = bloodPressure.components(separatedBy: "/")
-            if bpParts.count != 2 || Int(bpParts[0].trimmingCharacters(in: .whitespaces)) == nil || Int(bpParts[1].trimmingCharacters(in: .whitespaces)) == nil {
-                warnings.append("Blood pressure should be in systolic/diastolic format (e.g., 120/80)")
-            } else if let sys = Int(bpParts[0].trimmingCharacters(in: .whitespaces)),
-                      let dia = Int(bpParts[1].trimmingCharacters(in: .whitespaces)) {
-                if sys < 60 || sys > 260 { warnings.append("Systolic BP \(sys) is outside expected range (60-260)") }
-                if dia < 30 || dia > 160 { warnings.append("Diastolic BP \(dia) is outside expected range (30-160)") }
-                if dia >= sys { warnings.append("Diastolic BP should be lower than systolic") }
-            }
-        }
-        return warnings
-    }
-
-    private func createIntake() {
-        let symptoms = symptomsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        let history = medicalHistoryText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        let meds = medicationsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        let allergies = allergiesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-
-        var vitals: VitalSigns?
-        if includeVitals {
-            // Auto-convert Celsius to Fahrenheit if value ≤50
-            var tempF: Double?
-            if let raw = Double(temperature) {
-                tempF = raw <= 50 ? (raw * 9.0 / 5.0 + 32) : raw
-            }
-
-            vitals = VitalSigns(
-                heartRate: Int(heartRate),
-                bloodPressure: bloodPressure.isEmpty ? nil : bloodPressure,
-                temperature: tempF,
-                respiratoryRate: Int(respiratoryRate),
-                oxygenSaturation: Int(oxygenSaturation)
-            )
-        }
-
-        let intake = PatientIntake(
-            patientId: patientId,
-            age: Int(age),
-            sex: sex,
-            isPregnant: isPregnant,
-            chiefComplaint: chiefComplaint,
-            symptoms: symptoms,
-            onsetTime: onsetTime,
-            severity: severity,
-            vitalSigns: vitals,
-            medicalHistory: history,
-            currentMedications: meds,
-            allergies: allergies,
-            attachedImagePaths: attachedImagePaths
-        )
-
-        onCreate(intake)
-        dismiss()
-    }
-
-    private func pickImages() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.image, .png, .jpeg, .heic, .tiff, .pdf]
-        panel.message = "Select medical images (X-rays, lab results, skin photos, etc.)"
-
-        guard panel.runModal() == .OK else { return }
-
-        let newPaths = panel.urls.map(\.path)
-        attachedImagePaths.append(contentsOf: newPaths)
     }
 }
 

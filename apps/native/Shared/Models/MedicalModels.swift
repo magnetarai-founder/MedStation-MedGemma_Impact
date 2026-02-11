@@ -158,7 +158,7 @@ struct RecommendedAction: Codable, Identifiable, Equatable, Sendable {
     var action: String
     var priority: ActionPriority
 
-    enum ActionPriority: String, Codable, Sendable {
+    enum ActionPriority: String, Codable, CaseIterable, Sendable {
         case immediate = "Immediate"
         case high = "High"
         case medium = "Medium"

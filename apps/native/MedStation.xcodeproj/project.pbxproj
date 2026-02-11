@@ -20,6 +20,7 @@
 		1AE6BB45FF00838D1BA23853 /* ModelMemoryTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EADD445CBEADCED36E0BFC8 /* ModelMemoryTracker.swift */; };
 		1B546327F293BE4111D91AAE /* NetworkSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 899B24D66F709DDDC3DCB565 /* NetworkSelector.swift */; };
 		1F6EAB9F28E04038A882AD5B /* MedicalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A5AD70262BAF9324059A6 /* MedicalPanel.swift */; };
+		C6020378836FDF9D943074EB /* PatientCheckInFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106E5D636FD571E9887F4C1B /* PatientCheckInFlow.swift */; };
 		267C9D291CE032639DC7D8B9 /* MedicalWorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB7EE6AB926CC9931B4A3194 /* MedicalWorkflowEngine.swift */; };
 		284B09009A694A4E0263B311 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1C4B939DAC9084AC244415 /* ContentView.swift */; };
 		2CAAB0235B280B8F934AB6DC /* WorkspaceAIContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00F333EA299B4551AB9BC16 /* WorkspaceAIContext.swift */; };
@@ -129,6 +130,7 @@
 		1525AC9725A0B12CCC082B55 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		283A8238A24AA77FAD197EF3 /* SettingsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsHelpers.swift; sourceTree = "<group>"; };
 		2A1A5AD70262BAF9324059A6 /* MedicalPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalPanel.swift; sourceTree = "<group>"; };
+		106E5D636FD571E9887F4C1B /* PatientCheckInFlow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PatientCheckInFlow.swift; sourceTree = "<group>"; };
 		2C969A3D6C92097E6DF1F837 /* MedStation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MedStation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		35C17D9C1722F2E28A8F923C /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		382CE83ECEB0736D4ECEDB6E /* MedicalAIService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalAIService.swift; sourceTree = "<group>"; };
@@ -555,6 +557,7 @@
 			isa = PBXGroup;
 			children = (
 				2A1A5AD70262BAF9324059A6 /* MedicalPanel.swift */,
+				106E5D636FD571E9887F4C1B /* PatientCheckInFlow.swift */,
 			);
 			name = Panels;
 			path = Panels;
@@ -1146,6 +1149,7 @@
 				70250E6DFA91423A9D8A0E80 /* MedicalSafetyGuard.swift in Sources */,
 				CC78264695601C8523F8C86A /* MedicalAuditLogger.swift in Sources */,
 				1F6EAB9F28E04038A882AD5B /* MedicalPanel.swift in Sources */,
+				C6020378836FDF9D943074EB /* PatientCheckInFlow.swift in Sources */,
 				31348DC1F126C1731C7ABB0D /* MedicalBenchmarkHarness.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
