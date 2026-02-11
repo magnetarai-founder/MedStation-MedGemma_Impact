@@ -25,6 +25,9 @@ yarn-error.log*
 
 # Build outputs
 
+# Model weights (downloaded from HuggingFace)
+.models/
+
 # Data and cache
 .neutron_data/
 api/.neutron_data/
