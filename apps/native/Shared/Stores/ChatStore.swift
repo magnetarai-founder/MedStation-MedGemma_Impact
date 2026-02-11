@@ -290,12 +290,10 @@ final class ChatStore {
         loadWorkspaceModelOverrides()
         loadSessionWorkspaceContext()
 
-        // Load models and sessions on init with retry logic
-        Task {
-            await fetchModelsWithRetry()
-            await loadSessionsWithRetry()
-            // Restore session after sessions are loaded
-            await restorePersistedSession()
+        // MedStation uses MedGemma exclusively — no backend model/session endpoints needed
+        availableModels = ["google/medgemma-1.5-4b-it"]
+        if selectedModel.isEmpty {
+            selectedModel = "google/medgemma-1.5-4b-it"
         }
     }
 
@@ -569,7 +567,7 @@ final class ChatStore {
         let deletedSessionIndex = sessions.firstIndex { $0.id == session.id }
         let backendId = sessionIdMapping[session.id]
         let wasCurrentSession = currentSession?.id == session.id
-        let messagesToArchive = wasCurrentSession ? messages : []
+        _ = wasCurrentSession ? messages : []
 
         // Notify context bridge about session ending (archive context)
         // Optimistically remove from UI
@@ -864,27 +862,22 @@ final class ChatStore {
             )
         }
 
-        // Get available models (hot slots + all models)
-        let hotSlotManager = HotSlotManager.shared
-        let memoryTracker = ModelMemoryTracker.shared
-
+        // MedStation: single model (MedGemma)
         let bundledModels: [AvailableModel] = availableModels.map { modelName in
-            let slot = hotSlotManager.hotSlots.first { $0.modelId == modelName }
-
-            return AvailableModel(
+            AvailableModel(
                 id: modelName,
                 name: modelName,
-                displayName: modelName,
-                slotNumber: slot?.slotNumber,
-                isPinned: slot?.isPinned ?? false,
-                memoryUsageGB: memoryTracker.getMemoryUsage(for: modelName),
+                displayName: "MedGemma 1.5 4B",
+                slotNumber: nil,
+                isPinned: true,
+                memoryUsageGB: nil,
                 capabilities: ModelCapabilities(
                     chat: true,
-                    codeGeneration: modelName.lowercased().contains("coder"),
-                    dataAnalysis: modelName.lowercased().contains("phi"),
-                    reasoning: modelName.lowercased().contains("deepseek"),
+                    codeGeneration: false,
+                    dataAnalysis: false,
+                    reasoning: true,
                     maxContextTokens: 8192,
-                    specialized: nil
+                    specialized: "medical"
                 ),
                 isHealthy: true
             )

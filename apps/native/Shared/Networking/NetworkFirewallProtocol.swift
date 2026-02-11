@@ -106,7 +106,8 @@ final class NetworkFirewallProtocol: URLProtocol, @unchecked Sendable {
     private func proceedWithRequest(_ request: URLRequest) async {
         // Only log non-localhost requests to avoid console spam and audit log recursion
         // (sendAuditLog uses URLSession.shared which re-enters this protocol)
-        if let host = request.url?.host, !SecurityManager.shared.isLocalhost(host) {
+        let isLocal = { (h: String) in h == "localhost" || h == "127.0.0.1" || h == "::1" }
+        if let host = request.url?.host, !isLocal(host) {
             await MainActor.run {
                 SecurityManager.shared.logNetworkAttempt(
                     request,

@@ -85,145 +85,33 @@ final class AuthStore {
 
     // MARK: - Bootstrap Flow
 
-    /// Call on app launch to validate existing token
+    /// Call on app launch — auto-authenticates for demo mode (no backend auth needed)
     func bootstrap() async {
-        // Wait for backend to be ready before attempting auth
-        logger.debug("Waiting for backend to be ready...")
-        var backendReady = false
-        var attempts = 0
+        loading = true
 
-        while !backendReady && attempts < 15 {
+        // Wait for backend health check (MedGemma API availability)
+        var backendReady = false
+        for _ in 0..<15 {
             backendReady = await checkBackendHealth()
-            if !backendReady {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
-                attempts += 1
-            }
+            if backendReady { break }
+            try? await Task.sleep(nanoseconds: 500_000_000)
         }
 
         if !backendReady {
-            logger.warning("Backend not ready after 7.5 seconds, will retry auth later")
-            authState = .welcome
-            loading = false
-            return
+            logger.warning("Backend not ready after 7.5s — proceeding in offline mode")
         }
 
-        logger.info("Backend is ready, proceeding with auth")
-
-        // DEVELOPMENT BYPASS: Auto-login for fast iteration
-        // Set DEV_USERNAME and DEV_PASSWORD environment variables in Xcode scheme
-        #if DEBUG
-        // Check if we already have a valid token
-        if keychain.loadToken() != nil {
-            do {
-                let user: ApiUser = try await apiClient.request("/v1/auth/me")
-                self.user = user
-                userSetupComplete = true
-                authState = .authenticated
-                loading = false
-                return
-            } catch {
-                logger.debug("Existing token invalid, will attempt auto-login if env vars set")
-            }
-        }
-
-        // Auto-login only if environment variables are set (never hardcode credentials)
-        if let devUsername = ProcessInfo.processInfo.environment["DEV_USERNAME"],
-           let devPassword = ProcessInfo.processInfo.environment["DEV_PASSWORD"],
-           !devUsername.isEmpty, !devPassword.isEmpty {
-
-            logger.warning("DEBUG MODE: Auto-login using environment credentials")
-
-            do {
-                struct LoginRequest: Codable, Sendable {
-                    let username: String
-                    let password: String
-                }
-
-                struct LoginResponse: Codable, Sendable {
-                    let token: String
-                    let refreshToken: String?
-                    let userId: String
-                    let username: String
-                    let deviceId: String
-                    let role: String
-                    let expiresIn: Int
-
-                    enum CodingKeys: String, CodingKey {
-                        case token
-                        case refreshToken = "refresh_token"
-                        case userId = "user_id"
-                        case username
-                        case deviceId = "device_id"
-                        case role
-                        case expiresIn = "expires_in"
-                    }
-                }
-
-                let response: LoginResponse = try await apiClient.request(
-                    "/v1/auth/login",
-                    method: .post,
-                    body: LoginRequest(username: devUsername, password: devPassword),
-                    authenticated: false
-                )
-
-                try keychain.saveToken(response.token)
-                self.user = ApiUser(
-                    userId: response.userId,
-                    username: response.username,
-                    deviceId: response.deviceId,
-                    role: response.role
-                )
-                userSetupComplete = true
-                authState = .authenticated
-                loading = false
-                logger.info("DEBUG: Auto-login successful")
-                return
-
-            } catch {
-                logger.warning("DEBUG: Auto-login failed: \(error.localizedDescription) - Falling through to normal auth flow")
-            }
-        }
-        #endif
-
-        loading = true
-        error = nil
-
-        // Load token from keychain
-        guard keychain.loadToken() != nil else {
-            authState = .welcome
-            loading = false
-            return
-        }
-
-        // Token exists, validate it
-        authState = .checking
-
-        do {
-            // Step 1: Validate user
-            let user: ApiUser = try await apiClient.request("/v1/auth/me")
-            self.user = user
-
-            // Step 2: Check setup status
-            let status: SetupStatus = try await apiClient.request("/v1/users/me/setup/status")
-
-            if status.userSetupCompleted {
-                userSetupComplete = true
-                authState = .authenticated
-            } else {
-                userSetupComplete = false
-                authState = .setupNeeded
-            }
-
-            loading = false
-
-        } catch ApiError.unauthorized {
-            // Token invalid, clear and restart
-            await clearAuthAndRestart()
-        } catch {
-            self.error = error.localizedDescription
-            authState = .welcome
-            loading = false
-        }
+        // Demo mode: auto-authenticate locally (no backend auth endpoints needed)
+        self.user = ApiUser(
+            userId: "demo-clinician",
+            username: "Clinician",
+            deviceId: AuthService.shared.deviceId,
+            role: "clinician"
+        )
+        userSetupComplete = true
+        authState = .authenticated
+        loading = false
+        logger.info("MedStation demo mode — authenticated as Clinician")
     }
 
     // MARK: - Auth Actions

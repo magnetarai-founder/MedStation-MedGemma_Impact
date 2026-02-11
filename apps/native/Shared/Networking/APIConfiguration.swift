@@ -39,63 +39,20 @@ final class APIConfiguration {
         "\(baseURL)/v1"
     }
 
-    /// Vault service URL
-    var vaultURL: String {
-        "\(versionedBaseURL)/vault"
-    }
-
-    /// Chat models endpoint
+    /// Chat models endpoint (legacy — MedStation uses MedGemma exclusively)
     var chatModelsURL: String {
         "\(versionedBaseURL)/chat/models"
     }
 
     /// Health check endpoint (at root, not versioned)
     var healthURL: String {
-        // Health is at /health, not /api/v1/health
         let rootURL = baseURL.replacingOccurrences(of: "/api", with: "")
         return "\(rootURL)/health"
     }
 
-    /// Context Engine status endpoint
-    var contextStatusURL: String {
-        "\(versionedBaseURL)/context/status"
-    }
-
-    /// Context semantic search endpoint
-    var contextSearchURL: String {
-        "\(versionedBaseURL)/context/search"
-    }
-
-    /// Vault semantic search endpoint
-    var vaultSearchURL: String {
-        "\(versionedBaseURL)/vault/search/semantic"
-    }
-
-    /// Data/Query semantic search endpoint
-    var dataSearchURL: String {
-        "\(versionedBaseURL)/data/search/semantic"
-    }
-
-    // MARK: - Cloud Sync (MagnetarCloud)
-
-    /// Cloud OAuth base URL
-    var cloudOAuthURL: String {
-        "\(versionedBaseURL)/cloud/oauth"
-    }
-
-    /// Cloud sync base URL
-    var cloudSyncURL: String {
-        "\(versionedBaseURL)/cloud/sync"
-    }
-
-    /// Cloud sync status endpoint
-    var cloudSyncStatusURL: String {
-        "\(cloudSyncURL)/status"
-    }
-
-    /// Cloud storage base URL
-    var cloudStorageURL: String {
-        "\(versionedBaseURL)/cloud/storage"
+    /// MedGemma status endpoint
+    var medgemmaStatusURL: String {
+        "\(versionedBaseURL)/chat/medgemma/status"
     }
 
     private init() {
