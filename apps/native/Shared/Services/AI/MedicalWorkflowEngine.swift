@@ -82,14 +82,14 @@ struct MedicalWorkflowEngine {
             stepNumber: 2,
             title: "Triage Assessment",
             prompt: """
-            State the triage level on the first line, then justify in 2-3 sentences:
-            - Emergency (life-threatening, call 911)
-            - Urgent (seek care within 2-4 hours)
-            - Semi-Urgent (see doctor within 24 hours)
-            - Non-Urgent (schedule appointment this week)
-            - Self-Care (monitor at home)
+            Your FIRST line must be exactly one of these (copy it verbatim):
+            TRIAGE: Emergency
+            TRIAGE: Urgent
+            TRIAGE: Semi-Urgent
+            TRIAGE: Non-Urgent
+            TRIAGE: Self-Care
 
-            Be concise.
+            Then justify in 2-3 sentences. Only classify as Emergency if immediately life-threatening RIGHT NOW.
             """,
             patientContext: patientContext + "\n\nSymptom Analysis:\n\(symptomAnalysis.content)",
             service: service
@@ -319,20 +319,29 @@ struct MedicalWorkflowEngine {
     // MARK: - Output Parsing
 
     private static func extractTriageLevel(from text: String) -> MedicalWorkflowResult.TriageLevel {
-        let lower = text.lowercased()
+        // Parse structured "TRIAGE: <level>" from the first few lines
+        let lines = text.components(separatedBy: .newlines).prefix(3)
+        for line in lines {
+            let lower = line.lowercased().trimmingCharacters(in: .whitespaces)
 
-        if lower.contains("emergency") || lower.contains("911") || lower.contains("life-threatening") {
-            return .emergency
-        } else if lower.contains("semi-urgent") || lower.contains("within 24") {
-            return .semiUrgent
-        } else if lower.contains("urgent") && !lower.contains("non-urgent") {
-            return .urgent
-        } else if lower.contains("non-urgent") || lower.contains("schedule appointment") {
-            return .nonUrgent
-        } else if lower.contains("self-care") || lower.contains("monitor at home") {
-            return .selfCare
+            // Match "TRIAGE: <level>" format
+            if lower.contains("triage:") || lower.contains("triage level:") {
+                if lower.contains("self-care") || lower.contains("self care") { return .selfCare }
+                if lower.contains("non-urgent") || lower.contains("nonurgent") { return .nonUrgent }
+                if lower.contains("semi-urgent") || lower.contains("semiurgent") { return .semiUrgent }
+                if lower.contains("emergency") { return .emergency }
+                if lower.contains("urgent") { return .urgent }
+            }
+
+            // Fallback: check if first line starts with a level name directly
+            if lower.hasPrefix("emergency") { return .emergency }
+            if lower.hasPrefix("urgent") { return .urgent }
+            if lower.hasPrefix("semi-urgent") { return .semiUrgent }
+            if lower.hasPrefix("non-urgent") { return .nonUrgent }
+            if lower.hasPrefix("self-care") || lower.hasPrefix("self care") { return .selfCare }
         }
 
+        // Default — don't assume emergency
         return .semiUrgent
     }
 
