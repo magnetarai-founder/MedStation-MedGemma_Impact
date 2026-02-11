@@ -11,8 +11,6 @@ import asyncio
 from pathlib import Path
 from typing import Optional, AsyncGenerator
 
-import torch
-
 logger = logging.getLogger(__name__)
 
 # Default local model path (downloaded via huggingface_hub.snapshot_download)
@@ -58,7 +56,8 @@ class MedGemmaService:
 
             logger.info(f"Loading MedGemma from {model_path}...")
 
-            # Import here to avoid slow startup if not used
+            # Import here to avoid slow startup (torch takes ~10s on cold start)
+            import torch
             from transformers import AutoProcessor, AutoModelForImageTextToText
 
             # Determine device
@@ -128,6 +127,7 @@ class MedGemmaService:
         messages.append({"role": "user", "content": user_content})
 
         def _infer():
+            import torch
             inputs = self.processor.apply_chat_template(
                 messages,
                 add_generation_prompt=True,

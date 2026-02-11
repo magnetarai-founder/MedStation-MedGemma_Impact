@@ -48,43 +48,55 @@ final class MedicalAIService {
         modelStatus = .loading
         logger.info("Checking MedGemma model status...")
 
-        do {
-            // Check if model is already loaded
-            let statusData = try await medgemmaRequest(
-                path: "/v1/chat/medgemma/status",
-                method: "GET",
-                timeout: 10
-            )
-            let status = try JSONDecoder().decode(MedGemmaStatusResponse.self, from: statusData)
+        // Retry status check — backend may still be starting
+        var lastError: Error?
+        for attempt in 1...5 {
+            do {
+                // Check if model is already loaded
+                let statusData = try await medgemmaRequest(
+                    path: "/v1/chat/medgemma/status",
+                    method: "GET",
+                    timeout: 10
+                )
+                let status = try JSONDecoder().decode(MedGemmaStatusResponse.self, from: statusData)
 
-            if status.loaded {
-                modelStatus = .ready
-                logger.info("MedGemma model already loaded on \(status.device ?? "unknown")")
+                if status.loaded {
+                    modelStatus = .ready
+                    logger.info("MedGemma model already loaded on \(status.device ?? "unknown")")
+                    return
+                }
+
+                // Model not loaded — trigger load (blocks until model is in memory)
+                logger.info("Loading MedGemma into memory (this takes ~30s on M1, ~15s on M3+)...")
+                let loadData = try await medgemmaRequest(
+                    path: "/v1/chat/medgemma/load",
+                    method: "POST",
+                    timeout: 120
+                )
+                let loadResult = try JSONDecoder().decode(MedGemmaLoadResponse.self, from: loadData)
+
+                if loadResult.status == "loaded" {
+                    modelStatus = .ready
+                    logger.info("MedGemma loaded on \(loadResult.device ?? "unknown")")
+                } else {
+                    modelStatus = .failed(loadResult.message ?? "Unknown error")
+                    self.error = loadResult.message
+                }
                 return
+
+            } catch {
+                lastError = error
+                if attempt < 5 {
+                    logger.debug("MedGemma status check failed (attempt \(attempt)/5), retrying in 2s...")
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
             }
-
-            // Model not loaded — trigger load (blocks until model is in memory, ~30-60s)
-            logger.info("Loading MedGemma into memory (this takes ~30s on M1, ~15s on M3+)...")
-            let loadData = try await medgemmaRequest(
-                path: "/v1/chat/medgemma/load",
-                method: "POST",
-                timeout: 120
-            )
-            let loadResult = try JSONDecoder().decode(MedGemmaLoadResponse.self, from: loadData)
-
-            if loadResult.status == "loaded" {
-                modelStatus = .ready
-                logger.info("MedGemma loaded on \(loadResult.device ?? "unknown")")
-            } else {
-                modelStatus = .failed(loadResult.message ?? "Unknown error")
-                self.error = loadResult.message
-            }
-
-        } catch {
-            modelStatus = .failed(error.localizedDescription)
-            self.error = "Model load failed: \(error.localizedDescription)"
-            logger.error("MedGemma model check/load failed: \(error)")
         }
+
+        // All retries exhausted
+        modelStatus = .failed(lastError?.localizedDescription ?? "Backend not reachable")
+        self.error = "Model load failed: \(lastError?.localizedDescription ?? "Backend not reachable")"
+        logger.error("MedGemma model check/load failed after 5 attempts: \(String(describing: lastError))")
     }
 
     // MARK: - Non-Streaming Inference (for workflow steps)

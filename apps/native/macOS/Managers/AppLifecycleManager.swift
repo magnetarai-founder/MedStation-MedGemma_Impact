@@ -27,29 +27,21 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
             MenuBarManager.shared.show()
         }
 
-        // Auto-start backend server
+        // Auto-start backend, then load MedGemma once healthy
         Task {
             await BackendManager.shared.autoStartBackend()
+
+            // MedGemma load MUST wait for backend health
+            await MedicalAIService.shared.ensureModelReady()
+            logger.info("MedicalAIService initialized")
+
+            // Start background health monitoring (runs forever)
             await BackendManager.shared.monitorBackendHealth()
         }
 
         // Auto-start Ollama if enabled in settings
         Task {
             await autoStartOllama()
-        }
-
-        // Initialize model memory tracker
-        Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await ModelMemoryTracker.shared.refresh()
-            ModelMemoryTracker.shared.startAutoRefresh(intervalMinutes: 5)
-            logger.info("Model memory tracker initialized")
-        }
-
-        // Initialize MedicalAI service
-        Task { @MainActor in
-            await MedicalAIService.shared.ensureModelReady()
-            logger.info("MedicalAIService initialized")
         }
     }
 

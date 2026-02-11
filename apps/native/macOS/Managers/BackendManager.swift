@@ -134,20 +134,20 @@ final class BackendManager {
             var attempts = 0
             var healthy = false
 
-            while attempts < 10 && !healthy {
+            while attempts < 30 && !healthy {
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                 healthy = await checkBackendHealth()
                 attempts += 1
 
                 if !healthy {
-                    logger.debug("Waiting for backend... (attempt \(attempts)/10)")
+                    logger.debug("Waiting for backend... (attempt \(attempts)/30)")
                 }
             }
 
             if healthy {
                 logger.info("Backend server is healthy and responding")
             } else {
-                logger.warning("Backend server started but not responding after 10 seconds")
+                logger.warning("Backend server started but not responding after 30 seconds")
                 logger.warning("Check logs at: \(logFile.path)")
             }
         } catch {
