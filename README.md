@@ -1,8 +1,8 @@
 # MedStation
 
-**On-device medical triage assistant powered by MedGemma 4B.**
+**Privacy-first medical triage assistant powered by [MedGemma 1.5 4B](https://huggingface.co/google/medgemma-1.5-4b-it).**
 
-MedStation runs a 5-step agentic reasoning workflow entirely on your Mac -- no cloud, no API keys, no patient data ever leaves the device. Built for the [Kaggle MedGemma Impact Challenge](https://www.kaggle.com/competitions/med-gemma-impact-challenge).
+MedStation runs a 5-step agentic reasoning workflow entirely on your Mac using Apple Silicon -- no cloud, no API keys, no patient data ever leaves the device. Built for the [Kaggle MedGemma Impact Challenge](https://www.kaggle.com/competitions/med-gemma-impact-challenge).
 
 ---
 
@@ -14,7 +14,7 @@ MedStation runs a 5-step agentic reasoning workflow entirely on your Mac -- no c
 4. **Follow-Up Chat** -- Interactive Q&A with MedGemma after triage
 5. **Export** -- FHIR R4 Bundle, Clinical JSON, or Text Report
 
-All inference runs locally via [Ollama](https://ollama.com) with MedGemma 4B (~3GB).
+All inference runs locally via [HuggingFace Transformers](https://huggingface.co/google/medgemma-1.5-4b-it) on Apple Silicon MPS (~8 GB).
 
 ---
 
@@ -22,36 +22,46 @@ All inference runs locally via [Ollama](https://ollama.com) with MedGemma 4B (~3
 
 | Component | Requirement |
 |---|---|
+| Mac | Apple Silicon (M1/M2/M3/M4) -- **required** |
 | OS | macOS 14.0+ (Sonoma) |
-| RAM | 8 GB minimum, 16 GB recommended |
-| Storage | ~3 GB for MedGemma weights |
-| Processor | Apple Silicon (M1+) recommended, Intel supported |
-| Xcode | 15.0+ (for building from source) |
-| Python | 3.10+ (for backend) |
+| RAM | 16 GB minimum (model loads in bfloat16) |
+| Storage | ~8 GB for MedGemma weights + ~2 GB for app |
+| Xcode | 15.0+ |
+| Python | 3.10+ |
+| HuggingFace | Account with [MedGemma access](https://huggingface.co/google/medgemma-1.5-4b-it) approved |
 
 ---
 
 ## Setup
 
-### 1. Install Ollama
+### 1. Clone and Create Virtual Environment
 
 ```bash
-brew install ollama
-ollama serve
+git clone https://github.com/magnetarai-founder/MedStation-MedGemma_Impact.git
+cd MedStation-MedGemma_Impact
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r apps/backend/requirements.txt
+pip install transformers accelerate huggingface_hub pillow
 ```
 
-Leave Ollama running in the background. MedStation will auto-download MedGemma 4B on first use, or you can pre-pull:
+### 2. Download MedGemma 1.5 4B
+
+Log into HuggingFace (you must have accepted the [HAI-DEF terms](https://huggingface.co/google/medgemma-1.5-4b-it)):
 
 ```bash
-ollama pull alibayram/medgemma:4b
+huggingface-cli login
+huggingface-cli download google/medgemma-1.5-4b-it \
+  --local-dir .models/medgemma-1.5-4b-it
 ```
 
-### 2. Build the macOS App
+This downloads ~8 GB of model weights to `.models/`.
+
+### 3. Build and Run the macOS App
 
 ```bash
-# Open in Xcode
 open apps/native/MedStation.xcodeproj
-
 # Build and run (Cmd+R)
 ```
 
@@ -64,43 +74,36 @@ xcodebuild -project apps/native/MedStation.xcodeproj \
   build
 ```
 
-### 3. Start the Backend (Optional)
-
-The backend provides additional API routes for model management and chat streaming:
-
-```bash
-cd apps/backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn api.main:app --host 0.0.0.0 --port 8000
-```
-
-Health check: `http://localhost:8000/health`
+The app auto-starts the backend on launch. The backend loads MedGemma into memory on first inference request (~30s on M1, ~15s on M3+).
 
 ---
 
 ## First Launch
 
 1. MedStation opens directly into the **Medical Panel**
-2. A **demo case** (58M with acute STEMI) is pre-loaded on first launch
-3. Click **"I Understand -- Run Analysis"** to execute the 5-step workflow
-4. View results: triage level, differential diagnoses, safety alerts, recommended actions
-5. Try the **follow-up chat** to ask clarifying questions
-6. Run the **benchmark** (toolbar chart icon) to evaluate across 10 clinical vignettes
+2. A **demo case** (58M with acute STEMI) is pre-loaded
+3. Click **"I Understand -- Run Analysis"** to execute the 5-step agentic workflow
+4. Watch MedGemma reason through each step with chain-of-thought
+5. View results: triage level, differential diagnoses, safety alerts, recommended actions
+6. Try the **follow-up chat** to ask clarifying questions
+7. Export results as FHIR R4 Bundle, Clinical JSON, or Text Report
+8. Run the **benchmark** (toolbar chart icon) to evaluate across 10 clinical vignettes
 
 ---
 
 ## Project Structure
 
 ```
+.models/
+  medgemma-1.5-4b-it/              # HuggingFace model weights (gitignored)
+
 apps/
-  native/                           # macOS SwiftUI app
+  native/                           # macOS SwiftUI app (Apple Silicon)
     Shared/
       Services/AI/
         MedicalWorkflowEngine.swift   # 5-step agentic orchestrator
         MedicalSafetyGuard.swift      # 9-category safety validation
-        MedicalAIService.swift        # Ollama client + model lifecycle
+        MedicalAIService.swift        # MedGemma client + model lifecycle
         MedicalAuditLogger.swift      # SHA-256 audit trail
         MedicalBenchmarkHarness.swift # 10-vignette evaluation harness
       Models/
@@ -112,24 +115,55 @@ apps/
   backend/                          # Python FastAPI
     api/
       main.py                         # App factory + health endpoint
-      router_registry.py              # Route registration
-      routes/chat/                    # Chat + Ollama streaming
       services/
-        ollama_client.py              # Ollama HTTP client
-        chat_ollama.py                # Chat streaming service
+        medgemma.py                   # MedGemma inference service (Transformers)
+      routes/chat/
+        medgemma.py                   # /medgemma/generate, /status, /load
+        ollama_proxy.py               # Ollama proxy (fallback)
 ```
 
 ---
 
 ## Benchmark
 
-MedStation includes a built-in benchmark harness with 10 clinically validated vignettes across 6 specialties (Cardiology, Neurology, Allergy, Pulmonology, Surgery, Endocrinology, Pediatrics, Obstetrics).
+MedStation includes a built-in benchmark harness with **10 clinically validated vignettes** across 8 specialties:
 
-**Scoring:** Triage accuracy (40%) + Diagnosis recall (35%) + Safety coverage (25%)
+| # | Vignette | Specialty |
+|---|----------|-----------|
+| 1 | Acute STEMI | Cardiology |
+| 2 | Acute Ischemic Stroke | Neurology |
+| 3 | Anaphylaxis | Allergy |
+| 4 | Community-Acquired Pneumonia | Pulmonology |
+| 5 | Acute Appendicitis | Surgery |
+| 6 | Diabetic Ketoacidosis | Endocrinology |
+| 7 | Upper Respiratory Infection | General |
+| 8 | Tension Headache | Neurology |
+| 9 | Pediatric Asthma Exacerbation | Pediatrics |
+| 10 | Preeclampsia with Severe Features | Obstetrics |
 
-To run: Open MedStation > Click the chart icon in the toolbar > Run Benchmark (~5-10 min)
+**Scoring (composite):**
+- Triage accuracy: **40%** (exact match = 1.0, adjacent level = 0.5)
+- Diagnosis recall: **35%** (keyword overlap with expected diagnoses)
+- Safety coverage: **25%** (expected safety categories triggered)
 
-Results include per-vignette scores, a 5x5 confusion matrix, and JSON export.
+To run: Open MedStation > Toolbar chart icon > **Run Benchmark**
+
+Results include per-vignette scores, triage confusion matrix, and JSON export.
+
+---
+
+## API Endpoints
+
+The backend runs on `http://localhost:8000` and provides:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Backend health check |
+| `/api/v1/chat/medgemma/status` | GET | Model loaded status + device |
+| `/api/v1/chat/medgemma/load` | POST | Explicitly load model into memory |
+| `/api/v1/chat/medgemma/generate` | POST | Generate response (text or multimodal) |
+| `/api/v1/chat/ollama/models` | GET | List local Ollama models (fallback) |
+| `/api/v1/chat/ollama/generate` | POST | Generate via Ollama (fallback) |
 
 ---
 
@@ -137,17 +171,18 @@ Results include per-vignette scores, a 5x5 confusion matrix, and JSON export.
 
 | Data | Location |
 |---|---|
-| Cases | `~/Library/Application Support/MedStation/workspace/medical/*.json` |
-| Audit Logs | `~/Library/Application Support/MedStation/workspace/medical/audit/*.json` |
+| Model weights | `.models/medgemma-1.5-4b-it/` (project root) |
+| Patient cases | `~/Library/Application Support/MedStation/workspace/medical/*.json` |
+| Audit logs | `~/Library/Application Support/MedStation/workspace/medical/audit/*.json` |
 | Benchmarks | `~/Library/Application Support/MedStation/workspace/medical/benchmarks/*.json` |
 
 ---
 
 ## License
 
-CC BY 4.0
+CC BY 4.0 -- See [LICENSE](./LICENSE) for details.
 
-See [LICENSE](./LICENSE) for details.
+MedGemma model weights are subject to [Google HAI-DEF Terms of Use](https://developers.google.com/health-ai-developer-foundations/terms).
 
 ---
 
