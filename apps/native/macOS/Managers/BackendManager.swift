@@ -243,6 +243,7 @@ final class BackendManager {
 
         // Method 2: Check common locations
         let commonPaths = [
+            NSHomeDirectory() + "/Documents/MedGemma",
             NSHomeDirectory() + "/Documents/MedStation",
             "/Applications/MedStation.app/Contents/Resources"
         ]
