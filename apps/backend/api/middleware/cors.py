@@ -27,7 +27,7 @@ def configure_cors(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     # Determine environment
-    env = os.getenv('MEDSTATION_ENV', 'production').lower()
+    env = os.getenv('MEDSTATION_ENV', 'development').lower()
     is_production = env == 'production'
 
     # Parse CORS origins from environment or use defaults

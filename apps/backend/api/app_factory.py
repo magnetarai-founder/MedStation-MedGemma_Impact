@@ -88,18 +88,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     (api_dir / "temp_uploads").mkdir(exist_ok=True)
     (api_dir / "temp_exports").mkdir(exist_ok=True)
 
-    # Run startup initialization
-    from api.startup import (
-        run_startup_migrations,
-        initialize_ollama,
-        initialize_metal4,
-        run_health_checks
-    )
-
+    # Run startup initialization (auth migrations + device identity only)
+    from api.startup import run_startup_migrations
     await run_startup_migrations()
-    await initialize_ollama()
-    initialize_metal4()
-    await run_health_checks()
 
     # Enable connection pool metrics
     try:
@@ -184,14 +175,6 @@ Get your token via `/api/v1/auth/login`.
     configure_cors(app)
     limiter = configure_rate_limiting(app)
     register_error_handlers(app)
-
-    # Observability middleware
-    try:
-        from api.observability_middleware import add_observability_middleware
-        add_observability_middleware(app)
-        logger.info("Observability middleware enabled")
-    except Exception as e:
-        logger.warning(f"Could not enable observability middleware: {e}")
 
     # Request ID middleware
     @app.middleware("http")
