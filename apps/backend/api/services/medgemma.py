@@ -70,12 +70,20 @@ class MedGemmaService:
 
             logger.info(f"Using device: {self.device}")
 
+            # float16 is faster than bfloat16 on MPS (native Metal fp16 support)
+            if self.device == "mps":
+                dtype = torch.float16
+            elif self.device == "cuda":
+                dtype = torch.bfloat16
+            else:
+                dtype = torch.float32
+
             # Load in a thread to avoid blocking the event loop
             def _load():
                 self.processor = AutoProcessor.from_pretrained(str(model_path))
                 self.model = AutoModelForImageTextToText.from_pretrained(
                     str(model_path),
-                    torch_dtype=torch.bfloat16 if self.device != "cpu" else torch.float32,
+                    torch_dtype=dtype,
                     device_map=self.device,
                 )
 

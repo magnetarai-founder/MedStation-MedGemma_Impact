@@ -124,8 +124,8 @@ final class MedicalAIService {
         let request = MedGemmaGenerateRequest(
             prompt: fullPrompt,
             system: Self.systemPrompt,
-            maxTokens: 1024,
-            temperature: 0.3,
+            maxTokens: 384,
+            temperature: 0.1,
             stream: false
         )
 
@@ -294,16 +294,13 @@ final class MedicalAIService {
     // MARK: - System Prompts
 
     static let systemPrompt = """
-    You are a medical AI assistant powered by MedGemma. You provide evidence-based medical reasoning \
-    for triage, symptom analysis, and differential diagnosis.
+    You are a medical AI assistant powered by MedGemma. Provide concise, evidence-based medical reasoning.
 
-    CRITICAL DISCLAIMERS:
-    - This is for educational and informational purposes only
-    - Not a substitute for professional medical advice, diagnosis, or treatment
-    - Always seek advice from qualified healthcare providers for medical concerns
-    - In emergency situations, call 911 or local emergency services immediately
-
-    Output Format: Provide structured, clear medical reasoning with supporting evidence.
+    RULES:
+    - Use bullet points and short sentences
+    - No preambles or disclaimers in your response
+    - Be direct and clinical
+    - This is for educational purposes only, not medical advice
     """
 
     static let chatSystemPrompt = """

@@ -63,13 +63,13 @@ struct MedicalWorkflowEngine {
             stepNumber: 1,
             title: "Symptom Analysis",
             prompt: """
-            Analyze the patient's symptoms and identify:
-            1. Primary symptoms and their characteristics
+            Analyze the patient's symptoms. For each point, give 1-2 sentences max:
+            1. Primary symptoms and characteristics
             2. Red flag symptoms requiring immediate attention
             3. Associated symptoms suggesting specific conditions
-            4. Timeline and progression patterns
+            4. Timeline and progression
 
-            Be specific and evidence-based.
+            Be concise and evidence-based. Use bullet points.
             """,
             patientContext: patientContext,
             service: service
@@ -82,16 +82,14 @@ struct MedicalWorkflowEngine {
             stepNumber: 2,
             title: "Triage Assessment",
             prompt: """
-            Based on the symptom analysis, determine the appropriate triage level:
+            State the triage level on the first line, then justify in 2-3 sentences:
             - Emergency (life-threatening, call 911)
             - Urgent (seek care within 2-4 hours)
             - Semi-Urgent (see doctor within 24 hours)
             - Non-Urgent (schedule appointment this week)
-            - Self-Care (monitor at home with specific instructions)
+            - Self-Care (monitor at home)
 
-            Justify your triage decision with clinical reasoning.
-
-            State the triage level clearly at the start of your response.
+            Be concise.
             """,
             patientContext: patientContext + "\n\nSymptom Analysis:\n\(symptomAnalysis.content)",
             service: service
@@ -106,13 +104,10 @@ struct MedicalWorkflowEngine {
             stepNumber: 3,
             title: "Differential Diagnosis",
             prompt: """
-            Generate a ranked differential diagnosis list with:
-            1. Top 3-5 most likely conditions
-            2. Probability estimate for each (high/medium/low likelihood)
-            3. Clinical reasoning supporting each diagnosis
-            4. Key distinguishing features between conditions
+            List top 3 most likely diagnoses. For each, one line:
+            [Number]. [Condition] (high/medium/low likelihood) — [1 sentence reasoning]
 
-            Format as a numbered list. Start each entry with the condition name.
+            Be concise. No more than 3 conditions.
             """,
             patientContext: patientContext + "\n\nTriage: \(triageLevel.rawValue)\n\nSymptom Analysis:\n\(symptomAnalysis.content.prefix(500))",
             service: service
@@ -127,13 +122,12 @@ struct MedicalWorkflowEngine {
             stepNumber: 4,
             title: "Risk Stratification",
             prompt: """
-            Identify risk factors and potential complications:
-            1. Patient-specific risk factors (age, comorbidities, medications)
-            2. Symptoms suggesting serious complications
-            3. Factors requiring immediate intervention
-            4. Warning signs to monitor going forward
+            List key risk factors as bullet points (1 sentence each):
+            - Patient-specific risk factors
+            - Warning signs requiring immediate care
+            - Complications to monitor
 
-            Be specific about what increases risk for this patient.
+            Be concise. Max 5 bullet points.
             """,
             patientContext: patientContext + "\n\nDifferential: \(diagnoses.map(\.condition).joined(separator: ", "))",
             service: service
@@ -146,14 +140,13 @@ struct MedicalWorkflowEngine {
             stepNumber: 5,
             title: "Recommended Actions",
             prompt: """
-            Provide actionable recommendations:
-            1. Immediate actions needed (if any)
-            2. When and where to seek medical care
-            3. Diagnostic tests to request from a healthcare provider
-            4. Self-care measures (if appropriate)
-            5. Red flag symptoms that require immediate emergency care
+            List 3-5 actionable recommendations, numbered by priority:
+            1. Most urgent action first
+            2. When/where to seek care
+            3. Key diagnostic tests
+            4. Red flags requiring emergency care
 
-            Prioritize recommendations by urgency. Format as a numbered list.
+            One sentence per recommendation.
             """,
             patientContext: patientContext + "\n\nTriage: \(triageLevel.rawValue)\n\nRisk Factors:\n\(riskAssessment.content.prefix(300))",
             service: service
