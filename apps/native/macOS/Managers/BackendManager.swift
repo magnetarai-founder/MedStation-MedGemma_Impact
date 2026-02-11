@@ -167,28 +167,31 @@ final class BackendManager {
     // MARK: - Health Monitoring
 
     func monitorBackendHealth() async {
-        // Monitor backend health every 30 seconds and restart if needed
+        // Monitor backend health with exponential backoff on repeated failures
         var consecutiveFailures = 0
 
         while true {
-            try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 seconds
+            // Back off when backend is persistently down: 30s → 60s → 120s (cap)
+            let interval: UInt64 = if consecutiveFailures < 3 {
+                30_000_000_000  // 30s normal
+            } else if consecutiveFailures < 6 {
+                60_000_000_000  // 60s after restart attempt
+            } else {
+                120_000_000_000 // 120s — stop spamming, wait for user action
+            }
+            try? await Task.sleep(nanoseconds: interval)
 
             let isHealthy = await checkBackendHealth()
 
             if !isHealthy {
                 consecutiveFailures += 1
 
-                // Only restart after 3 consecutive failures (90 seconds)
-                // This prevents aggressive restarts during temporary issues
-                if consecutiveFailures >= 3 {
-                    logger.warning("Backend health check failed 3 times - attempting restart...")
+                if consecutiveFailures == 3 {
+                    logger.warning("Backend health check failed 3 times — attempting restart...")
                     await autoStartBackend()
-                    consecutiveFailures = 0 // Reset counter after restart attempt
-                } else {
-                    logger.debug("Backend health check failed (\(consecutiveFailures)/3)")
                 }
+                // After 6 failures, just wait quietly — bootstrap() will restart on user resume
             } else {
-                // Reset failure counter on successful health check
                 consecutiveFailures = 0
             }
         }

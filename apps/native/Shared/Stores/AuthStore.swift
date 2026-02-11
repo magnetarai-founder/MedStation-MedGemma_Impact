@@ -85,21 +85,12 @@ final class AuthStore {
 
     // MARK: - Bootstrap Flow
 
-    /// Call on app launch — auto-authenticates for demo mode (no backend auth needed)
+    /// Call on app launch or resume from lock — ensures backend is running, then auto-authenticates
     func bootstrap() async {
         loading = true
 
-        // Wait for backend health check (MedGemma API availability)
-        var backendReady = false
-        for _ in 0..<15 {
-            backendReady = await checkBackendHealth()
-            if backendReady { break }
-            try? await Task.sleep(nanoseconds: 500_000_000)
-        }
-
-        if !backendReady {
-            logger.warning("Backend not ready after 7.5s — proceeding in offline mode")
-        }
+        // Ensure backend is started (restarts if it died during idle)
+        await BackendManager.shared.autoStartBackend()
 
         // Demo mode: auto-authenticate locally (no backend auth endpoints needed)
         self.user = ApiUser(
@@ -163,21 +154,6 @@ final class AuthStore {
         error = nil
     }
 
-    private func checkBackendHealth() async -> Bool {
-        guard let url = URL(string: APIConfiguration.shared.healthURL) else { return false }
-
-        do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            if let httpResponse = response as? HTTPURLResponse {
-                return httpResponse.statusCode == 200
-            }
-        } catch {
-            // Server not responding
-            return false
-        }
-
-        return false
-    }
 }
 
 // MARK: - Auth State
