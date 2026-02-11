@@ -137,5 +137,9 @@ DerivedData/
 .coverage.*
 coverage/
 
+# Competition submission materials (private)
+MEDGEMMA_SUBMISSION.md
+VIDEO_SCRIPT.md
+
 # Claude Code local data
 .claude/
