@@ -158,38 +158,6 @@ class AuthService:
             # Set busy timeout to 30 seconds (handles write contention)
             cursor.execute("PRAGMA busy_timeout=30000")
 
-            # Verify migrations have run (tables should exist)
-            cursor.execute("""
-                SELECT name FROM sqlite_master
-                WHERE type='table' AND name IN ('users', 'sessions')
-            """)
-            tables = {row[0] for row in cursor.fetchall()}
-
-            if 'users' not in tables or 'sessions' not in tables:
-                # Auto-create tables for fresh installations
-                logger.warning("Auth tables missing - auto-creating for first run")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id TEXT PRIMARY KEY,
-                        username TEXT UNIQUE NOT NULL,
-                        password_hash TEXT NOT NULL,
-                        salt TEXT NOT NULL,
-                        role TEXT DEFAULT 'user',
-                        created_at TEXT DEFAULT (datetime('now')),
-                        last_login TEXT
-                    )
-                """)
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS sessions (
-                        id TEXT PRIMARY KEY,
-                        user_id TEXT NOT NULL REFERENCES users(id),
-                        token TEXT UNIQUE NOT NULL,
-                        created_at TEXT DEFAULT (datetime('now')),
-                        expires_at TEXT NOT NULL,
-                        is_active INTEGER DEFAULT 1
-                    )
-                """)
-
             conn.commit()
 
         logger.info(f"Auth database initialized at {self.db_path}")
