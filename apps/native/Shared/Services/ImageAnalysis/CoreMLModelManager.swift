@@ -123,7 +123,7 @@ final class CoreMLModelManager {
 
     private init() {
         let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-        self.modelsDirectory = documentsPath.appendingPathComponent(".magnetar_ai/models", isDirectory: true)
+        self.modelsDirectory = documentsPath.appendingPathComponent(".medstation_ai/models", isDirectory: true)
 
         // Create models directory
         try? FileManager.default.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)

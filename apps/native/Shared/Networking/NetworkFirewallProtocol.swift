@@ -50,7 +50,7 @@ final class NetworkFirewallProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         // Mark request as handled to avoid infinite loop
         guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
-            let error = NSError(domain: "com.magnetarstudio.firewall", code: -1,
+            let error = NSError(domain: "com.medstation.firewall", code: -1,
                                 userInfo: [NSLocalizedDescriptionKey: "Failed to create mutable request"])
             client?.urlProtocol(self, didFailWithError: error)
             return
@@ -149,7 +149,7 @@ final class NetworkFirewallProtocol: URLProtocol, @unchecked Sendable {
         }
 
         let error = NSError(
-            domain: "com.magnetarstudio.firewall",
+            domain: "com.medstation.firewall",
             code: 403,
             userInfo: [
                 NSLocalizedDescriptionKey: "Network request blocked by firewall: \(reason)"

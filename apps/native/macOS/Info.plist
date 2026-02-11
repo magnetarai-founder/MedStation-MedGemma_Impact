@@ -23,14 +23,14 @@
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025 Magnetar. All rights reserved.</string>
+    <string>Copyright © 2026 MedStation. CC BY 4.0.</string>
     <key>NSFaceIDUsageDescription</key>
-    <string>MagnetarStudio uses Face ID to securely access your authentication credentials.</string>
+    <string>MedStation uses Face ID to securely access patient data.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>MagnetarStudio needs local network access to connect to the backend API and discover peers for collaboration.</string>
+    <string>MedStation needs local network access to connect to the backend API and Ollama inference server.</string>
     <key>NSBonjourServices</key>
     <array>
-        <string>_magnetar._tcp</string>
+        <string>_medstation._tcp</string>
     </array>
     <key>NSAppTransportSecurity</key>
     <dict>
@@ -51,10 +51,10 @@
     <array>
         <dict>
             <key>CFBundleURLName</key>
-            <string>com.magnetar.studio</string>
+            <string>com.medstation.app</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>magnetarstudio</string>
+                <string>medstation</string>
             </array>
         </dict>
     </array>

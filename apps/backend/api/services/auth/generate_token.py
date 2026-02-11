@@ -8,7 +8,7 @@ Usage:
     python generate_token.py <client_id> [description]
 
 Example:
-    python generate_token.py magnetar-studio "MedStation integration"
+    python generate_token.py medstation-app "MedStation integration"
 
 Environment Variables:
     JWT_SECRET_KEY - Secret key for signing tokens (auto-generated if not set)

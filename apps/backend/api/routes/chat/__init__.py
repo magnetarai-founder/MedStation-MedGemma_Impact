@@ -7,7 +7,7 @@ __all__ = ["router", "public_router"]
 from fastapi import APIRouter, Depends
 from api.auth_middleware import get_current_user
 
-from . import sessions, messages, files
+from . import sessions, messages, files, ollama_proxy
 from .models import router as models_router
 
 # Authenticated router
@@ -30,3 +30,6 @@ router.include_router(files.router)
 
 # Models router is public
 public_router.include_router(models_router)
+
+# Ollama proxy is public (native app calls directly)
+public_router.include_router(ollama_proxy.router)

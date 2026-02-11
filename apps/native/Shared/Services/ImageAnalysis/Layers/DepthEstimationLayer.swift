@@ -48,7 +48,7 @@ actor DepthEstimationLayer {
 
         // Check for downloaded model
         let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-        let downloadedURL = documentsPath.appendingPathComponent(".magnetar_ai/models/DepthAnythingV2Small.mlmodelc")
+        let downloadedURL = documentsPath.appendingPathComponent(".medstation_ai/models/DepthAnythingV2Small.mlmodelc")
 
         if FileManager.default.fileExists(atPath: downloadedURL.path) {
             try await loadFromURL(downloadedURL)

@@ -7,7 +7,7 @@ import LocalAuthentication
 final class KeychainService {
     static let shared = KeychainService()
 
-    private let service = "com.magnetarstudio.app"
+    private let service = "com.medstation.app"
     private let tokenKey = "auth_token"
     private let credentialsKey = "biometric_credentials"
 

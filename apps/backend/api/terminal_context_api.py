@@ -126,7 +126,7 @@ async def capture_terminal_output(request: TerminalCaptureRequest) -> dict[str, 
     **Shell Integration:**
     ```bash
     # Add to ~/.zshrc or ~/.bashrc
-    function magnetar_capture() {
+    function medstation_capture() {
         local cmd="$1"
         local output="$2"
         local exit_code=$?
@@ -143,7 +143,7 @@ async def capture_terminal_output(request: TerminalCaptureRequest) -> dict[str, 
     precmd() {
         local last_cmd="$(history | tail -1 | sed 's/^[ ]*[0-9]*[ ]*//')"
         local last_output="$(fc -ln -1)"
-        magnetar_capture "$last_cmd" "$last_output"
+        medstation_capture "$last_cmd" "$last_output"
     }
     ```
     """

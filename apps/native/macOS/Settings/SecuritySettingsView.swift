@@ -132,7 +132,7 @@ struct SecuritySettingsView: View {
                 create: true
             )
 
-            let bundleId = Bundle.main.bundleIdentifier ?? "com.magnetarstudio.app"
+            let bundleId = Bundle.main.bundleIdentifier ?? "com.medstation.app"
             let appCacheDir = cachesDir.appendingPathComponent(bundleId, isDirectory: true)
 
             if fileManager.fileExists(atPath: appCacheDir.path) {

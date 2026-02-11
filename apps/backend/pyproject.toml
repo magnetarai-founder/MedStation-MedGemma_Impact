@@ -1,8 +1,8 @@
 [project]
 name = "medstation-backend"
 version = "0.1.0"
-description = "MagnetarStudio - AI-powered data processing platform"
-authors = [{name = "MagnetarAI, LLC"}]
+description = "MedStation - Privacy-first medical AI triage assistant"
+authors = [{name = "MedStation Team"}]
 requires-python = ">=3.12"
 
 [tool.black]

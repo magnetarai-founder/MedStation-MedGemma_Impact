@@ -23,7 +23,7 @@ final class ImageAnalysisCache {
 
     private init() {
         let documentsPath = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-        let cacheDir = documentsPath.appendingPathComponent(".magnetar_ai/cache", isDirectory: true)
+        let cacheDir = documentsPath.appendingPathComponent(".medstation_ai/cache", isDirectory: true)
 
         // Create directory if needed
         do {

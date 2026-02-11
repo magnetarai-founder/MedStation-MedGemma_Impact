@@ -235,7 +235,7 @@ def create_api_token(client_id: str, description: str | None = None) -> dict[str
         Dictionary with access_token and refresh_token
 
     Example:
-        >>> tokens = create_api_token("magnetar-studio", "MedStation integration")
+        >>> tokens = create_api_token("medstation-app", "MedStation integration")
         >>> # Save tokens securely for the client to use
     """
     access_token = create_access_token(

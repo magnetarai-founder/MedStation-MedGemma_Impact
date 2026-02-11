@@ -108,7 +108,7 @@ final class BackendManager {
 
         // Redirect output to a log file for debugging
         let logFile = FileManager.default.temporaryDirectory
-            .appendingPathComponent("magnetar_backend.log")
+            .appendingPathComponent("medstation_backend.log")
         FileManager.default.createFile(atPath: logFile.path, contents: nil)
 
         // Close any previous log handle before opening a new one

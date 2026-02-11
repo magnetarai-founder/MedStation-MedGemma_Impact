@@ -186,7 +186,7 @@ struct ModelManagementSettingsView: View {
                     Picker("", selection: $chatModel) {
                         Text("llama3.2:3b").tag("llama3.2:3b")
                         Text("phi3.5:3.8b").tag("phi3.5:3.8b")
-                        Text("magnetar32:3b").tag("magnetar32:3b")
+                        Text("medgemma:4b").tag("medgemma:4b")
                     }
                     .labelsHidden()
                 }

@@ -19,3 +19,9 @@ class MedStationMemory:
 
     def clear(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
+
+    def get_all_settings(self) -> dict:
+        return {}
+
+    def save_settings(self, settings: dict) -> None:
+        pass

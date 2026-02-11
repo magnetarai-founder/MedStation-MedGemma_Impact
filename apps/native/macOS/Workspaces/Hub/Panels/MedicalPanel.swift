@@ -1747,7 +1747,7 @@ private struct MedicalCaseDetailView: View {
                 "subject": ["reference": "Patient/\(patientId)"],
                 "code": ["text": dx.condition],
                 "note": [["text": dx.rationale]],
-                "extension": [["url": "http://magnetarstudio.com/fhir/probability", "valueDecimal": dx.probability]]
+                "extension": [["url": "http://medstation.app/fhir/probability", "valueDecimal": dx.probability]]
             ]
             entries.append(["resource": condition, "request": ["method": "POST", "url": "Condition"]])
         }
@@ -1805,7 +1805,7 @@ private struct MedicalCaseDetailView: View {
             },
             "mitigation": result.triageLevel.rawValue,
             "note": [["text": result.disclaimer]],
-            "extension": [["url": "http://magnetarstudio.com/fhir/triage-level", "valueCode": riskLevel]]
+            "extension": [["url": "http://medstation.app/fhir/triage-level", "valueCode": riskLevel]]
         ]
         entries.append(["resource": riskAssessment, "request": ["method": "POST", "url": "RiskAssessment"]])
 
@@ -1813,7 +1813,7 @@ private struct MedicalCaseDetailView: View {
             "resourceType": "Bundle",
             "type": "transaction",
             "timestamp": now,
-            "meta": ["profile": ["http://magnetarstudio.com/fhir/medgemma-triage-bundle"]],
+            "meta": ["profile": ["http://medstation.app/fhir/medgemma-triage-bundle"]],
             "entry": entries
         ]
 
