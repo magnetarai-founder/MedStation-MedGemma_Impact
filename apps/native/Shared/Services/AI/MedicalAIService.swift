@@ -3,8 +3,8 @@
 //  MedStation
 //
 //  Singleton service managing MedGemma model lifecycle and medical inference.
-//  Handles auto-download via Ollama, streaming/non-streaming inference,
-//  and medical-specific prompt engineering.
+//  Calls the local Python backend which runs MedGemma 1.5 4B via HuggingFace
+//  Transformers on Apple Silicon (MPS).
 //
 //  MedGemma Impact Challenge (Kaggle 2026) — Edge AI on-device inference.
 //
@@ -26,115 +26,80 @@ final class MedicalAIService {
     var isGenerating: Bool = false
     var currentResponse: String = ""
     var error: String?
-    var modelStatus: ModelStatus = .notInstalled
+    var modelStatus: ModelStatus = .unknown
 
     enum ModelStatus: Equatable, Sendable {
-        case notInstalled
-        case downloading(progress: Double)
-        case installed
+        case unknown
+        case loading
         case ready
         case failed(String)
     }
 
-    private let medgemmaModelId = "alibayram/medgemma:4b"
-    private var activeTask: Task<Void, Never>?
-    private var activeStreamingCancel: (() -> Void)?
+    private let modelName = "google/medgemma-1.5-4b-it"
+    private var activeStreamTask: Task<Void, Never>?
 
     private init() {}
 
     // MARK: - Model Management
 
     func ensureModelReady() async {
-        guard modelStatus != .ready && modelStatus != .installed else { return }
+        if modelStatus == .ready { return }
 
+        modelStatus = .loading
         logger.info("Checking MedGemma model status...")
 
         do {
-            let models: [OllamaModelInfo] = try await ApiClient.shared.request(
-                path: "/v1/chat/ollama/models",
-                method: .get
+            // Check if model is already loaded
+            let statusData = try await medgemmaRequest(
+                path: "/v1/chat/medgemma/status",
+                method: "GET",
+                timeout: 10
             )
+            let status = try JSONDecoder().decode(MedGemmaStatusResponse.self, from: statusData)
 
-            let isInstalled = models.contains { $0.name.contains("medgemma") }
-
-            if isInstalled {
+            if status.loaded {
                 modelStatus = .ready
-                logger.info("MedGemma model found locally")
+                logger.info("MedGemma model already loaded on \(status.device ?? "unknown")")
                 return
             }
 
-            logger.info("MedGemma not found, starting download...")
-            await downloadModel()
+            // Model not loaded — trigger load (blocks until model is in memory, ~30-60s)
+            logger.info("Loading MedGemma into memory (this takes ~30s on M1, ~15s on M3+)...")
+            let loadData = try await medgemmaRequest(
+                path: "/v1/chat/medgemma/load",
+                method: "POST",
+                timeout: 120
+            )
+            let loadResult = try JSONDecoder().decode(MedGemmaLoadResponse.self, from: loadData)
 
-        } catch {
-            // Model list endpoint may not return standard envelope — try Ollama directly
-            logger.warning("Model check via API failed, attempting direct Ollama list: \(error.localizedDescription)")
-            await downloadModel()
-        }
-    }
-
-    private func downloadModel() async {
-        modelStatus = .downloading(progress: 0)
-
-        do {
-            for try await progress in OllamaService.shared.pullModel(modelName: medgemmaModelId) {
-                switch progress.status {
-                case "progress":
-                    // Parse percentage from message if available (e.g. "pulling layer 45%")
-                    let pct: Double
-                    if let range = progress.message.range(of: #"\d+"#, options: .regularExpression),
-                       let parsed = Double(progress.message[range]), parsed > 0, parsed <= 100 {
-                        pct = parsed / 100.0
-                    } else {
-                        pct = 0.5
-                    }
-                    modelStatus = .downloading(progress: pct)
-                    logger.debug("MedGemma download: \(progress.message)")
-                case "completed":
-                    modelStatus = .ready
-                    logger.info("MedGemma download completed")
-                    return
-                case "error":
-                    throw MedicalAIError.downloadFailed(progress.message)
-                default:
-                    logger.debug("MedGemma download status: \(progress.status) — \(progress.message)")
-                }
-            }
-            // Stream finished without explicit "completed" — assume success
-            if modelStatus != .ready {
+            if loadResult.status == "loaded" {
                 modelStatus = .ready
+                logger.info("MedGemma loaded on \(loadResult.device ?? "unknown")")
+            } else {
+                modelStatus = .failed(loadResult.message ?? "Unknown error")
+                self.error = loadResult.message
             }
+
         } catch {
             modelStatus = .failed(error.localizedDescription)
-            self.error = "Download failed: \(error.localizedDescription)"
-            logger.error("MedGemma download failed: \(error)")
+            self.error = "Model load failed: \(error.localizedDescription)"
+            logger.error("MedGemma model check/load failed: \(error)")
         }
     }
 
     // MARK: - Non-Streaming Inference (for workflow steps)
 
     func generateWorkflowStep(stepPrompt: String, patientContext: String) async throws -> String {
-        guard modelStatus == .ready || modelStatus == .installed else {
-            throw MedicalAIError.modelNotReady
+        if modelStatus != .ready {
+            await ensureModelReady()
+            guard modelStatus == .ready else {
+                throw MedicalAIError.modelNotReady
+            }
         }
 
         isGenerating = true
         error = nil
-
         defer { isGenerating = false }
-
-        let systemPrompt = """
-        You are a medical AI assistant powered by MedGemma. You provide evidence-based medical reasoning \
-        for triage, symptom analysis, and differential diagnosis.
-
-        CRITICAL DISCLAIMERS:
-        - This is for educational and informational purposes only
-        - Not a substitute for professional medical advice, diagnosis, or treatment
-        - Always seek advice from qualified healthcare providers for medical concerns
-        - In emergency situations, call 911 or local emergency services immediately
-
-        Output Format: Provide structured, clear medical reasoning with supporting evidence.
-        """
 
         let fullPrompt = """
         Patient Context:
@@ -144,9 +109,28 @@ final class MedicalAIService {
         \(stepPrompt)
         """
 
+        let request = MedGemmaGenerateRequest(
+            prompt: fullPrompt,
+            system: Self.systemPrompt,
+            maxTokens: 1024,
+            temperature: 0.3,
+            stream: false
+        )
+
         do {
-            let response = try await callOllama(systemPrompt: systemPrompt, prompt: fullPrompt)
-            return response
+            let encoder = JSONEncoder()
+            let body = try encoder.encode(request)
+
+            let responseData = try await medgemmaRequest(
+                path: "/v1/chat/medgemma/generate",
+                method: "POST",
+                body: body,
+                timeout: 300
+            )
+
+            let result = try JSONDecoder().decode(MedGemmaGenerateResponse.self, from: responseData)
+            return result.response
+
         } catch {
             self.error = error.localizedDescription
             logger.error("Medical inference failed: \(error)")
@@ -162,19 +146,16 @@ final class MedicalAIService {
         onToken: @escaping (String) -> Void,
         onDone: @escaping () -> Void
     ) async throws {
-        guard modelStatus == .ready || modelStatus == .installed else {
-            throw MedicalAIError.modelNotReady
+        if modelStatus != .ready {
+            await ensureModelReady()
+            guard modelStatus == .ready else {
+                throw MedicalAIError.modelNotReady
+            }
         }
 
         isGenerating = true
         currentResponse = ""
         error = nil
-
-        let systemPrompt = """
-        You are a medical AI assistant powered by MedGemma. Provide clear, evidence-based medical information.
-
-        DISCLAIMER: This is educational information only. Not medical advice. Consult healthcare professionals.
-        """
 
         let fullPrompt: String
         if patientContext.isEmpty {
@@ -187,130 +168,181 @@ final class MedicalAIService {
             """
         }
 
-        let body = OllamaStreamRequest(
-            model: medgemmaModelId,
+        let request = MedGemmaGenerateRequest(
             prompt: fullPrompt,
-            system: systemPrompt,
-            stream: true,
-            options: .init(temperature: 0.3, numCtx: 8192)
+            system: Self.chatSystemPrompt,
+            maxTokens: 1024,
+            temperature: 0.3,
+            stream: true
         )
 
-        do {
-            let streamingTask = try ApiClient.shared.makeStreamingTask(
-                path: "/v1/chat/ollama/generate",
-                method: .post,
-                jsonBody: body,
-                onContent: { [weak self] content in
-                    guard let data = content.data(using: .utf8) else { return }
-                    do {
-                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let token = json["response"] as? String {
-                            Task { @MainActor [weak self] in
+        // Build URL request manually for streaming with longer timeout
+        let baseURL = APIConfiguration.shared.baseURL
+        guard let url = URL(string: "\(baseURL)/v1/chat/medgemma/generate") else {
+            isGenerating = false
+            throw MedicalAIError.inferenceFailed("Invalid URL")
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.timeoutInterval = 300
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+
+        // Stream using URLSession async bytes (ndjson format)
+        activeStreamTask = Task { [weak self] in
+            do {
+                let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    throw MedicalAIError.inferenceFailed("Server returned error")
+                }
+
+                for try await line in bytes.lines {
+                    guard !Task.isCancelled else { break }
+                    guard !line.isEmpty,
+                          let lineData = line.data(using: .utf8) else { continue }
+
+                    if let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] {
+                        if let token = json["token"] as? String {
+                            await MainActor.run {
                                 self?.currentResponse += token
                             }
                             onToken(token)
                         }
-                    } catch {
-                        logger.debug("Skipped unparseable medical stream chunk: \(error.localizedDescription)")
-                    }
-                },
-                onDone: { [weak self] in
-                    Task { @MainActor [weak self] in
-                        self?.isGenerating = false
-                        if let err = self?.error {
-                            logger.debug("Medical stream done with error: \(err)")
+                        if let done = json["done"] as? Bool, done {
+                            break
                         }
                     }
-                    onDone()
-                },
-                onError: { error in
+                }
+
+                await MainActor.run {
+                    self?.isGenerating = false
+                }
+                onDone()
+
+            } catch {
+                if !Task.isCancelled {
                     logger.error("Medical stream error: \(error)")
+                    await MainActor.run {
+                        self?.isGenerating = false
+                        self?.error = error.localizedDescription
+                    }
                     onDone()
                 }
-            )
-
-            // Store cancel handle for cancellation support
-            activeStreamingCancel = streamingTask.cancel
-            streamingTask.task.resume()
-
-        } catch {
-            isGenerating = false
-            self.error = error.localizedDescription
-            throw error
+            }
         }
     }
 
     func cancel() {
-        activeTask?.cancel()
-        activeTask = nil
-        activeStreamingCancel?()
-        activeStreamingCancel = nil
+        activeStreamTask?.cancel()
+        activeStreamTask = nil
         isGenerating = false
         currentResponse = ""
         error = nil
     }
 
-    // MARK: - Ollama Non-Streaming
+    // MARK: - HTTP Helper
 
-    private func callOllama(systemPrompt: String, prompt: String) async throws -> String {
-        struct OllamaGenerateResponse: Codable, Sendable {
-            let response: String
+    private func medgemmaRequest(
+        path: String,
+        method: String = "POST",
+        body: Data? = nil,
+        timeout: TimeInterval = 300
+    ) async throws -> Data {
+        let baseURL = APIConfiguration.shared.baseURL
+        guard let url = URL(string: "\(baseURL)\(path)") else {
+            throw MedicalAIError.inferenceFailed("Invalid URL: \(baseURL)\(path)")
         }
 
-        let body: [String: Any] = [
-            "model": medgemmaModelId,
-            "prompt": prompt,
-            "system": systemPrompt,
-            "stream": false,
-            "options": [
-                "temperature": 0.3,
-                "num_ctx": 8192
-            ]
-        ]
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.timeoutInterval = timeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let response: OllamaGenerateResponse = try await ApiClient.shared.request(
-            path: "/v1/chat/ollama/generate",
-            method: .post,
-            jsonBody: body
-        )
+        if let body = body {
+            request.httpBody = body
+        }
 
-        return response.response
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw MedicalAIError.inferenceFailed("Invalid response")
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw MedicalAIError.inferenceFailed(message)
+        }
+
+        return data
+    }
+
+    // MARK: - System Prompts
+
+    static let systemPrompt = """
+    You are a medical AI assistant powered by MedGemma. You provide evidence-based medical reasoning \
+    for triage, symptom analysis, and differential diagnosis.
+
+    CRITICAL DISCLAIMERS:
+    - This is for educational and informational purposes only
+    - Not a substitute for professional medical advice, diagnosis, or treatment
+    - Always seek advice from qualified healthcare providers for medical concerns
+    - In emergency situations, call 911 or local emergency services immediately
+
+    Output Format: Provide structured, clear medical reasoning with supporting evidence.
+    """
+
+    static let chatSystemPrompt = """
+    You are a medical AI assistant powered by MedGemma. Provide clear, evidence-based medical information.
+
+    DISCLAIMER: This is educational information only. Not medical advice. Consult healthcare professionals.
+    """
+}
+
+// MARK: - Request/Response Types
+
+private struct MedGemmaGenerateRequest: Encodable {
+    let prompt: String
+    let system: String
+    let maxTokens: Int
+    let temperature: Float
+    let stream: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case prompt, system, stream, temperature
+        case maxTokens = "max_tokens"
     }
 }
 
-// MARK: - Request Types
+private struct MedGemmaGenerateResponse: Decodable {
+    let response: String
+    let model: String?
+}
 
-private struct OllamaStreamRequest: Encodable, Sendable {
-    let model: String
-    let prompt: String
-    let system: String
-    let stream: Bool
-    let options: Options
+private struct MedGemmaStatusResponse: Decodable {
+    let loaded: Bool
+    let device: String?
+    let model: String?
+}
 
-    struct Options: Encodable, Sendable {
-        let temperature: Float
-        let numCtx: Int
-
-        enum CodingKeys: String, CodingKey {
-            case temperature
-            case numCtx = "num_ctx"
-        }
-    }
+private struct MedGemmaLoadResponse: Decodable {
+    let status: String
+    let device: String?
+    let message: String?
 }
 
 // MARK: - Errors
 
 enum MedicalAIError: LocalizedError {
     case modelNotReady
-    case downloadFailed(String)
     case inferenceFailed(String)
 
     var errorDescription: String? {
         switch self {
         case .modelNotReady:
-            return "MedGemma model is not ready. Please wait for download to complete."
-        case .downloadFailed(let msg):
-            return "Model download failed: \(msg)"
+            return "MedGemma model is not ready. Please wait for it to load."
         case .inferenceFailed(let msg):
             return "Medical inference failed: \(msg)"
         }

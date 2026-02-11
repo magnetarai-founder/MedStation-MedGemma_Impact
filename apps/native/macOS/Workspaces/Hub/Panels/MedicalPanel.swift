@@ -643,15 +643,15 @@ private struct MedicalCaseDetailView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Run MedGemma medical analysis workflow")
 
-            if case .downloading(let progress) = aiService.modelStatus {
+            if case .loading = aiService.modelStatus {
                 HStack(spacing: 8) {
-                    ProgressView(value: progress)
-                        .frame(width: 100)
-                    Text("Downloading MedGemma... \(Int(progress * 100))%")
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading MedGemma 1.5 4B into memory...")
                         .font(.caption)
                 }
                 .padding(8)
-                .background(Color.orange.opacity(0.1))
+                .background(Color.blue.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             } else if case .failed(let msg) = aiService.modelStatus {
                 VStack(alignment: .leading, spacing: 8) {
@@ -663,39 +663,26 @@ private struct MedicalCaseDetailView: View {
                             .font(.caption)
                     }
 
-                    // Ollama setup guide
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Setup Guide")
+                        Text("Troubleshooting")
                             .font(.caption.weight(.semibold))
-                        Text("MedGemma requires Ollama running locally:")
+                        Text("MedGemma 1.5 4B runs locally via HuggingFace Transformers:")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
 
                         VStack(alignment: .leading, spacing: 3) {
-                            setupStep("1", "Install Ollama from ollama.com")
-                            setupStep("2", "Start Ollama (it runs in the menu bar)")
-                            setupStep("3", "The model downloads automatically (~2.5 GB)")
+                            setupStep("1", "Ensure the backend is running (auto-starts with app)")
+                            setupStep("2", "Model weights must be in .models/medgemma-1.5-4b-it/")
+                            setupStep("3", "Requires 16 GB RAM (bfloat16 on Apple Silicon)")
                         }
 
-                        HStack(spacing: 8) {
-                            Button {
-                                if let url = URL(string: "https://ollama.com/download") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            } label: {
-                                Text("Download Ollama")
-                                    .font(.caption.weight(.medium))
-                            }
-                            .accessibilityLabel("Download Ollama application")
-
-                            Button {
-                                Task { await aiService.ensureModelReady() }
-                            } label: {
-                                Label("Retry Connection", systemImage: "arrow.clockwise")
-                                    .font(.caption)
-                            }
-                            .accessibilityLabel("Retry Ollama connection")
+                        Button {
+                            Task { await aiService.ensureModelReady() }
+                        } label: {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .font(.caption)
                         }
+                        .accessibilityLabel("Retry model loading")
                     }
                     .padding(8)
                     .background(Color(NSColor.controlBackgroundColor))
@@ -704,16 +691,16 @@ private struct MedicalCaseDetailView: View {
                 .padding(8)
                 .background(Color.orange.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-            } else if case .notInstalled = aiService.modelStatus {
+            } else if case .unknown = aiService.modelStatus {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        Image(systemName: "arrow.down.circle")
+                        Image(systemName: "brain")
                             .foregroundStyle(.blue)
                             .accessibilityHidden(true)
-                        Text("MedGemma model not yet downloaded")
+                        Text("MedGemma 1.5 4B — on-device medical AI")
                             .font(.caption)
                     }
-                    Text("Click 'Run Medical Analysis' to auto-download (~2.5 GB). Requires Ollama running locally.")
+                    Text("Click 'Run Medical Analysis' to load the model and start inference (~8 GB, Apple Silicon MPS).")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

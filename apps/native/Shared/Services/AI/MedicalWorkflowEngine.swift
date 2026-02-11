@@ -31,11 +31,11 @@ struct MedicalWorkflowEngine {
 
         let service = MedicalAIService.shared
 
-        if service.modelStatus != .ready && service.modelStatus != .installed {
+        if service.modelStatus != .ready {
             await service.ensureModelReady()
         }
 
-        guard service.modelStatus == .ready || service.modelStatus == .installed else {
+        guard service.modelStatus == .ready else {
             throw MedicalAIError.modelNotReady
         }
 
@@ -173,7 +173,7 @@ struct MedicalWorkflowEngine {
         let metrics = PerformanceMetrics(
             totalWorkflowMs: totalMs,
             stepDurations: stepDurations,
-            modelName: "alibayram/medgemma:4b",
+            modelName: "google/medgemma-1.5-4b-it",
             modelParameterCount: "4B",
             deviceThermalState: .init(from: ProcessInfo.processInfo),
             imageAnalysisMs: imageAnalysisMs
