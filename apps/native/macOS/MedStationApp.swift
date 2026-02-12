@@ -34,12 +34,12 @@ struct MedStationApp: App {
         // Main window — opens directly into Medical AI
         WindowGroup {
             ContentView()
-                .frame(minWidth: 1100, minHeight: 650)
+                .frame(minWidth: 960, minHeight: 580)
                 .onAppear {
                     applyTheme()
                     if let window = NSApplication.shared.windows.first {
-                        window.setContentSize(NSSize(width: 1300, height: 800))
-                        window.minSize = NSSize(width: 1100, height: 650)
+                        window.setContentSize(NSSize(width: 1080, height: 720))
+                        window.minSize = NSSize(width: 960, height: 580)
                         window.isMovableByWindowBackground = true
                     }
                 }
@@ -49,7 +49,7 @@ struct MedStationApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
-        .defaultSize(width: 1300, height: 800)
+        .defaultSize(width: 1080, height: 720)
         .environment(navigationStore)
         .environment(chatStore)
         .environment(authStore)

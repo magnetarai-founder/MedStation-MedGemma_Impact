@@ -269,6 +269,7 @@ struct MedicalWorkflowEngine {
             if let temp = vitals.temperature { context += "\n  Temp: \(String(format: "%.1f", temp))°F" }
             if let rr = vitals.respiratoryRate { context += "\n  RR: \(rr)/min" }
             if let spo2 = vitals.oxygenSaturation { context += "\n  SpO2: \(spo2)%" }
+            if let wt = vitals.weight { context += "\n  Weight: \(String(format: "%.0f", wt)) lbs" }
         }
 
         if !intake.medicalHistory.isEmpty {

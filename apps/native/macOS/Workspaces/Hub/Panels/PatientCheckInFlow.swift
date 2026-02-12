@@ -68,6 +68,7 @@ struct PatientCheckInFlow: View {
     @State private var temperature = ""
     @State private var respiratoryRate = ""
     @State private var oxygenSaturation = ""
+    @State private var weight = ""
 
     // MARK: - Form State (Step 3: Medical Background)
 
@@ -131,7 +132,7 @@ struct PatientCheckInFlow: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
         }
-        .frame(width: 700, height: 650)
+        .frame(width: 660, height: 560)
     }
 
     // MARK: - Step Indicator
@@ -350,6 +351,7 @@ struct PatientCheckInFlow: View {
                         vitalField("Temp (°F)", text: $temperature, width: 90)
                         vitalField("RR (/min)", text: $respiratoryRate, width: 90)
                         vitalField("SpO2 (%)", text: $oxygenSaturation, width: 90)
+                        vitalField("Weight (lbs)", text: $weight, width: 90)
                     }
 
                     ForEach(vitalValidationWarnings, id: \.self) { warning in
@@ -889,7 +891,8 @@ struct PatientCheckInFlow: View {
                 bloodPressure: bloodPressure.isEmpty ? nil : bloodPressure,
                 temperature: tempF,
                 respiratoryRate: Int(respiratoryRate),
-                oxygenSaturation: Int(oxygenSaturation)
+                oxygenSaturation: Int(oxygenSaturation),
+                weight: Double(weight)
             )
         }
 
