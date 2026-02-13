@@ -319,7 +319,7 @@ struct MedicalWorkflowEngine {
 
     // MARK: - Output Parsing
 
-    private static func extractTriageLevel(from text: String) -> MedicalWorkflowResult.TriageLevel {
+    static func extractTriageLevel(from text: String) -> MedicalWorkflowResult.TriageLevel {
         // Parse structured "TRIAGE: <level>" from the first few lines
         let lines = text.components(separatedBy: .newlines).prefix(3)
         for line in lines {
@@ -347,7 +347,7 @@ struct MedicalWorkflowEngine {
         return .semiUrgent
     }
 
-    private static func parseDifferentialDiagnoses(from text: String) -> [Diagnosis] {
+    static func parseDifferentialDiagnoses(from text: String) -> [Diagnosis] {
         var diagnoses: [Diagnosis] = []
         let lines = text.components(separatedBy: .newlines)
         var currentCondition = ""
@@ -419,7 +419,7 @@ struct MedicalWorkflowEngine {
         return Array(diagnoses.prefix(5))
     }
 
-    private static func parseRecommendedActions(
+    static func parseRecommendedActions(
         from text: String,
         triageLevel: MedicalWorkflowResult.TriageLevel
     ) -> [RecommendedAction] {
