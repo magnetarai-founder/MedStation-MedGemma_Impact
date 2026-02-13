@@ -127,6 +127,9 @@ class MedGemmaService:
             if not ok:
                 raise ModelNotLoadedError("MedGemma model not loaded. Please check the model directory.")
 
+        # Clamp temperature to safe range (negative values crash torch)
+        temperature = max(0.0, min(temperature, 2.0))
+
         # Build messages in chat format
         messages = [
             {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
