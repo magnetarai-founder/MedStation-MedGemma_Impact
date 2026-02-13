@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MODEL_DIR = Path(__file__).resolve().parents[4] / ".models" / "medgemma-1.5-4b-it"
 
 
+class ModelNotLoadedError(Exception):
+    """Raised when MedGemma model fails to load or is unavailable."""
+    pass
+
+
 class MedGemmaService:
     """Singleton service for MedGemma inference."""
 
@@ -120,7 +125,7 @@ class MedGemmaService:
         if not self.loaded:
             ok = await self.load()
             if not ok:
-                return "Error: MedGemma model not loaded. Please check the model directory."
+                raise ModelNotLoadedError("MedGemma model not loaded. Please check the model directory.")
 
         # Build messages in chat format
         messages = [
@@ -173,8 +178,7 @@ class MedGemmaService:
         if not self.loaded:
             ok = await self.load()
             if not ok:
-                yield "Error: MedGemma model not loaded."
-                return
+                raise ModelNotLoadedError("MedGemma model not loaded.")
 
         from transformers import TextIteratorStreamer
         import threading

@@ -85,7 +85,7 @@ final class BackendManager {
 
         let task = Process()
         task.executableURL = venvPython
-        task.arguments = ["-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        task.arguments = ["-m", "uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "8000"]
         task.currentDirectoryURL = backendPath
 
         // CRITICAL: Set environment variables for backend

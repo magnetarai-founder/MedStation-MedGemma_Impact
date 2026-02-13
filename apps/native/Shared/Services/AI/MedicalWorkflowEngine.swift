@@ -343,6 +343,7 @@ struct MedicalWorkflowEngine {
         }
 
         // Default — don't assume emergency
+        logger.warning("Could not parse triage level from MedGemma output. Defaulting to Semi-Urgent. Raw: \(text.prefix(200))")
         return .semiUrgent
     }
 

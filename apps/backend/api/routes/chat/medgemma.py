@@ -13,7 +13,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +21,11 @@ router = APIRouter(prefix="/medgemma")
 
 
 class GenerateRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(..., min_length=1, max_length=10000)
     system: Optional[str] = "You are an expert medical AI assistant."
     image_base64: Optional[str] = None
-    max_tokens: Optional[int] = 1024
-    temperature: Optional[float] = 0.3
+    max_tokens: Optional[int] = Field(1024, ge=1, le=4096)
+    temperature: Optional[float] = Field(0.3, ge=0.0, le=2.0)
     stream: Optional[bool] = False
 
 
@@ -63,6 +63,15 @@ async def medgemma_generate(req: GenerateRequest):
     from api.services.medgemma import get_medgemma
 
     svc = get_medgemma()
+
+    # Early check: return 503 if model can't load
+    if not svc.loaded:
+        ok = await svc.load()
+        if not ok:
+            return JSONResponse(
+                {"error": "MedGemma model not loaded", "detail": "Model failed to load. Check server logs."},
+                status_code=503,
+            )
 
     # Decode image if provided
     image = None

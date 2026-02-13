@@ -62,13 +62,13 @@ def create_app() -> FastAPI:
         },
     )
 
-    # CORS — allow localhost origins (local-only app)
+    # CORS — localhost only (native app connects via 127.0.0.1)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-Request-ID"],
     )
 
     # Request ID middleware
