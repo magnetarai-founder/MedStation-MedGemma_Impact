@@ -11,7 +11,7 @@ import base64
 from io import BytesIO
 from typing import Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 

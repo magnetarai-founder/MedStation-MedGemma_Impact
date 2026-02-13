@@ -206,7 +206,7 @@ final class BackendManager {
                 return httpResponse.statusCode == 200
             }
         } catch {
-            // Server not responding
+            logger.debug("Health check failed: server not responding")
         }
 
         return false

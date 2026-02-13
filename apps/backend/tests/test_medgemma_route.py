@@ -5,7 +5,6 @@ Validates input validation, error handling, and model availability checks
 WITHOUT requiring the actual MedGemma model.
 """
 
-import json
 import pytest
 
 
