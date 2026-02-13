@@ -29,7 +29,7 @@ final class APIConfiguration {
         return _defaultBaseURL
     }
 
-    private let _defaultBaseURL: String = "http://localhost:8000/api"
+    private let _defaultBaseURL: String = "http://127.0.0.1:8000/api"
 
     /// Ollama server URL (local LLM inference)
     let ollamaURL: String
@@ -61,7 +61,7 @@ final class APIConfiguration {
            URL(string: envOllamaURL) != nil {
             self.ollamaURL = envOllamaURL
         } else {
-            self.ollamaURL = "http://localhost:11434"
+            self.ollamaURL = "http://127.0.0.1:11434"
         }
 
         // CRITICAL SECURITY: Enforce HTTPS for non-localhost URLs

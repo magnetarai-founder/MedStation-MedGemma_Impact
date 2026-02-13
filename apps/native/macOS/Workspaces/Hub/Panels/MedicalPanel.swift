@@ -27,6 +27,7 @@ struct MedicalPanel: View {
     @State private var showOnboarding = false
     @State private var showBenchmark = false
     @State private var benchmarkHarness = MedicalBenchmarkHarness()
+    @State private var showAnalytics = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -220,33 +221,44 @@ struct MedicalPanel: View {
     // MARK: - Impact Analytics
 
     private var impactAnalyticsSection: some View {
-        let completedCases = cases.filter { $0.result != nil }
-        let emergencyCount = completedCases.filter { $0.result?.triageLevel == .emergency }.count
-        let avgTriageMs: Double = {
-            let times = completedCases.compactMap { $0.result?.performanceMetrics?.totalWorkflowMs }
-            guard !times.isEmpty else { return 0 }
-            return times.reduce(0, +) / Double(times.count)
-        }()
-        let feedbackCases = cases.compactMap(\.feedback)
-        let accuracyPct: Double = {
-            guard !feedbackCases.isEmpty else { return 0 }
-            let accurate = feedbackCases.filter { $0.rating == .accurate }.count
-            return Double(accurate) / Double(feedbackCases.count) * 100
-        }()
-
-        return DisclosureGroup("Impact Analytics") {
-            VStack(spacing: 6) {
-                analyticsRow("Cases Analyzed", "\(completedCases.count)")
-                analyticsRow("Emergency Detected", "\(emergencyCount)")
-                analyticsRow("Avg Triage Time", avgTriageMs > 0 ? String(format: "%.1fs", avgTriageMs / 1000) : "—")
-                if !feedbackCases.isEmpty {
-                    analyticsRow("Feedback Accuracy", String(format: "%.0f%%", accuracyPct))
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) { showAnalytics.toggle() }
+            } label: {
+                HStack {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .bold))
+                        .rotationEffect(.degrees(showAnalytics ? 90 : 0))
+                    Text("Impact Analytics")
+                    Spacer()
                 }
+                .contentShape(Rectangle())
             }
-            .padding(.top, 4)
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.secondary)
+
+            if showAnalytics {
+                let completedCases = cases.filter { $0.result != nil }
+                let emergencyCount = completedCases.filter { $0.result?.triageLevel == .emergency }.count
+                let times = completedCases.compactMap { $0.result?.performanceMetrics?.totalWorkflowMs }
+                let avgTriageMs = times.isEmpty ? 0.0 : times.reduce(0, +) / Double(times.count)
+                let feedbackCases = cases.compactMap(\.feedback)
+                let accuratePct: Double = feedbackCases.isEmpty ? 0 :
+                    Double(feedbackCases.filter { $0.rating == .accurate }.count) / Double(feedbackCases.count) * 100
+
+                VStack(spacing: 6) {
+                    analyticsRow("Cases Analyzed", "\(completedCases.count)")
+                    analyticsRow("Emergency Detected", "\(emergencyCount)")
+                    analyticsRow("Avg Triage Time", avgTriageMs > 0 ? String(format: "%.1fs", avgTriageMs / 1000) : "—")
+                    if !feedbackCases.isEmpty {
+                        analyticsRow("Feedback Accuracy", String(format: "%.0f%%", accuratePct))
+                    }
+                }
+                .padding(.top, 6)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .font(.system(size: 11, weight: .medium))
-        .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
@@ -459,35 +471,44 @@ private struct MedicalCaseDetailView: View {
     @State private var chatMessages: [FollowUpMessage] = []
     @State private var chatInput = ""
     @State private var isChatStreaming = false
+    @State private var showChat = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                headerSection
-                Divider()
-                intakeSection
+        HStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    headerSection
+                    Divider()
+                    intakeSection
 
-                if medicalCase.result == nil && !isRunningWorkflow {
-                    Divider()
-                    runWorkflowSection
-                }
+                    if medicalCase.result == nil && !isRunningWorkflow {
+                        Divider()
+                        runWorkflowSection
+                    }
 
-                if isRunningWorkflow {
-                    Divider()
-                    progressSection
-                }
+                    if isRunningWorkflow {
+                        Divider()
+                        progressSection
+                    }
 
-                if let result = medicalCase.result {
-                    Divider()
-                    resultsSection(result)
-                    Divider()
-                    feedbackSection
-                    Divider()
-                    followUpChatSection
+                    if let result = medicalCase.result {
+                        Divider()
+                        resultsSection(result)
+                        Divider()
+                        feedbackSection
+                    }
                 }
+                .padding(20)
             }
-            .padding(20)
+
+            if showChat {
+                Divider()
+                followUpChatPane
+                    .frame(width: 360)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: showChat)
         .onAppear {
             chatMessages = medicalCase.followUpMessages
         }
@@ -527,6 +548,28 @@ private struct MedicalCaseDetailView: View {
             Spacer()
 
             if let result = medicalCase.result {
+                Button {
+                    showChat.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: showChat ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
+                            .font(.system(size: 12))
+                        Text("AI Chat")
+                            .font(.system(size: 12, weight: .medium))
+                        if !chatMessages.isEmpty {
+                            Text("\(chatMessages.count)")
+                                .font(.system(size: 9, weight: .bold).monospaced())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(Color.purple))
+                        }
+                    }
+                    .foregroundStyle(showChat ? .purple : .secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(showChat ? "Close AI chat" : "Open AI chat")
+
                 Menu {
                     Button {
                         exportMedicalReport(result)
@@ -864,83 +907,225 @@ private struct MedicalCaseDetailView: View {
         }
     }
 
-    // MARK: - Follow-Up Chat
+    // MARK: - Follow-Up Chat Pane
 
-    private var followUpChatSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "bubble.left.and.bubble.right")
+    private var followUpChatPane: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 13))
                     .foregroundStyle(.purple)
                     .accessibilityHidden(true)
-                Text("Ask Follow-Up Questions")
-                    .font(.headline)
+
+                Text("AI Chat")
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text("MedGemma 4B")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.purple.opacity(0.8))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.purple.opacity(0.1)))
+
                 Spacer()
+
                 if isChatStreaming {
                     Button {
                         aiService.cancel()
                         isChatStreaming = false
                     } label: {
-                        Label("Stop", systemImage: "stop.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .controlSize(.mini)
+                            Text("Stop")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundStyle(.red)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Stop generating response")
                 }
+
+                Button {
+                    showChat = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                        .background(Color.gray.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close chat pane")
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
 
-            if !chatMessages.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(chatMessages.enumerated()), id: \.offset) { _, msg in
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: msg.role == "user" ? "person.circle.fill" : "cross.case.circle.fill")
-                                .foregroundStyle(msg.role == "user" ? Color.blue : Color.purple)
-                                .font(.system(size: 16))
+            Divider()
+
+            // Scrollable messages area
+            ScrollViewReader { proxy in
+                ScrollView {
+                    if chatMessages.isEmpty {
+                        VStack(spacing: 12) {
+                            Spacer(minLength: 40)
+                            Image(systemName: "bubble.left.and.text.bubble.right")
+                                .font(.system(size: 36))
+                                .foregroundStyle(.purple.opacity(0.2))
                                 .accessibilityHidden(true)
-
-                            Text(msg.content)
-                                .font(.caption)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Ask about the diagnosis")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.secondary)
+                            Text("Treatment options, next steps,\nmedication concerns, or anything else")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                                .multilineTextAlignment(.center)
+                            Spacer(minLength: 40)
                         }
-                        .padding(8)
-                        .background(msg.role == "user" ? Color.blue.opacity(0.05) : Color.purple.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(msg.role == "user" ? "You" : "MedGemma"): \(msg.content)")
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(chatMessages.enumerated()), id: \.offset) { index, msg in
+                                followUpMessageRow(msg, isLast: index == chatMessages.count - 1)
+                                    .id(index)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                .onChange(of: chatMessages.count) {
+                    if let last = chatMessages.indices.last {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            proxy.scrollTo(last, anchor: .bottom)
+                        }
                     }
                 }
             }
 
-            HStack(spacing: 8) {
-                TextField("Ask about the diagnosis, treatment options, or next steps...", text: $chatInput)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { Task { await sendChatMessage() } }
-                    .disabled(isChatStreaming)
-                    .accessibilityLabel("Follow-up question")
+            Divider()
 
-                Button {
-                    Task { await sendChatMessage() }
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.purple)
+            // Pinned input bar
+            VStack(spacing: 6) {
+                HStack(spacing: 10) {
+                    TextField("Ask a question...", text: $chatInput)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13))
+                        .onSubmit { Task { await sendChatMessage() } }
+                        .disabled(isChatStreaming)
+                        .accessibilityLabel("Follow-up question")
+
+                    Button {
+                        Task { await sendChatMessage() }
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(
+                                chatInput.trimmingCharacters(in: .whitespaces).isEmpty || isChatStreaming
+                                ? .gray : .purple
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty || isChatStreaming)
+                    .accessibilityLabel("Send question")
                 }
-                .buttonStyle(.plain)
-                .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty || isChatStreaming)
-                .accessibilityLabel("Send follow-up question")
-            }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
 
-            Text("Responses use MedGemma on-device. Not medical advice.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+                Text("MedGemma on-device · Not medical advice")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+                    .padding(.bottom, 6)
+            }
         }
-        .padding()
-        .background(Color.purple.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.purple.opacity(0.15), lineWidth: 1)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    @State private var hoveredMessageIndex: Int?
+
+    private func followUpMessageRow(_ msg: FollowUpMessage, isLast: Bool) -> some View {
+        let isUser = msg.role == "user"
+        let index = chatMessages.firstIndex(where: { $0 == msg })
+
+        return HStack(alignment: .top, spacing: 12) {
+            // Avatar
+            Circle()
+                .fill(isUser ? Color.blue : Color.purple.opacity(0.15))
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Image(systemName: isUser ? "person.fill" : "sparkles")
+                        .font(.system(size: 14))
+                        .foregroundStyle(isUser ? .white : .purple)
+                )
+
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(isUser ? "You" : "MedGemma")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    if !isUser {
+                        Text("4B · on-device")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.purple.opacity(0.7))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.purple.opacity(0.08)))
+                    }
+
+                    Spacer()
+
+                    // Copy on hover
+                    if hoveredMessageIndex == index && !msg.content.isEmpty {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(msg.content, forType: .string)
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 22, height: 22)
+                                .background(Color.gray.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Copy message")
+                        .transition(.opacity)
+                    }
+                }
+
+                if msg.content.isEmpty && isChatStreaming && isLast {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("Thinking...")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                } else {
+                    Text(msg.content)
+                        .font(.system(size: 13))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(hoveredMessageIndex == index ? Color.gray.opacity(0.04) : Color.clear)
         )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                hoveredMessageIndex = hovering ? index : nil
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(isUser ? "You" : "MedGemma"): \(msg.content)")
     }
 
     private func sendChatMessage() async {
