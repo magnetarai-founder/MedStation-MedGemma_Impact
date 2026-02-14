@@ -87,6 +87,7 @@ struct VitalSigns: Codable, Equatable, Hashable, Sendable {
     var respiratoryRate: Int?
     var oxygenSaturation: Int?
     var weight: Double? // lbs
+    var height: Double? // inches
 }
 
 // MARK: - Workflow Result

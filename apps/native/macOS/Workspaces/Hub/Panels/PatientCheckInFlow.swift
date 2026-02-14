@@ -62,13 +62,12 @@ struct PatientCheckInFlow: View {
     @State private var sex: BiologicalSex? = nil
     @State private var isPregnant = false
     @State private var symptomsText = ""
-    @State private var includeVitals = false
     @State private var heartRate = ""
     @State private var bloodPressure = ""
     @State private var temperature = ""
-    @State private var respiratoryRate = ""
     @State private var oxygenSaturation = ""
     @State private var weight = ""
+    @State private var height = ""
 
     // MARK: - Form State (Step 3: Medical Background)
 
@@ -132,7 +131,7 @@ struct PatientCheckInFlow: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
         }
-        .frame(width: 660, height: 560)
+        .frame(width: 700, height: 620)
     }
 
     // MARK: - Step Indicator
@@ -339,30 +338,31 @@ struct PatientCheckInFlow: View {
                     .lineLimit(2...4)
             }
 
-            // Vital Signs
-            VStack(alignment: .leading, spacing: 8) {
-                Toggle("Include Vital Signs", isOn: $includeVitals)
+            // Vital Signs (standard 6)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Vital Signs")
                     .font(.headline)
 
-                if includeVitals {
-                    HStack(spacing: 12) {
-                        vitalField("HR (bpm)", text: $heartRate, width: 90)
-                        vitalField("BP (e.g. 120/80)", text: $bloodPressure, width: 130)
-                        vitalField("Temp (°F)", text: $temperature, width: 90)
-                        vitalField("RR (/min)", text: $respiratoryRate, width: 90)
-                        vitalField("SpO2 (%)", text: $oxygenSaturation, width: 90)
-                        vitalField("Weight (lbs)", text: $weight, width: 90)
-                    }
+                HStack(spacing: 12) {
+                    vitalField("Weight (lbs)", text: $weight, width: nil)
+                    vitalField("Height (in)", text: $height, width: nil)
+                    vitalField("BP (e.g. 120/80)", text: $bloodPressure, width: nil)
+                }
 
-                    ForEach(vitalValidationWarnings, id: \.self) { warning in
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                                .font(.caption2)
-                            Text(warning)
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
+                HStack(spacing: 12) {
+                    vitalField("Heart Rate (BPM)", text: $heartRate, width: nil)
+                    vitalField("Temperature (°F)", text: $temperature, width: nil)
+                    vitalField("Pulse Ox (%)", text: $oxygenSaturation, width: nil)
+                }
+
+                ForEach(vitalValidationWarnings, id: \.self) { warning in
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.caption2)
+                        Text(warning)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
                     }
                 }
             }
@@ -372,14 +372,14 @@ struct PatientCheckInFlow: View {
         }
     }
 
-    private func vitalField(_ label: String, text: Binding<String>, width: CGFloat) -> some View {
+    private func vitalField(_ label: String, text: Binding<String>, width: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             TextField("", text: text)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: width)
+                .frame(maxWidth: width ?? .infinity)
         }
     }
 
@@ -518,8 +518,8 @@ struct PatientCheckInFlow: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
-                    if includeVitals {
-                        Text("Vitals included")
+                    if hasAnyVitals {
+                        Text("Vitals recorded")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -880,21 +880,18 @@ struct PatientCheckInFlow: View {
         let meds = medicationsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let allergies = allergiesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
 
-        var vitals: VitalSigns?
-        if includeVitals {
-            var tempF: Double?
-            if let raw = Double(temperature) {
-                tempF = raw <= 50 ? (raw * 9.0 / 5.0 + 32) : raw
-            }
-            vitals = VitalSigns(
-                heartRate: Int(heartRate),
-                bloodPressure: bloodPressure.isEmpty ? nil : bloodPressure,
-                temperature: tempF,
-                respiratoryRate: Int(respiratoryRate),
-                oxygenSaturation: Int(oxygenSaturation),
-                weight: Double(weight)
-            )
+        var tempF: Double?
+        if let raw = Double(temperature) {
+            tempF = raw <= 50 ? (raw * 9.0 / 5.0 + 32) : raw
         }
+        let vitals: VitalSigns? = hasAnyVitals ? VitalSigns(
+            heartRate: Int(heartRate),
+            bloodPressure: bloodPressure.isEmpty ? nil : bloodPressure,
+            temperature: tempF,
+            oxygenSaturation: Int(oxygenSaturation),
+            weight: Double(weight),
+            height: Double(height)
+        ) : nil
 
         return PatientIntake(
             patientId: patientId,
@@ -915,8 +912,12 @@ struct PatientCheckInFlow: View {
 
     // MARK: - Vital Validation (reused from old NewCaseSheet)
 
+    private var hasAnyVitals: Bool {
+        !heartRate.isEmpty || !bloodPressure.isEmpty || !temperature.isEmpty ||
+        !oxygenSaturation.isEmpty || !weight.isEmpty || !height.isEmpty
+    }
+
     private var vitalValidationWarnings: [String] {
-        guard includeVitals else { return [] }
         var warnings: [String] = []
         if let hr = Int(heartRate) {
             if hr < 20 || hr > 300 { warnings.append("Heart rate \(hr) outside physiologic range (20-300)") }
@@ -931,9 +932,6 @@ struct PatientCheckInFlow: View {
             } else if temp < 80 || temp > 115 {
                 warnings.append("Temperature \(String(format: "%.1f", temp))°F outside expected range")
             }
-        }
-        if let rr = Int(respiratoryRate) {
-            if rr < 4 || rr > 60 { warnings.append("Respiratory rate \(rr) outside expected range (4-60)") }
         }
         if !bloodPressure.isEmpty {
             let parts = bloodPressure.components(separatedBy: "/")

@@ -335,7 +335,9 @@ struct MedicalPanel: View {
                     bloodPressure: "150/95",
                     temperature: 98.6,
                     respiratoryRate: 22,
-                    oxygenSaturation: 94
+                    oxygenSaturation: 94,
+                    weight: 195,
+                    height: 70
                 ),
                 medicalHistory: ["Hypertension", "Type 2 Diabetes"],
                 currentMedications: ["Metformin", "Lisinopril"],
@@ -727,11 +729,12 @@ private struct MedicalCaseDetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Vital Signs")
                         .font(.subheadline.weight(.medium))
-                    if let hr = vitals.heartRate { infoRow("Heart Rate", "\(hr) bpm") }
+                    if let w = vitals.weight { infoRow("Weight", String(format: "%.0f lbs", w)) }
+                    if let h = vitals.height { infoRow("Height", String(format: "%.0f in", h)) }
                     if let bp = vitals.bloodPressure { infoRow("Blood Pressure", bp) }
+                    if let hr = vitals.heartRate { infoRow("Heart Rate", "\(hr) BPM") }
                     if let temp = vitals.temperature { infoRow("Temperature", String(format: "%.1f°F", temp)) }
-                    if let rr = vitals.respiratoryRate { infoRow("Respiratory Rate", "\(rr)/min") }
-                    if let spo2 = vitals.oxygenSaturation { infoRow("SpO2", "\(spo2)%") }
+                    if let spo2 = vitals.oxygenSaturation { infoRow("Pulse Ox", "\(spo2)%") }
                 }
             }
 
@@ -2054,6 +2057,8 @@ private struct MedicalCaseDetailView: View {
                 ]
                 entries.append(["resource": obs, "request": ["method": "POST", "url": "Observation"]])
             }
+            addVital("29463-7", "Body weight", vitals.weight, "lbs")
+            addVital("8302-2", "Body height", vitals.height, "in")
             addVital("8867-4", "Heart rate", vitals.heartRate, "bpm")
             addVital("8310-5", "Body temperature", vitals.temperature, "°F")
             addVital("9279-1", "Respiratory rate", vitals.respiratoryRate, "/min")
