@@ -182,7 +182,7 @@ struct MedicalPanel: View {
                           ? "line.3.horizontal.decrease.circle"
                           : "line.3.horizontal.decrease.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(sidebarFilter == .active ? .secondary : .accentColor)
+                        .foregroundStyle(sidebarFilter == .active ? Color.secondary : Color.accentColor)
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
