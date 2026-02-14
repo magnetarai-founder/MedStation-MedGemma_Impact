@@ -138,6 +138,7 @@ DerivedData/
 coverage/
 
 # Competition submission materials (private)
+docs/
 MEDGEMMA_SUBMISSION.md
 VIDEO_SCRIPT.md
 

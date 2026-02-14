@@ -28,6 +28,13 @@ struct MedicalPanel: View {
     @State private var showBenchmark = false
     @State private var benchmarkHarness = MedicalBenchmarkHarness()
     @State private var showAnalytics = false
+    @State private var sidebarFilter: SidebarFilter = .active
+
+    private enum SidebarFilter: String, CaseIterable {
+        case active = "Active"
+        case archived = "Archived"
+        case deleted = "Deleted"
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -115,9 +122,19 @@ struct MedicalPanel: View {
     // MARK: - Sidebar
 
     private var filteredCases: [MedicalCase] {
-        guard !searchText.isEmpty else { return cases }
+        let byStatus = cases.filter { medicalCase in
+            switch sidebarFilter {
+            case .active:
+                return medicalCase.status != .archived && medicalCase.status != .deleted
+            case .archived:
+                return medicalCase.status == .archived
+            case .deleted:
+                return medicalCase.status == .deleted
+            }
+        }
+        guard !searchText.isEmpty else { return byStatus }
         let query = searchText.lowercased()
-        return cases.filter {
+        return byStatus.filter {
             $0.intake.patientId.lowercased().contains(query) ||
             $0.intake.chiefComplaint.lowercased().contains(query) ||
             $0.intake.symptoms.contains(where: { $0.lowercased().contains(query) })
@@ -130,12 +147,22 @@ struct MedicalPanel: View {
                 Text("Medical Cases")
                     .font(.headline)
                 Spacer()
-                Text("\(cases.count)")
+                Text("\(filteredCases.count)")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+
+            // Filter toggle
+            Picker("Filter", selection: $sidebarFilter) {
+                ForEach(SidebarFilter.allCases, id: \.self) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 6)
 
             // Search bar
             HStack(spacing: 8) {
@@ -167,20 +194,28 @@ struct MedicalPanel: View {
             if isLoading {
                 ProgressView()
                     .frame(maxHeight: .infinity)
-            } else if cases.isEmpty {
+            } else if filteredCases.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "cross.case")
+                    Image(systemName: emptyStateIcon)
                         .font(.system(size: 40))
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
-                    Text("No Cases")
+                    Text(emptyStateTitle)
                         .font(.headline)
                         .foregroundStyle(.secondary)
-                    Text("Create your first medical case")
+                    Text(emptyStateMessage)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+
+                    if sidebarFilter == .deleted {
+                        Text("Deleted cases can be restored or permanently removed.")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
                 .frame(maxHeight: .infinity)
+                .padding(.horizontal, 16)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
@@ -191,18 +226,7 @@ struct MedicalPanel: View {
                                 onSelect: { selectedCaseID = medicalCase.id }
                             )
                             .contextMenu {
-                                if medicalCase.status != .archived {
-                                    Button {
-                                        archiveCase(medicalCase.id)
-                                    } label: {
-                                        Label("Archive Case", systemImage: "archivebox")
-                                    }
-                                }
-                                Button(role: .destructive) {
-                                    deleteCase(medicalCase.id)
-                                } label: {
-                                    Label("Delete Case", systemImage: "trash")
-                                }
+                                contextMenuItems(for: medicalCase)
                             }
                         }
                     }
@@ -354,19 +378,102 @@ struct MedicalPanel: View {
         PersistenceHelpers.save(updated, to: file, label: "medical case")
     }
 
+    private var emptyStateIcon: String {
+        switch sidebarFilter {
+        case .active: return "cross.case"
+        case .archived: return "archivebox"
+        case .deleted: return "trash"
+        }
+    }
+
+    private var emptyStateTitle: String {
+        switch sidebarFilter {
+        case .active: return "No Cases"
+        case .archived: return "No Archived Cases"
+        case .deleted: return "Trash Is Empty"
+        }
+    }
+
+    private var emptyStateMessage: String {
+        switch sidebarFilter {
+        case .active: return "Create your first medical case"
+        case .archived: return "Archived cases will appear here"
+        case .deleted: return "Deleted cases will appear here"
+        }
+    }
+
+    @ViewBuilder
+    private func contextMenuItems(for medicalCase: MedicalCase) -> some View {
+        switch medicalCase.status {
+        case .pending, .analyzing, .completed:
+            Button {
+                archiveCase(medicalCase.id)
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+            Button(role: .destructive) {
+                softDeleteCase(medicalCase.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        case .archived:
+            Button {
+                restoreCase(medicalCase.id)
+            } label: {
+                Label("Move to Active", systemImage: "tray.and.arrow.up")
+            }
+            Button(role: .destructive) {
+                softDeleteCase(medicalCase.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        case .deleted:
+            Button {
+                restoreCase(medicalCase.id)
+            } label: {
+                Label("Restore", systemImage: "arrow.uturn.backward")
+            }
+            Button(role: .destructive) {
+                permanentlyDeleteCase(medicalCase.id)
+            } label: {
+                Label("Delete Forever", systemImage: "trash.slash")
+            }
+        }
+    }
+
     private func archiveCase(_ id: UUID) {
         guard let index = cases.firstIndex(where: { $0.id == id }) else { return }
         cases[index].status = .archived
         saveCaseToFile(cases[index])
+        if selectedCaseID == id { selectedCaseID = nil }
         logger.info("Archived medical case \(id.uuidString.prefix(8))")
     }
 
-    private func deleteCase(_ id: UUID) {
+    private func softDeleteCase(_ id: UUID) {
+        guard let index = cases.firstIndex(where: { $0.id == id }) else { return }
+        cases[index].status = .deleted
+        saveCaseToFile(cases[index])
+        if selectedCaseID == id { selectedCaseID = nil }
+        logger.info("Soft-deleted medical case \(id.uuidString.prefix(8))")
+    }
+
+    private func restoreCase(_ id: UUID) {
+        guard let index = cases.firstIndex(where: { $0.id == id }) else { return }
+        if let result = cases[index].result {
+            cases[index].status = .completed
+        } else {
+            cases[index].status = .pending
+        }
+        saveCaseToFile(cases[index])
+        logger.info("Restored medical case \(id.uuidString.prefix(8))")
+    }
+
+    private func permanentlyDeleteCase(_ id: UUID) {
         let file = Self.storageDirectory.appendingPathComponent("\(id.uuidString).json")
         PersistenceHelpers.remove(at: file, label: "medical case")
         cases.removeAll { $0.id == id }
         if selectedCaseID == id { selectedCaseID = nil }
-        logger.info("Deleted medical case \(id.uuidString.prefix(8))")
+        logger.info("Permanently deleted medical case \(id.uuidString.prefix(8))")
     }
 
     private static var storageDirectory: URL {
@@ -440,6 +547,7 @@ private struct CaseListItem: View {
         case .analyzing: return .blue
         case .completed: return .green
         case .archived: return .gray
+        case .deleted: return .red
         }
     }
 

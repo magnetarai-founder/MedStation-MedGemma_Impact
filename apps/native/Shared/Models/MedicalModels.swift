@@ -210,6 +210,7 @@ struct MedicalCase: Identifiable, Codable, Equatable, Sendable {
         case analyzing = "Analyzing"
         case completed = "Completed"
         case archived = "Archived"
+        case deleted = "Deleted"
     }
 
     init(
