@@ -31,9 +31,17 @@ struct MedicalPanel: View {
     @State private var sidebarFilter: SidebarFilter = .active
 
     private enum SidebarFilter: String, CaseIterable {
-        case active = "Active"
+        case active = "All Messages"
         case archived = "Archived"
-        case deleted = "Deleted"
+        case deleted = "Recently Deleted"
+
+        var icon: String {
+            switch self {
+            case .active: return "tray.full"
+            case .archived: return "archivebox"
+            case .deleted: return "trash"
+            }
+        }
     }
 
     var body: some View {
@@ -143,26 +151,45 @@ struct MedicalPanel: View {
 
     private var casesSidebar: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Medical Cases")
+            HStack(spacing: 6) {
+                Text(sidebarFilter.rawValue)
                     .font(.headline)
                 Spacer()
                 Text("\(filteredCases.count)")
-                    .font(.caption)
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color(NSColor.separatorColor).opacity(0.3)))
+
+                Menu {
+                    ForEach(SidebarFilter.allCases, id: \.self) { filter in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                sidebarFilter = filter
+                            }
+                        } label: {
+                            Label {
+                                Text(filter.rawValue)
+                            } icon: {
+                                Image(systemName: filter.icon)
+                            }
+                        }
+                        .disabled(sidebarFilter == filter)
+                    }
+                } label: {
+                    Image(systemName: sidebarFilter == .active
+                          ? "line.3.horizontal.decrease.circle"
+                          : "line.3.horizontal.decrease.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(sidebarFilter == .active ? .secondary : .accentColor)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 24)
+                .help("Filter cases")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-
-            // Filter toggle
-            Picker("Filter", selection: $sidebarFilter) {
-                ForEach(SidebarFilter.allCases, id: \.self) { filter in
-                    Text(filter.rawValue).tag(filter)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 6)
 
             // Search bar
             HStack(spacing: 8) {
@@ -461,11 +488,7 @@ struct MedicalPanel: View {
 
     private func restoreCase(_ id: UUID) {
         guard let index = cases.firstIndex(where: { $0.id == id }) else { return }
-        if let result = cases[index].result {
-            cases[index].status = .completed
-        } else {
-            cases[index].status = .pending
-        }
+        cases[index].status = cases[index].result != nil ? .completed : .pending
         saveCaseToFile(cases[index])
         logger.info("Restored medical case \(id.uuidString.prefix(8))")
     }
