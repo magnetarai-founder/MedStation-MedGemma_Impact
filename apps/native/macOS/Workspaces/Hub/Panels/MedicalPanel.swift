@@ -613,41 +613,35 @@ private struct MedicalCaseDetailView: View {
     @State private var showChat = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    headerSection
-                    Divider()
-                    intakeSection
-
-                    if medicalCase.result == nil && !isRunningWorkflow {
-                        Divider()
-                        runWorkflowSection
-                    }
-
-                    if isRunningWorkflow {
-                        Divider()
-                        progressSection
-                    }
-
-                    if let result = medicalCase.result {
-                        Divider()
-                        resultsSection(result)
-                        Divider()
-                        feedbackSection
-                    }
-                }
-                .padding(20)
-            }
-
-            if showChat {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                headerSection
                 Divider()
-                followUpChatPane
-                    .frame(width: 360)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                intakeSection
+
+                if medicalCase.result == nil && !isRunningWorkflow {
+                    Divider()
+                    runWorkflowSection
+                }
+
+                if isRunningWorkflow {
+                    Divider()
+                    progressSection
+                }
+
+                if let result = medicalCase.result {
+                    Divider()
+                    resultsSection(result)
+                    Divider()
+                    feedbackSection
+                }
             }
+            .padding(20)
         }
-        .animation(.easeInOut(duration: 0.2), value: showChat)
+        .inspector(isPresented: $showChat) {
+            followUpChatPane
+                .inspectorColumnWidth(min: 300, ideal: 360, max: 480)
+        }
         .onAppear {
             chatMessages = medicalCase.followUpMessages
         }
