@@ -149,28 +149,33 @@ struct MedicalPanel: View {
         }
     }
 
+    private func countForFilter(_ filter: SidebarFilter) -> Int {
+        cases.filter { medicalCase in
+            switch filter {
+            case .active:
+                return medicalCase.status != .archived && medicalCase.status != .deleted
+            case .archived:
+                return medicalCase.status == .archived
+            case .deleted:
+                return medicalCase.status == .deleted
+            }
+        }.count
+    }
+
     private var casesSidebar: some View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Text(sidebarFilter.rawValue)
                     .font(.headline)
                 Spacer()
-                Text("\(filteredCases.count)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color(NSColor.separatorColor).opacity(0.3)))
 
                 Menu {
                     ForEach(SidebarFilter.allCases, id: \.self) { filter in
                         Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                sidebarFilter = filter
-                            }
+                            sidebarFilter = filter
                         } label: {
                             Label {
-                                Text(filter.rawValue)
+                                Text("\(filter.rawValue) (\(countForFilter(filter)))")
                             } icon: {
                                 Image(systemName: filter.icon)
                             }
@@ -185,6 +190,7 @@ struct MedicalPanel: View {
                         .foregroundStyle(sidebarFilter == .active ? Color.secondary : Color.accentColor)
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .frame(width: 24)
                 .help("Filter cases")
             }
