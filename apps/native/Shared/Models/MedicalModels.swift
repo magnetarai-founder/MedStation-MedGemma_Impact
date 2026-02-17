@@ -75,7 +75,6 @@ struct PatientIntake: Identifiable, Codable, Equatable, Hashable, Sendable {
 enum BiologicalSex: String, Codable, CaseIterable, Sendable {
     case male = "Male"
     case female = "Female"
-    case other = "Other"
 }
 
 // MARK: - Vital Signs

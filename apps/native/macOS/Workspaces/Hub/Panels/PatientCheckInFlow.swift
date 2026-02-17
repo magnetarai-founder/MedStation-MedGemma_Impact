@@ -221,7 +221,7 @@ struct PatientCheckInFlow: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(currentStep == .chiefComplaint && chiefComplaint.isEmpty)
+                .disabled(!isCurrentStepValid)
                 .keyboardShortcut(.defaultAction)
             }
         }
@@ -290,37 +290,34 @@ struct PatientCheckInFlow: View {
             }
 
             // Demographics row
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Patient ID")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                     TextField("Optional", text: $patientId)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Age")
+                    Text("Age *")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                     TextField("Years", text: $age)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 70)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Biological Sex")
+                    Text("Sex at Birth *")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                     Picker("Sex", selection: $sex) {
-                        Text("Not specified").tag(nil as BiologicalSex?)
+                        Text("Select").tag(nil as BiologicalSex?)
                         ForEach(BiologicalSex.allCases, id: \.self) { s in
                             Text(s.rawValue).tag(s as BiologicalSex?)
                         }
                     }
                     .labelsHidden()
-                    .frame(width: 140)
                 }
 
                 if sex == .female {
@@ -331,8 +328,15 @@ struct PatientCheckInFlow: View {
 
             // Symptoms
             VStack(alignment: .leading, spacing: 6) {
-                Text("Symptoms")
-                    .font(.headline)
+                HStack(spacing: 4) {
+                    Text("Symptoms *")
+                        .font(.headline)
+                    if !symptomsText.isEmpty && symptomsText.count < 10 {
+                        Text("(minimum 10 characters)")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
                 TextField("Comma-separated (e.g., chest pain, shortness of breath, nausea)", text: $symptomsText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2...4)
@@ -509,7 +513,7 @@ struct PatientCheckInFlow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 12) {
                         if !age.isEmpty { Text("Age: \(age)").font(.caption) }
-                        if let sex { Text("Sex: \(sex.rawValue)").font(.caption) }
+                        if let sex { Text("Sex at Birth: \(sex.rawValue)").font(.caption) }
                         if isPregnant { Text("Pregnant").font(.caption).foregroundStyle(.pink) }
                     }
                     if !symptomsText.isEmpty {
@@ -910,7 +914,25 @@ struct PatientCheckInFlow: View {
         )
     }
 
-    // MARK: - Vital Validation (reused from old NewCaseSheet)
+    // MARK: - Step Validation
+
+    private var isCurrentStepValid: Bool {
+        switch currentStep {
+        case .chiefComplaint:
+            return !chiefComplaint.trimmingCharacters(in: .whitespaces).isEmpty
+        case .patientDetails:
+            return !age.isEmpty
+                && Int(age) != nil
+                && sex != nil
+                && symptomsText.count >= 10
+        case .medicalBackground, .review:
+            return true
+        case .analyzing, .results:
+            return true
+        }
+    }
+
+    // MARK: - Vital Validation
 
     private var hasAnyVitals: Bool {
         !heartRate.isEmpty || !bloodPressure.isEmpty || !temperature.isEmpty ||
