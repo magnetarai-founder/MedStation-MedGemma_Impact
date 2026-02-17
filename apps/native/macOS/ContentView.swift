@@ -34,11 +34,6 @@ struct ContentView: View {
         }
         .task {
             await authStore.bootstrap()
-
-            if authStore.authState == .welcome && !attemptedBiometricLogin {
-                attemptedBiometricLogin = true
-                await attemptBiometricAutoLogin()
-            }
         }
         .environment(authStore)
     }
@@ -85,7 +80,7 @@ struct ContentView: View {
 struct MainAppView: View {
     @Environment(NavigationStore.self) private var navigationStore
     @Environment(AuthStore.self) private var authStore
-    @AppStorage("autoLockEnabled") private var autoLockEnabled = true
+    @AppStorage("autoLockEnabled") private var autoLockEnabled = false
     @AppStorage("autoLockTimeout") private var autoLockTimeout = 15
 
     var body: some View {

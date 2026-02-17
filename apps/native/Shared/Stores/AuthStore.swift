@@ -72,7 +72,7 @@ final class AuthStore {
 
     // MARK: - Observable State
 
-    private(set) var authState: AuthState = .welcome
+    private(set) var authState: AuthState = .checking
     private(set) var user: ApiUser?
     private(set) var userSetupComplete: Bool?
     private(set) var loading = false
