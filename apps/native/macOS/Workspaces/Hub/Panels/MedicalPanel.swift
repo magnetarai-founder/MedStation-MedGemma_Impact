@@ -31,9 +31,9 @@ struct MedicalPanel: View {
     @State private var sidebarFilter: SidebarFilter = .active
 
     private enum SidebarFilter: String, CaseIterable {
-        case active = "All Messages"
+        case active = "Active"
         case archived = "Archived"
-        case deleted = "Recently Deleted"
+        case deleted = "Trash"
 
         var icon: String {
             switch self {
