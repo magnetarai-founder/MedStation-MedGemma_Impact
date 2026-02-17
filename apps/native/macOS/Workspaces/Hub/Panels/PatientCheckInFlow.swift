@@ -63,7 +63,7 @@ struct PatientCheckInFlow: View {
     @State private var chiefComplaint = ""
     @State private var onsetValue = ""
     @State private var onsetUnit: OnsetUnit = .hours
-    @State private var severity: PatientIntake.Severity = .moderate
+    @State private var severity: PatientIntake.Severity?
 
     // MARK: - Form State (Step 2: Patient Details)
 
@@ -286,11 +286,12 @@ struct PatientCheckInFlow: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Severity")
+                    Text("Severity *")
                         .font(.headline)
                     Picker("Severity", selection: $severity) {
+                        Text("Select").tag(nil as PatientIntake.Severity?)
                         ForEach(PatientIntake.Severity.allCases, id: \.self) { sev in
-                            Text(sev.rawValue).tag(sev)
+                            Text(sev.rawValue).tag(sev as PatientIntake.Severity?)
                         }
                     }
                     .labelsHidden()
@@ -517,9 +518,11 @@ struct PatientCheckInFlow: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        Label(severity.rawValue, systemImage: "gauge.with.dots.needle.33percent")
-                            .font(.caption)
-                            .foregroundStyle(severityColor)
+                        if let severity {
+                            Label(severity.rawValue, systemImage: "gauge.with.dots.needle.33percent")
+                                .font(.caption)
+                                .foregroundStyle(severityColor)
+                        }
                     }
                 }
             }
@@ -612,6 +615,7 @@ struct PatientCheckInFlow: View {
         case .moderate: .yellow
         case .severe: .orange
         case .critical: .red
+        case nil: .secondary
         }
     }
 
@@ -920,7 +924,7 @@ struct PatientCheckInFlow: View {
             chiefComplaint: chiefComplaint,
             symptoms: symptoms,
             onsetTime: onsetValue.isEmpty ? "" : "\(onsetValue) \(onsetUnit.rawValue.lowercased()) ago",
-            severity: severity,
+            severity: severity ?? .moderate,
             vitalSigns: vitals,
             medicalHistory: history,
             currentMedications: meds,
@@ -935,6 +939,8 @@ struct PatientCheckInFlow: View {
         switch currentStep {
         case .chiefComplaint:
             return !chiefComplaint.trimmingCharacters(in: .whitespaces).isEmpty
+                && !onsetValue.isEmpty
+                && severity != nil
         case .patientDetails:
             return !age.isEmpty
                 && Int(age) != nil
