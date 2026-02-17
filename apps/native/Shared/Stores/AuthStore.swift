@@ -78,9 +78,6 @@ final class AuthStore {
     private(set) var loading = false
     private(set) var error: String?
 
-    private let keychain = KeychainService.shared
-    private let apiClient = ApiClient.shared
-
     private init() {}
 
     // MARK: - Bootstrap Flow
@@ -93,10 +90,11 @@ final class AuthStore {
         await BackendManager.shared.autoStartBackend()
 
         // Demo mode: auto-authenticate locally (no backend auth endpoints needed)
+        // Use a static device ID to avoid triggering KeychainService via AuthService.shared
         self.user = ApiUser(
             userId: "demo-clinician",
             username: "Clinician",
-            deviceId: AuthService.shared.deviceId,
+            deviceId: "demo-device",
             role: "clinician"
         )
         userSetupComplete = true
@@ -110,7 +108,7 @@ final class AuthStore {
     /// Save token after login and bootstrap
     func saveToken(_ token: String) async {
         do {
-            try keychain.saveToken(token)
+            try KeychainService.shared.saveToken(token)
             await bootstrap()
         } catch {
             self.error = error.localizedDescription
@@ -143,7 +141,7 @@ final class AuthStore {
 
     private func clearAuthAndRestart() async {
         do {
-            try keychain.deleteToken()
+            try KeychainService.shared.deleteToken()
         } catch {
             logger.warning("Failed to delete auth token on logout: \(error)")
         }

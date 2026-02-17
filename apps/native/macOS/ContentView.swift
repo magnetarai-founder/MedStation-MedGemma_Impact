@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import LocalAuthentication
 import AppKit
 import os
 
@@ -14,7 +13,6 @@ private let logger = Logger(subsystem: "com.medstation.app", category: "ContentV
 
 struct ContentView: View {
     @Environment(AuthStore.self) private var authStore
-    @State private var attemptedBiometricLogin = false
 
     var body: some View {
         Group {
@@ -36,42 +34,6 @@ struct ContentView: View {
             await authStore.bootstrap()
         }
         .environment(authStore)
-    }
-
-    // MARK: - Biometric Auto-Login
-
-    private func attemptBiometricAutoLogin() async {
-        let keychainService = KeychainService.shared
-        let biometricService = BiometricAuthService.shared
-
-        guard keychainService.hasBiometricCredentials(),
-              biometricService.isBiometricAvailable else {
-            return
-        }
-
-        do {
-            let success = try await biometricService.authenticate(
-                reason: "Sign in to MedStation"
-            )
-
-            guard success else { return }
-
-            let context = LAContext()
-            let credentials = try keychainService.loadBiometricCredentials(context: context)
-
-            let response = try await AuthService.shared.login(
-                username: credentials.username,
-                password: credentials.password
-            )
-
-            await authStore.saveToken(response.token)
-
-        } catch BiometricError.userCancel {
-            return
-        } catch {
-            logger.info("Biometric auto-login failed: \(error.localizedDescription)")
-            return
-        }
     }
 }
 
