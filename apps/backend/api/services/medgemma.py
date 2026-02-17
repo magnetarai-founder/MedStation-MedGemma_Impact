@@ -75,9 +75,10 @@ class MedGemmaService:
 
             logger.info(f"Using device: {self.device}")
 
-            # float16 is faster than bfloat16 on MPS (native Metal fp16 support)
+            # float32 on MPS — float16 causes NaN in softmax during sampling
+            # (known PyTorch MPS numerical instability with half-precision LLMs)
             if self.device == "mps":
-                dtype = torch.float16
+                dtype = torch.float32
             elif self.device == "cuda":
                 dtype = torch.bfloat16
             else:

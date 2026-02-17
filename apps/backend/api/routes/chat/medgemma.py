@@ -92,15 +92,21 @@ async def medgemma_generate(req: GenerateRequest):
             media_type="application/x-ndjson",
         )
 
-    response = await svc.generate(
-        prompt=req.prompt,
-        system_prompt=req.system,
-        image=image,
-        max_new_tokens=req.max_tokens,
-        temperature=req.temperature,
-    )
-
-    return {"response": response, "model": "medgemma-1.5-4b-it"}
+    try:
+        response = await svc.generate(
+            prompt=req.prompt,
+            system_prompt=req.system,
+            image=image,
+            max_new_tokens=req.max_tokens,
+            temperature=req.temperature,
+        )
+        return {"response": response, "model": "medgemma-1.5-4b-it"}
+    except Exception as e:
+        logger.error(f"MedGemma generate failed: {e}", exc_info=True)
+        return JSONResponse(
+            {"error": "Generation failed", "detail": str(e)},
+            status_code=500,
+        )
 
 
 async def _stream_response(svc, req: GenerateRequest, image):
