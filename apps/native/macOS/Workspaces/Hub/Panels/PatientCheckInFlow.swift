@@ -292,14 +292,6 @@ struct PatientCheckInFlow: View {
             // Demographics row
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Patient ID")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    TextField("Optional", text: $patientId)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
                     Text("Age *")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
