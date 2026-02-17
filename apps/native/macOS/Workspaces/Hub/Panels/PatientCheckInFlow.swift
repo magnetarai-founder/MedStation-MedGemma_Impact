@@ -305,6 +305,7 @@ struct PatientCheckInFlow: View {
                         .foregroundStyle(.secondary)
                     TextField("Years", text: $age)
                         .textFieldStyle(.roundedBorder)
+                        .frame(width: 70)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
