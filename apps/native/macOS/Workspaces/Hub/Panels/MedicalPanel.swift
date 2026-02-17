@@ -681,28 +681,6 @@ private struct MedicalCaseDetailView: View {
             Spacer()
 
             if let result = medicalCase.result {
-                Button {
-                    showChat.toggle()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: showChat ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
-                            .font(.system(size: 12))
-                        Text("AI Chat")
-                            .font(.system(size: 12, weight: .medium))
-                        if !chatMessages.isEmpty {
-                            Text("\(chatMessages.count)")
-                                .font(.system(size: 9, weight: .bold).monospaced())
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Capsule().fill(Color.purple))
-                        }
-                    }
-                    .foregroundStyle(showChat ? .purple : .secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(showChat ? "Close AI chat" : "Open AI chat")
-
                 Menu {
                     Button {
                         exportMedicalReport(result)
