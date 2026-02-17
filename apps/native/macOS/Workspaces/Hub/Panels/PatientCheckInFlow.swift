@@ -39,6 +39,15 @@ enum CheckInStep: Int, CaseIterable {
     static let intakeSteps: [CheckInStep] = [.chiefComplaint, .patientDetails, .medicalBackground, .review]
 }
 
+enum OnsetUnit: String, CaseIterable {
+    case minutes = "Minutes"
+    case hours = "Hours"
+    case days = "Days"
+    case weeks = "Weeks"
+    case months = "Months"
+    case years = "Years"
+}
+
 // MARK: - Patient Check-In Flow
 
 struct PatientCheckInFlow: View {
@@ -52,7 +61,8 @@ struct PatientCheckInFlow: View {
     // MARK: - Form State (Step 1: Chief Complaint)
 
     @State private var chiefComplaint = ""
-    @State private var onsetTime = ""
+    @State private var onsetValue = ""
+    @State private var onsetUnit: OnsetUnit = .hours
     @State private var severity: PatientIntake.Severity = .moderate
 
     // MARK: - Form State (Step 2: Patient Details)
@@ -259,8 +269,20 @@ struct PatientCheckInFlow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Onset")
                         .font(.headline)
-                    TextField("e.g., 2 hours ago, 3 days", text: $onsetTime)
-                        .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 8) {
+                        TextField("#", text: $onsetValue)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 60)
+                        Picker("Unit", selection: $onsetUnit) {
+                            ForEach(OnsetUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue).tag(unit)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 100)
+                        Text("ago")
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -490,8 +512,8 @@ struct PatientCheckInFlow: View {
                     Text(chiefComplaint)
                         .font(.body)
                     HStack {
-                        if !onsetTime.isEmpty {
-                            Label(onsetTime, systemImage: "clock")
+                        if !onsetValue.isEmpty {
+                            Label("\(onsetValue) \(onsetUnit.rawValue) ago", systemImage: "clock")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -897,7 +919,7 @@ struct PatientCheckInFlow: View {
             isPregnant: isPregnant,
             chiefComplaint: chiefComplaint,
             symptoms: symptoms,
-            onsetTime: onsetTime,
+            onsetTime: onsetValue.isEmpty ? "" : "\(onsetValue) \(onsetUnit.rawValue.lowercased()) ago",
             severity: severity,
             vitalSigns: vitals,
             medicalHistory: history,
