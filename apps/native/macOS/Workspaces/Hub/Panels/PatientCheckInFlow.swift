@@ -439,59 +439,8 @@ struct PatientCheckInFlow: View {
                     .lineLimit(2...4)
             }
 
-            // Medical Images
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Medical Images")
-                    .font(.headline)
-
-                Button {
-                    pickImages()
-                } label: {
-                    Label("Attach Images (X-rays, labs, photos)", systemImage: "photo.badge.plus")
-                }
-
-                if !attachedImagePaths.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(attachedImagePaths, id: \.self) { path in
-                                ZStack(alignment: .topTrailing) {
-                                    if let img = NSImage(contentsOfFile: path) {
-                                        Image(nsImage: img)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 70, height: 70)
-                                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                                    } else {
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.gray.opacity(0.2))
-                                            .frame(width: 70, height: 70)
-                                            .overlay {
-                                                Image(systemName: "photo")
-                                                    .foregroundStyle(.tertiary)
-                                            }
-                                    }
-
-                                    Button {
-                                        attachedImagePaths.removeAll { $0 == path }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundStyle(.white, .red)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .offset(x: 4, y: -4)
-                                }
-                            }
-                        }
-                    }
-                    Text("\(attachedImagePaths.count) image(s) — will be analyzed by on-device Vision pipeline")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            // Medical Images — UI hidden for competition submission; vision pipeline code retained
+            // VStack { ... image picker UI ... }
         }
     }
 
@@ -562,11 +511,7 @@ struct PatientCheckInFlow: View {
                         Text("Allergies: \(allergiesText)")
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    if !attachedImagePaths.isEmpty {
-                        Text("\(attachedImagePaths.count) image(s) attached")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    if medicalHistoryText.isEmpty && medicationsText.isEmpty && allergiesText.isEmpty && attachedImagePaths.isEmpty {
+                    if medicalHistoryText.isEmpty && medicationsText.isEmpty && allergiesText.isEmpty {
                         Text("None provided")
                             .font(.caption).foregroundStyle(.tertiary)
                     }
