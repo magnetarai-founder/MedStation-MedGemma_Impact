@@ -608,19 +608,6 @@ with gr.Blocks(
 
             disclaimer_md = gr.Markdown()
 
-    # ---- Follow-up chat ----
-    gr.Markdown("---")
-    gr.Markdown("### Follow-Up Chat")
-
-    chatbot = gr.Chatbot(label="Ask MedGemma follow-up questions", height=250, type="messages")
-    with gr.Row():
-        chat_input = gr.Textbox(
-            label="Question",
-            placeholder="Ask about the diagnosis, treatment options, or next steps...",
-            scale=4, show_label=False,
-        )
-        chat_send = gr.Button("Send", variant="primary", scale=1)
-
     # ---- Wiring ----
     intake_inputs = [
         chief_complaint, symptoms, age, sex, hr, bp, temp, rr, spo2,
@@ -633,17 +620,6 @@ with gr.Blocks(
     run_btn.click(fn=run_workflow, inputs=intake_inputs, outputs=result_outputs)
     demo_btn.click(fn=load_demo, outputs=intake_inputs)
 
-    chat_send.click(
-        fn=chat_followup,
-        inputs=[chat_input, chatbot, chief_complaint, triage_html],
-        outputs=[chatbot, chat_input],
-    )
-    chat_input.submit(
-        fn=chat_followup,
-        inputs=[chat_input, chatbot, chief_complaint, triage_html],
-        outputs=[chatbot, chat_input],
-    )
-
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name="0.0.0.0", server_port=7860)
