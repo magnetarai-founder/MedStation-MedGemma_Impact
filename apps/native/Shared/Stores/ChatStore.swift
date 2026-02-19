@@ -32,9 +32,6 @@ final class ChatStore {
     var isLoadingSessions: Bool = false
     var error: ChatError?
     var selectedModel: String = "google/medgemma-1.5-4b-it"
-    var availableModels: [String] = ["google/medgemma-1.5-4b-it"]
-    var selectedMode: String = "intelligent"
-    var selectedModelId: String? = nil
     var contextTokensUsed: Int { 0 }
 
     // MARK: - Per-Session State
@@ -47,7 +44,7 @@ final class ChatStore {
 
     // MARK: - Init
 
-    init(apiClient: ApiClient = .shared) {
+    init() {
         if let savedFilter = UserDefaults.standard.string(forKey: "chat.selectedFilter"),
            let filter = ConversationState(rawValue: savedFilter) {
             self.selectedFilter = filter
@@ -147,38 +144,7 @@ final class ChatStore {
         }
     }
 
-    // MARK: - Model Selection (simplified — single model)
-
-    struct SessionModelOverride: Codable, Sendable {
-        let mode: String
-        let modelId: String?
-    }
-
-    @ObservationIgnored
-    private var workspaceModelOverrides: [WorkspaceAIContext: SessionModelOverride] = [:]
-
-    func setWorkspaceModelOverride(context: WorkspaceAIContext, mode: String, modelId: String?) {
-        workspaceModelOverrides[context] = SessionModelOverride(mode: mode, modelId: modelId)
-    }
-
-    func clearWorkspaceModelOverride(context: WorkspaceAIContext) {
-        workspaceModelOverrides.removeValue(forKey: context)
-    }
-
-    func hasWorkspaceModelOverride(for context: WorkspaceAIContext) -> Bool {
-        workspaceModelOverrides[context] != nil
-    }
-
-    func workspaceModelSelection(for context: WorkspaceAIContext) -> (mode: String, modelId: String?) {
-        if let override = workspaceModelOverrides[context] {
-            return (override.mode, override.modelId)
-        }
-        return (selectedMode, selectedModelId)
-    }
-
-    func fetchModels() async {
-        // No-op — MedStation uses MedGemma exclusively via MLX
-    }
+    // Single model — MedGemma 4B via MLX
 
     // MARK: - Messaging (MLX native)
 

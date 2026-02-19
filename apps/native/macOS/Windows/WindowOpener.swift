@@ -13,10 +13,6 @@ final class WindowOpener {
     static let shared = WindowOpener()
     private init() {}
 
-    func openModelManager() {
-        openWindow(id: "model-manager")
-    }
-
     func openAIAssistant() {
         openWindow(id: "detached-ai")
     }

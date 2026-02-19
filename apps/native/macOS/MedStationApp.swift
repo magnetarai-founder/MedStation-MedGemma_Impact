@@ -64,14 +64,6 @@ struct MedStationApp: App {
             SettingsView()
         }
 
-        // Model Manager window (for managing MedGemma and other models)
-        WindowGroup("Model Manager", id: "model-manager") {
-            ModelManagerWindow()
-        }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 520, height: 580)
-
         // AI Assistant window (⇧⌘P) — floating, usable from any context
         WindowGroup("AI Assistant", id: "detached-ai") {
             DetachedAIWindow()

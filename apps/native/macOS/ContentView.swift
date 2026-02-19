@@ -17,14 +17,9 @@ struct ContentView: View {
     var body: some View {
         Group {
             switch authStore.authState {
-            case .welcome:
-                WelcomeView()
-
-            case .checking:
-                LoadingView(message: "Checking authentication...")
-
-            case .setupNeeded:
-                LoadingView(message: "Setting up...")
+            case .checking, .welcome, .setupNeeded:
+                ProgressView("Loading...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             case .authenticated:
                 MainAppView()

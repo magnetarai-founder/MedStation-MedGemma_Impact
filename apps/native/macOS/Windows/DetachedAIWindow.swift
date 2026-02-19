@@ -20,7 +20,7 @@ struct DetachedAIWindow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Global header with app-wide model picker
+            // Header
             globalHeader
 
             Divider()
@@ -30,7 +30,7 @@ struct DetachedAIWindow: View {
 
             Divider()
 
-            // Per-tab sub-header: tab model picker + session switcher
+            // Session switcher
             tabSubHeader
 
             Divider()
@@ -75,23 +75,18 @@ struct DetachedAIWindow: View {
 
             Spacer()
 
-            // Global model picker (sets app-wide default)
-            Text("Global")
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-
-            ModelSelectorMenu(
-                selectedMode: Binding(
-                    get: { chatStore.selectedMode },
-                    set: { chatStore.selectedMode = $0 }
-                ),
-                selectedModelId: Binding(
-                    get: { chatStore.selectedModelId },
-                    set: { chatStore.selectedModelId = $0 }
-                ),
-                availableModels: chatStore.availableModels,
-                onRefresh: { await chatStore.fetchModels() }
-            )
+            // Model badge (single model — MedGemma 4B via MLX)
+            HStack(spacing: 6) {
+                Image(systemName: "cpu")
+                    .font(.system(size: 13))
+                Text("MedGemma 4B")
+                    .font(.system(size: 13))
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.surfaceSecondary)
+            .cornerRadius(6)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -140,57 +135,17 @@ struct DetachedAIWindow: View {
 
     private var tabSubHeader: some View {
         HStack(spacing: 12) {
-            // Per-tab model picker
-            tabModelPicker
+            Text(activeContext.displayName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
 
             Spacer()
 
-            // Session switcher for this context
             sessionPicker
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(Color.gray.opacity(0.02))
-    }
-
-    private var tabModelPicker: some View {
-        let hasOverride = chatStore.hasWorkspaceModelOverride(for: activeContext)
-        let selection = chatStore.workspaceModelSelection(for: activeContext)
-
-        return HStack(spacing: 6) {
-            Text(activeContext.displayName)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-
-            ModelSelectorMenu(
-                selectedMode: Binding(
-                    get: { selection.mode },
-                    set: { newMode in
-                        chatStore.setWorkspaceModelOverride(
-                            context: activeContext,
-                            mode: newMode,
-                            modelId: selection.modelId
-                        )
-                    }
-                ),
-                selectedModelId: Binding(
-                    get: { selection.modelId },
-                    set: { newModel in
-                        chatStore.setWorkspaceModelOverride(
-                            context: activeContext,
-                            mode: "manual",
-                            modelId: newModel
-                        )
-                    }
-                ),
-                availableModels: chatStore.availableModels,
-                onRefresh: { await chatStore.fetchModels() },
-                hasOverride: hasOverride,
-                onClearOverride: {
-                    chatStore.clearWorkspaceModelOverride(context: activeContext)
-                }
-            )
-        }
     }
 
     private var sessionPicker: some View {

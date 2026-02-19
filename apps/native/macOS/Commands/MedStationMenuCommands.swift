@@ -50,13 +50,6 @@ struct MedStationMenuCommands: Commands {
 
         // Window menu
         CommandMenu("Window") {
-            Button("Model Manager") {
-                WindowOpener.shared.openModelManager()
-            }
-            .keyboardShortcut("m", modifiers: .command)
-
-            Divider()
-
             Button("AI Assistant") {
                 WindowOpener.shared.openAIAssistant()
             }
@@ -75,6 +68,6 @@ struct MedStationMenuCommands: Commands {
 
     @MainActor
     private func createNewChatSession() async {
-        await chatStore.createSession(title: "New Chat", model: chatStore.selectedModel.isEmpty ? "mistral" : chatStore.selectedModel)
+        await chatStore.createSession(title: "New Chat")
     }
 }
