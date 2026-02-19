@@ -41,22 +41,6 @@ struct GeneralSettingsView: View {
                 }
             }
 
-            Section("Ollama") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Auto-start Ollama on Launch", isOn: Binding(
-                        get: { settingsStore.appSettings.ollamaAutoStart },
-                        set: { newValue in
-                            var updatedSettings = settingsStore.appSettings
-                            updatedSettings.ollamaAutoStart = newValue
-                            settingsStore.updateAppSettings(updatedSettings)
-                        }
-                    ))
-
-                    Text("Automatically start Ollama server when MedStation launches")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
 
             Section("Editor") {
                 Toggle("Auto-save Chat Sessions", isOn: $autoSaveChatSessions)

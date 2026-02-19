@@ -1824,11 +1824,11 @@ private struct MedicalCaseDetailView: View {
     private var modelCardSection: some View {
         DisclosureGroup("MedGemma Model Card") {
             VStack(alignment: .leading, spacing: 10) {
-                modelCardRow("Model", "MedGemma 4B (google/medgemma-4b-it)")
-                modelCardRow("Architecture", "Gemma 2 4B fine-tuned on medical corpora")
+                modelCardRow("Model", "MedGemma 1.5 4B (mlx-community/medgemma-4b-it-4bit)")
+                modelCardRow("Architecture", "Gemma 3 fine-tuned on medical corpora (VLM)")
                 modelCardRow("Parameters", "4 billion")
-                modelCardRow("Inference", "100% on-device via Ollama (no cloud)")
-                modelCardRow("Quantization", "Q4_0 (GGUF) — ~2.5 GB VRAM")
+                modelCardRow("Inference", "100% on-device via MLX Swift (no cloud)")
+                modelCardRow("Quantization", "4-bit (MLX) — ~3 GB RAM")
 
                 Divider()
 
@@ -1877,7 +1877,7 @@ private struct MedicalCaseDetailView: View {
                     .font(.caption.weight(.semibold))
                 Text("""
                 \u{2022} Zero network transmission of patient data
-                \u{2022} All inference runs on Apple Silicon via Ollama
+                \u{2022} All inference runs on Apple Silicon via MLX Swift
                 \u{2022} Data stored locally: ~/Library/Application Support/MedStation/
                 \u{2022} No telemetry, no analytics, no cloud sync of medical data
                 """)
@@ -2226,7 +2226,7 @@ private struct BenchmarkSheet: View {
             .background(Color(NSColor.controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            Text("Requires MedGemma model loaded via Ollama. Each vignette takes ~30-60s.")
+            Text("Requires MedGemma model downloaded. Each vignette takes ~30-60s.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 

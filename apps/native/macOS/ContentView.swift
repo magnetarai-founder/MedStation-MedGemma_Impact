@@ -71,41 +71,6 @@ struct MainAppView: View {
     }
 }
 
-// MARK: - Workspace Error Types
-
-enum WorkspaceError: Error, LocalizedError {
-    case loadFailed(String)
-    case networkError(String)
-    case authenticationRequired
-    case unknown(Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .loadFailed(let message):
-            return "Failed to load workspace: \(message)"
-        case .networkError(let message):
-            return "Network error: \(message)"
-        case .authenticationRequired:
-            return "Authentication required"
-        case .unknown(let error):
-            return "An error occurred: \(error.localizedDescription)"
-        }
-    }
-
-    var recoverySuggestion: String {
-        switch self {
-        case .loadFailed:
-            return "Try refreshing or check your connection."
-        case .networkError:
-            return "Check your network connection and try again."
-        case .authenticationRequired:
-            return "Please log in to continue."
-        case .unknown:
-            return "Try again or restart the app if the problem persists."
-        }
-    }
-}
-
 // MARK: - Preview
 
 #Preview("Welcome") {

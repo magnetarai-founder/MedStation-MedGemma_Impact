@@ -36,7 +36,7 @@ final class SecurityManager {
     private var blockedDomains: Set<String> = []
 
     private init() {
-        // Always allow localhost for Ollama
+        // Allow localhost for local services
         approvedDomains.insert("localhost")
         approvedDomains.insert("127.0.0.1")
     }

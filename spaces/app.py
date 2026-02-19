@@ -454,44 +454,11 @@ def _run_workflow_inner(chief_complaint, symptoms, age, sex, hr, bp, temp, rr, s
     )
 
 
-def _chat_followup_inner(message, history, chief_complaint, triage_html):
-    if not message or not message.strip():
-        return history, ""
-
-    history = history or []
-
-    if not LIVE_MODE:
-        history.append({"role": "user", "content": message})
-        history.append({
-            "role": "assistant",
-            "content": (
-                "Follow-up chat requires GPU for live MedGemma inference. "
-                "In the native macOS app, this runs on-device via Apple Silicon. "
-                "Try the [desktop app](https://github.com/magnetarai-founder/MedStation-MedGemma_Impact) "
-                "for full interactive chat."
-            ),
-        })
-        return history, ""
-
-    ctx = ""
-    if chief_complaint:
-        ctx = f"Prior case: {chief_complaint}."
-
-    prompt = f"Patient Context:\n{ctx}\n\nClinician question: {message}"
-    response = _generate(prompt, max_tokens=512, temperature=0.3)
-
-    history.append({"role": "user", "content": message})
-    history.append({"role": "assistant", "content": response})
-    return history, ""
-
-
 # Apply @spaces.GPU decorator for ZeroGPU when available.
 if ON_SPACES:
     run_workflow = spaces.GPU(duration=300)(_run_workflow_inner)
-    chat_followup = spaces.GPU(duration=120)(_chat_followup_inner)
 else:
     run_workflow = _run_workflow_inner
-    chat_followup = _chat_followup_inner
 
 
 # ---------------------------------------------------------------------------
