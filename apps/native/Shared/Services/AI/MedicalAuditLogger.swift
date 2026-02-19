@@ -67,8 +67,12 @@ struct MedicalAuditLogger {
         let dir = auditDirectory
         PersistenceHelpers.ensureDirectory(at: dir, label: "medical audit logs")
         let file = dir.appendingPathComponent("\(caseId.uuidString)-audit.json")
-        PersistenceHelpers.save(entry, to: file, label: "medical audit entry")
-        logger.info("Audit log saved for case \(caseId.uuidString.prefix(8))")
+        do {
+            try PersistenceHelpers.trySave(entry, to: file, label: "medical audit entry")
+            logger.info("Audit log saved for case \(caseId.uuidString.prefix(8))")
+        } catch {
+            logger.fault("AUDIT TRAIL BROKEN — failed to persist audit entry for case \(caseId.uuidString): \(error.localizedDescription)")
+        }
     }
 
     static func loadAuditEntry(for caseId: UUID) -> AuditEntry? {

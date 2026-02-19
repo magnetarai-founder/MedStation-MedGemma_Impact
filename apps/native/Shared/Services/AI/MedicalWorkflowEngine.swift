@@ -15,6 +15,12 @@ import os
 
 private let logger = Logger(subsystem: "com.medstation.app", category: "MedicalWorkflowEngine")
 
+extension Duration {
+    var milliseconds: Double {
+        Double(components.seconds) * 1000 + Double(components.attoseconds) / 1_000_000_000_000_000
+    }
+}
+
 // MARK: - Medical Workflow Engine
 
 struct MedicalWorkflowEngine {
@@ -50,7 +56,7 @@ struct MedicalWorkflowEngine {
             let imageStart = ContinuousClock.now
             let imageContext = await analyzeAttachedImages(intake.attachedImagePaths)
             let imgElapsed = imageStart.duration(to: .now)
-            imageAnalysisMs = Double(imgElapsed.components.seconds) * 1000 + Double(imgElapsed.components.attoseconds) / 1_000_000_000_000_000
+            imageAnalysisMs = imgElapsed.milliseconds
 
             if !imageContext.isEmpty {
                 patientContext += "\n\nMedical Image Analysis:\n\(imageContext)"
@@ -68,7 +74,7 @@ struct MedicalWorkflowEngine {
         func buildResult(partial: Bool) -> MedicalWorkflowResult {
             for step in reasoningSteps { stepDurations[step.title] = step.durationMs }
             let elapsed = workflowStart.duration(to: .now)
-            let totalMs = Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000
+            let totalMs = elapsed.milliseconds
             let metrics = PerformanceMetrics(
                 totalWorkflowMs: totalMs,
                 stepDurations: stepDurations,
@@ -250,7 +256,7 @@ struct MedicalWorkflowEngine {
             patientContext: patientContext
         )
         let stepElapsed = stepStart.duration(to: .now)
-        let stepMs = Double(stepElapsed.components.seconds) * 1000 + Double(stepElapsed.components.attoseconds) / 1_000_000_000_000_000
+        let stepMs = stepElapsed.milliseconds
 
         logger.info("Step \(stepNumber) (\(title)) completed in \(String(format: "%.0f", stepMs))ms")
 

@@ -11,10 +11,11 @@ MedStation runs a 5-step agentic reasoning workflow entirely on your Mac using A
 1. **Patient Intake** -- Structured form: demographics, symptoms, vitals, medications, allergies, medical images
 2. **5-Step Agentic Workflow** -- Symptom Analysis, Triage Assessment, Differential Diagnosis, Risk Stratification, Recommended Actions
 3. **Safety Validation** -- 9-category post-processing guard catches errors the model might miss (emergency escalation, drug interactions, critical vitals, demographic bias, pregnancy risks, and more)
-4. **Follow-Up Chat** -- Interactive Q&A with MedGemma after triage
-5. **Export** -- FHIR R4 Bundle, Clinical JSON, or Text Report
+4. **Graceful Degradation** -- If a mid-pipeline step fails, completed steps are preserved and surfaced with a warning instead of losing all work
+5. **Follow-Up Chat** -- Interactive Q&A with MedGemma after triage
+6. **Export** -- FHIR R4 Bundle, Clinical JSON, or Text Report
 
-All inference runs locally via [HuggingFace Transformers](https://huggingface.co/google/medgemma-1.5-4b-it) on Apple Silicon MPS (~8 GB).
+All inference runs locally via [MLX Swift](https://github.com/ml-explore/mlx-swift-lm) on Apple Silicon (~3 GB 4-bit quantized model).
 
 ---
 
@@ -24,41 +25,37 @@ All inference runs locally via [HuggingFace Transformers](https://huggingface.co
 |---|---|
 | Mac | Apple Silicon (M1/M2/M3/M4) -- **required** |
 | OS | macOS 14.0+ (Sonoma) |
-| RAM | 16 GB minimum (model loads in bfloat16) |
-| Storage | ~8 GB for MedGemma weights + ~2 GB for app |
+| RAM | 16 GB recommended (model uses ~3-4 GB during inference) |
+| Storage | ~3 GB for model weights + ~200 MB for app |
 | Xcode | 15.0+ |
-| Python | 3.10+ |
 | HuggingFace | Account with [MedGemma access](https://huggingface.co/google/medgemma-1.5-4b-it) approved |
+
+No Python required. No backend. Pure Swift.
 
 ---
 
 ## Setup
 
-### 1. Clone and Create Virtual Environment
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/magnetarai-founder/MedStation-MedGemma_Impact.git
 cd MedStation-MedGemma_Impact
-
-python3 -m venv venv
-source venv/bin/activate
-pip install -r apps/backend/requirements.txt
-pip install transformers accelerate huggingface_hub pillow
 ```
 
-### 2. Download MedGemma 1.5 4B
+### 2. Download the Model
 
 Log into HuggingFace (you must have accepted the [HAI-DEF terms](https://huggingface.co/google/medgemma-1.5-4b-it)):
 
 ```bash
+pip install huggingface_hub
 huggingface-cli login
-huggingface-cli download google/medgemma-1.5-4b-it \
-  --local-dir .models/medgemma-1.5-4b-it
+python3 -c "from huggingface_hub import snapshot_download; snapshot_download('mlx-community/medgemma-4b-it-4bit')"
 ```
 
-This downloads ~8 GB of model weights to `.models/`.
+This downloads the 4-bit quantized MLX model (~3 GB) to your HuggingFace cache. The app auto-detects it on launch.
 
-### 3. Build and Run the macOS App
+### 3. Build and Run
 
 ```bash
 open apps/native/MedStation.xcodeproj
@@ -74,7 +71,7 @@ xcodebuild -project apps/native/MedStation.xcodeproj \
   build
 ```
 
-The app auto-starts the backend on launch. The backend loads MedGemma into memory on first inference request (~30s on M1, ~15s on M3+).
+Model loads into memory on launch (~7s on M3, ~15s on M1).
 
 ---
 
@@ -91,35 +88,37 @@ The app auto-starts the backend on launch. The backend loads MedGemma into memor
 
 ---
 
-## Project Structure
+## Architecture
 
 ```
-.models/
-  medgemma-1.5-4b-it/              # HuggingFace model weights (gitignored)
+SwiftUI App --> MLX Swift --> Apple Silicon GPU (Metal)
+```
 
-apps/
-  native/                           # macOS SwiftUI app (Apple Silicon)
-    Shared/
-      Services/AI/
-        MedicalWorkflowEngine.swift   # 5-step agentic orchestrator
-        MedicalSafetyGuard.swift      # 9-category safety validation
-        MedicalAIService.swift        # MedGemma client + model lifecycle
-        MedicalAuditLogger.swift      # SHA-256 audit trail
-        MedicalBenchmarkHarness.swift # 10-vignette evaluation harness
-      Models/
-        MedicalModels.swift           # Patient, case, triage data models
-    macOS/
-      Workspaces/Hub/Panels/
-        MedicalPanel.swift            # Main UI (intake, results, chat, export)
+No HTTP calls. No Python. No child processes. App Sandbox compatible.
 
-  backend/                          # Python FastAPI
-    api/
-      main.py                         # App factory + health endpoint
-      services/
-        medgemma.py                   # MedGemma inference service (Transformers)
-      routes/chat/
-        medgemma.py                   # /medgemma/generate, /status, /load
-        ollama_proxy.py               # Ollama proxy (fallback)
+### Key Components
+
+```
+apps/native/
+  Shared/
+    Services/AI/
+      MLXInferenceEngine.swift      # On-device MLX inference (generate + stream)
+      MedicalWorkflowEngine.swift   # 5-step agentic orchestrator
+      MedicalAIService.swift        # Model lifecycle + API surface
+      MedicalSafetyGuard.swift      # 9-category safety validation
+      MedicalAuditLogger.swift      # SHA-256 audit trail (HAI-DEF)
+      MedicalBenchmarkHarness.swift # 10-vignette evaluation harness
+    Services/ImageAnalysis/
+      ImageAnalysisService.swift    # 5-layer ML pipeline (Vision, Objects, Segmentation, Depth, Structured)
+    Models/
+      MedicalModels.swift           # Patient, case, triage data models
+  macOS/
+    Workspaces/Hub/Panels/
+      MedicalPanel.swift            # Main UI (intake, results, chat, export)
+      PatientCheckInFlow.swift      # 6-step patient intake wizard
+
+spaces/
+  app.py                            # HuggingFace Spaces Gradio demo
 ```
 
 ---
@@ -152,18 +151,19 @@ Results include per-vignette scores, triage confusion matrix, and JSON export.
 
 ---
 
-## API Endpoints
+## Safety Guard (9 Categories)
 
-The backend runs on `http://localhost:8000` and provides:
+Every workflow result passes through `MedicalSafetyGuard` which checks:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Backend health check |
-| `/api/v1/chat/medgemma/status` | GET | Model loaded status + device |
-| `/api/v1/chat/medgemma/load` | POST | Explicitly load model into memory |
-| `/api/v1/chat/medgemma/generate` | POST | Generate response (text or multimodal) |
-| `/api/v1/chat/ollama/models` | GET | List local Ollama models (fallback) |
-| `/api/v1/chat/ollama/generate` | POST | Generate via Ollama (fallback) |
+1. **Emergency escalation** -- Detects acute keywords missed by triage
+2. **Drug interactions** -- Flags known dangerous medication pairs
+3. **Critical vital signs** -- Age-banded vital sign validation
+4. **Red flag symptoms** -- Pattern-matches high-risk presentations
+5. **Demographic bias** -- Checks for known clinical biases (e.g. chest pain in women)
+6. **Pregnancy risks** -- Flags pregnancy-specific complications
+7. **Allergy warnings** -- Cross-references allergies with recommended treatments
+8. **Medication contraindications** -- Checks age and condition-specific contraindications
+9. **Patient safety summary** -- Aggregates all findings into actionable alerts
 
 ---
 
@@ -171,7 +171,7 @@ The backend runs on `http://localhost:8000` and provides:
 
 | Data | Location |
 |---|---|
-| Model weights | `.models/medgemma-1.5-4b-it/` (project root) |
+| Model weights | `~/.cache/huggingface/hub/models--mlx-community--medgemma-4b-it-4bit/` |
 | Patient cases | `~/Library/Application Support/MedStation/workspace/medical/*.json` |
 | Audit logs | `~/Library/Application Support/MedStation/workspace/medical/audit/*.json` |
 | Benchmarks | `~/Library/Application Support/MedStation/workspace/medical/benchmarks/*.json` |

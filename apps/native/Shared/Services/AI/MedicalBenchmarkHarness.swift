@@ -239,6 +239,9 @@ final class MedicalBenchmarkHarness {
 
             let result = try await runSingleVignette(vignette)
             results.append(result)
+            if result.stepCount < 5 {
+                logger.warning("Vignette '\(vignette.name)' produced partial results (\(result.stepCount)/5 steps)")
+            }
 
             // Update confusion matrix
             let expected = result.expectedTriage
@@ -248,8 +251,7 @@ final class MedicalBenchmarkHarness {
         }
 
         let elapsed = benchmarkStart.duration(to: .now)
-        let totalMs = Double(elapsed.components.seconds) * 1000
-            + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000
+        let totalMs = elapsed.milliseconds
 
         return BenchmarkReport(
             results: results,
@@ -319,6 +321,8 @@ final class MedicalBenchmarkHarness {
         expected: MedicalWorkflowResult.TriageLevel,
         actual: MedicalWorkflowResult.TriageLevel
     ) -> Double {
+        // Undetermined means the model couldn't determine a triage level — no credit
+        if actual == .undetermined { return 0 }
         if expected == actual { return 1.0 }
 
         // Adjacent levels get partial credit
@@ -335,17 +339,20 @@ final class MedicalBenchmarkHarness {
 
     // MARK: - Persistence
 
-    private func saveBenchmarkReport(_ report: BenchmarkReport) {
-        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
+    private static var benchmarkDirectory: URL {
+        (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("MedStation/workspace/medical/benchmarks", isDirectory: true)
+    }
+
+    private func saveBenchmarkReport(_ report: BenchmarkReport) {
+        let dir = Self.benchmarkDirectory
         PersistenceHelpers.ensureDirectory(at: dir, label: "benchmark reports")
         let file = dir.appendingPathComponent("benchmark-\(report.id.uuidString.prefix(8)).json")
         PersistenceHelpers.save(report, to: file, label: "benchmark report")
     }
 
     static func loadLatestReport() -> BenchmarkReport? {
-        let dir = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
-            .appendingPathComponent("MedStation/workspace/medical/benchmarks", isDirectory: true)
+        let dir = benchmarkDirectory
         let files: [URL]
         do {
             files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])
