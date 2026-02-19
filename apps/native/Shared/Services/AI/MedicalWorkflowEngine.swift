@@ -342,9 +342,9 @@ struct MedicalWorkflowEngine {
             if lower.hasPrefix("self-care") || lower.hasPrefix("self care") { return .selfCare }
         }
 
-        // Default — don't assume emergency
-        logger.warning("Could not parse triage level from MedGemma output. Defaulting to Semi-Urgent. Raw: \(text.prefix(200))")
-        return .semiUrgent
+        // Don't silently assume any level — surface uncertainty to the clinician
+        logger.warning("Could not parse triage level from MedGemma output. Flagging as undetermined. Raw: \(text.prefix(200))")
+        return .undetermined
     }
 
     static func parseDifferentialDiagnoses(from text: String) -> [Diagnosis] {

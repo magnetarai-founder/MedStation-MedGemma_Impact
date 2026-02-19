@@ -315,14 +315,6 @@ struct DetachedAIWindow: View {
 
     private var emptyStateDescription: String {
         switch activeContext {
-        case .code:
-            return "Ask about code, debugging, architecture,\nor get help writing implementations."
-        case .writing:
-            return "Get help with writing, editing, formatting,\nor brainstorming content ideas."
-        case .sheets:
-            return "Ask about formulas, data analysis,\nor get help with spreadsheet tasks."
-        case .voice:
-            return "Get help with transcriptions, summaries,\nor voice content analysis."
         case .general:
             return "Ask anything — code questions, writing help,\ndata analysis, or general knowledge."
         case .medical:

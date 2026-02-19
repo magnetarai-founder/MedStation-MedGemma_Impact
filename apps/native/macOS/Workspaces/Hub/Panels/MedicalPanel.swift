@@ -1280,6 +1280,18 @@ private struct MedicalCaseDetailView: View {
                         medicalCase.followUpMessages = chatMessages
                         onUpdate(medicalCase)
                     }
+                },
+                onError: { error in
+                    Task { @MainActor in
+                        let partial = streamedContent.isEmpty ? "" : "\n\n"
+                        chatMessages[responseIndex] = FollowUpMessage(
+                            role: "assistant",
+                            content: streamedContent + partial + "[Response interrupted: \(error.localizedDescription)]"
+                        )
+                        isChatStreaming = false
+                        medicalCase.followUpMessages = chatMessages
+                        onUpdate(medicalCase)
+                    }
                 }
             )
         } catch {
@@ -1670,6 +1682,7 @@ private struct MedicalCaseDetailView: View {
         case .semiUrgent: return .yellow.opacity(0.2)
         case .nonUrgent: return .blue.opacity(0.2)
         case .selfCare: return .green.opacity(0.2)
+        case .undetermined: return .gray.opacity(0.2)
         }
     }
 
@@ -2085,6 +2098,7 @@ private struct MedicalCaseDetailView: View {
         case .semiUrgent: riskLevel = "moderate"
         case .nonUrgent: riskLevel = "low"
         case .selfCare: riskLevel = "negligible"
+        case .undetermined: riskLevel = "moderate"
         }
 
         let riskAssessment: [String: Any] = [
@@ -2545,6 +2559,7 @@ private func triageColor(_ level: MedicalWorkflowResult.TriageLevel) -> Color {
     case .semiUrgent: return .yellow
     case .nonUrgent: return .blue
     case .selfCare: return .green
+    case .undetermined: return .gray
     }
 }
 
@@ -2555,5 +2570,6 @@ private func triageShort(_ level: MedicalWorkflowResult.TriageLevel) -> String {
     case .semiUrgent: return "S-URG"
     case .nonUrgent: return "NON"
     case .selfCare: return "SELF"
+    case .undetermined: return "N/A"
     }
 }

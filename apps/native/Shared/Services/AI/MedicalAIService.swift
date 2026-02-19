@@ -101,7 +101,8 @@ final class MedicalAIService {
         prompt: String,
         patientContext: String,
         onToken: @escaping (String) -> Void,
-        onDone: @escaping () -> Void
+        onDone: @escaping () -> Void,
+        onError: @escaping (Error) -> Void = { _ in }
     ) async throws {
         if modelStatus != .ready {
             await ensureModelReady()
@@ -152,7 +153,7 @@ final class MedicalAIService {
                         self?.isGenerating = false
                         self?.error = error.localizedDescription
                     }
-                    onDone()
+                    onError(error)
                 }
             }
         }

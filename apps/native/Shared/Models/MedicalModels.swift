@@ -109,6 +109,7 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         case semiUrgent = "Semi-Urgent (See doctor within 24 hours)"
         case nonUrgent = "Non-Urgent (Schedule appointment)"
         case selfCare = "Self-Care (Monitor at home)"
+        case undetermined = "Undetermined — Review Manually"
     }
 
     init(

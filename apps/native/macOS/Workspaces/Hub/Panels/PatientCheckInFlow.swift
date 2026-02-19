@@ -777,6 +777,7 @@ struct PatientCheckInFlow: View {
         case .semiUrgent: Color.yellow.opacity(0.15)
         case .nonUrgent: Color.blue.opacity(0.1)
         case .selfCare: Color.green.opacity(0.1)
+        case .undetermined: Color.gray.opacity(0.15)
         }
     }
 
