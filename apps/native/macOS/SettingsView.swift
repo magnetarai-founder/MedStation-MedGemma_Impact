@@ -13,13 +13,10 @@ import Observation
 
 /// Settings tab identifiers — used for programmatic tab selection
 enum SettingsTab: String {
-    case general, features, api, security, appearance, models
+    case general, features, security, appearance, models
 }
 
 struct SettingsView: View {
-    // Default from centralized config - user can override in settings
-    @AppStorage("apiBaseURL") private var apiBaseURL = APIConfiguration.shared.baseURL
-    @AppStorage("defaultModel") private var defaultModel = "mistral"
     @AppStorage("enableBiometrics") private var enableBiometrics = true
     @AppStorage("theme") private var theme = "system"
     @AppStorage("settings.selectedTab") private var selectedTab: String = SettingsTab.general.rawValue
@@ -38,12 +35,6 @@ struct SettingsView: View {
                 }
                 .tag(SettingsTab.features.rawValue)
 
-            APISettingsView(apiBaseURL: $apiBaseURL, defaultModel: $defaultModel)
-                .tabItem {
-                    Label("API", systemImage: "network")
-                }
-                .tag(SettingsTab.api.rawValue)
-
             SecuritySettingsView(enableBiometrics: $enableBiometrics)
                 .tabItem {
                     Label("Security", systemImage: "lock.shield")
@@ -58,7 +49,7 @@ struct SettingsView: View {
 
             ModelManagementSettingsView()
                 .tabItem {
-                    Label("Models", systemImage: "cpu")
+                    Label("Model", systemImage: "cpu")
                 }
                 .tag(SettingsTab.models.rawValue)
         }

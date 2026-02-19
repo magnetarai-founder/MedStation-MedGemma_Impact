@@ -25,7 +25,6 @@
 		34D17A8C6A575E21E799C789 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13E0C99BC6B5DA99C7E736F9 /* FeatureFlags.swift */; };
 		37B821D5B8B4119547475D39 /* MedStationMenuCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11970ED33E68EE3B1CB4A95B /* MedStationMenuCommands.swift */; };
 		37FAF85FC3C03F64FE7B4A12 /* ModelManagerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD53880E5B027D1C96DC1015 /* ModelManagerWindow.swift */; };
-		39C6CDAE9284E690C30A492F /* SettingsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE77C93F16A443863D97E0F /* SettingsModels.swift */; };
 		3E41FF83BF9967D551633828 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 298E3BE8C122A23BEA7AC599 /* MLXLMCommon */; };
 		3E80991188D85C090BAD3490 /* HeaderComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429D932B87D6E409CE393426 /* HeaderComponents.swift */; };
 		4737B4B41C386A6ED774A00E /* DetectedObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FA60C88459D995051F0EBCF /* DetectedObject.swift */; };
@@ -42,7 +41,6 @@
 		70250E6DFA91423A9D8A0E80 /* MedicalSafetyGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C948AB23F32185398E0FB5 /* MedicalSafetyGuard.swift */; };
 		723EA8847690343D436A11CF /* AppLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF3C0125AA1DE37D2709113 /* AppLifecycleManager.swift */; };
 		72AA3D2A40E9B40B097A5B0E /* DetachedAIWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D16B61C27F2D999C363C5D5 /* DetachedAIWindow.swift */; };
-		736F23AC960EC4F1DAE9F6A0 /* APISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C904B3FD97D2623F7707932E /* APISettingsView.swift */; };
 		79F6FA529E6CFE5497C5B2CC /* ThreePaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E214C822D7BAF8E67336727 /* ThreePaneLayout.swift */; };
 		7DD806863CE1FDE54E7AEB5F /* VisionAnalysisLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0912AABA2B90345CC4DAA279 /* VisionAnalysisLayer.swift */; };
 		8576EF5AC70D7FD9EC85C023 /* ImageAnalysisCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB990A211FDCAE2F529C5649 /* ImageAnalysisCache.swift */; };
@@ -96,7 +94,6 @@
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		05C323504A6C8B3A9281E33B /* MedicalModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalModels.swift; sourceTree = "<group>"; };
 		0912AABA2B90345CC4DAA279 /* VisionAnalysisLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionAnalysisLayer.swift; sourceTree = "<group>"; };
-		0DE77C93F16A443863D97E0F /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
 		0E214C822D7BAF8E67336727 /* ThreePaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreePaneLayout.swift; sourceTree = "<group>"; };
 		106E5D636FD571E9887F4C1B /* PatientCheckInFlow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PatientCheckInFlow.swift; sourceTree = "<group>"; };
 		11970ED33E68EE3B1CB4A95B /* MedStationMenuCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedStationMenuCommands.swift; sourceTree = "<group>"; };
@@ -149,7 +146,6 @@
 		C20783086988DF8E1B36FBBA /* MedicalAuditLogger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalAuditLogger.swift; sourceTree = "<group>"; };
 		C4C948AB23F32185398E0FB5 /* MedicalSafetyGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalSafetyGuard.swift; sourceTree = "<group>"; };
 		C60376A5D97663F9350DE53C /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
-		C904B3FD97D2623F7707932E /* APISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APISettingsView.swift; sourceTree = "<group>"; };
 		CAF3C0125AA1DE37D2709113 /* AppLifecycleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLifecycleManager.swift; sourceTree = "<group>"; };
 		CB7EE6AB926CC9931B4A3194 /* MedicalWorkflowEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalWorkflowEngine.swift; sourceTree = "<group>"; };
 		CD53880E5B027D1C96DC1015 /* ModelManagerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagerWindow.swift; sourceTree = "<group>"; };
@@ -666,7 +662,6 @@
 			isa = PBXGroup;
 			children = (
 				F2C77CB5AF6C4202FD8D7161 /* ChatMessage.swift */,
-				0DE77C93F16A443863D97E0F /* SettingsModels.swift */,
 				5A9CA03F945469535A06F816 /* User.swift */,
 				E00F333EA299B4551AB9BC16 /* WorkspaceAIContext.swift */,
 				05C323504A6C8B3A9281E33B /* MedicalModels.swift */,
@@ -684,7 +679,6 @@
 		AF3FD21B5F1D2E6BB84C69F3 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				C904B3FD97D2623F7707932E /* APISettingsView.swift */,
 				45D761DB19ECDB8C76F1D854 /* AppearanceSettingsView.swift */,
 				14B1FC01816EAF1179D497CF /* FeaturesSettingsView.swift */,
 				CFDBF4C52275B1E8A7B63E43 /* GeneralSettingsView.swift */,
@@ -967,7 +961,6 @@
 				9ED9CA1D402AC1E882E393F8 /* HotSlotManager.swift in Sources */,
 				9567EB5AF9A8C73D29DD0EA6 /* APIClient.swift in Sources */,
 				B3D7475A672A06BE5F995218 /* APIConfiguration.swift in Sources */,
-				736F23AC960EC4F1DAE9F6A0 /* APISettingsView.swift in Sources */,
 				723EA8847690343D436A11CF /* AppLifecycleManager.swift in Sources */,
 				DD9D69C4A0120B5DA3A08488 /* AppearanceSettingsView.swift in Sources */,
 				B3300413D66F5B7AC05D86E6 /* AuthService.swift in Sources */,
@@ -1012,7 +1005,6 @@
 				F56E74F68E00EE523A42D91D /* SegmentationLayer.swift in Sources */,
 				F01317486482F3B412F60382 /* SegmentationMask.swift in Sources */,
 				FEF16B607684CD1A46FDCEF5 /* SettingsHelpers.swift in Sources */,
-				39C6CDAE9284E690C30A492F /* SettingsModels.swift in Sources */,
 				33A28A605AE75CD2FDB67907 /* SettingsView.swift in Sources */,
 				88FBEB09C32F9DEA78FD567B /* StructuredImageDescription.swift in Sources */,
 				A53904C7A390B41791D8C313 /* StructuredOutputLayer.swift in Sources */,
