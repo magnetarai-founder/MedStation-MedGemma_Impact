@@ -12,10 +12,18 @@ let package = Package(
             targets: ["MedStation"]
         )
     ],
+    dependencies: [
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm", from: "2.25.0"),
+    ],
     targets: [
         // Single target: macOS + Shared code in one module
         .executableTarget(
             name: "MedStation",
+            dependencies: [
+                .product(name: "MLXLLM", package: "mlx-swift-lm"),
+                .product(name: "MLXVLM", package: "mlx-swift-lm"),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+            ],
             path: ".",
             exclude: [
                 "macOS/Info.plist",

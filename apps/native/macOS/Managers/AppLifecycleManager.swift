@@ -27,16 +27,10 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
             MenuBarManager.shared.show()
         }
 
-        // Auto-start backend, then load MedGemma once healthy
+        // Load MedGemma via MLX native inference (no backend needed)
         Task {
-            await BackendManager.shared.autoStartBackend()
-
-            // MedGemma load MUST wait for backend health
             await MedicalAIService.shared.ensureModelReady()
-            logger.info("MedicalAIService initialized")
-
-            // Start background health monitoring (runs forever)
-            await BackendManager.shared.monitorBackendHealth()
+            logger.info("MedicalAIService initialized (MLX native)")
         }
 
         // Auto-start Ollama if enabled in settings
@@ -47,7 +41,6 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         URLProtocol.unregisterClass(NetworkFirewallProtocol.self)
-        BackendManager.shared.terminateBackend()
     }
 
     // MARK: - URL Handling

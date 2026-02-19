@@ -82,12 +82,9 @@ final class AuthStore {
 
     // MARK: - Bootstrap Flow
 
-    /// Call on app launch or resume from lock — ensures backend is running, then auto-authenticates
+    /// Call on app launch or resume from lock — auto-authenticates
     func bootstrap() async {
         loading = true
-
-        // Ensure backend is started (restarts if it died during idle)
-        await BackendManager.shared.autoStartBackend()
 
         // Demo mode: auto-authenticate locally (no backend auth endpoints needed)
         // Use a static device ID to avoid triggering KeychainService via AuthService.shared
