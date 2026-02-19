@@ -18,10 +18,6 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // SECURITY: Register network firewall protocol globally
-        URLProtocol.registerClass(NetworkFirewallProtocol.self)
-        logger.info("NetworkFirewallProtocol registered globally")
-
         // Initialize menu bar if enabled
         if showMenuBar {
             MenuBarManager.shared.show()
@@ -35,7 +31,6 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        URLProtocol.unregisterClass(NetworkFirewallProtocol.self)
     }
 
     // MARK: - URL Handling

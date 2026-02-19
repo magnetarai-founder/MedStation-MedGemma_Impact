@@ -24,7 +24,7 @@ struct ContentView: View {
                 LoadingView(message: "Checking authentication...")
 
             case .setupNeeded:
-                SetupWizardView()
+                LoadingView(message: "Setting up...")
 
             case .authenticated:
                 MainAppView()
