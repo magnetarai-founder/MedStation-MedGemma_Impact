@@ -1495,6 +1495,9 @@ private struct MedicalCaseDetailView: View {
 
             medicalCase.result = result
             medicalCase.status = .completed
+            if result.isPartial {
+                workflowError = "Partial results: \(result.incompleteReason ?? "Some steps could not complete.")"
+            }
             onUpdate(medicalCase)
 
             // Workflow complete - audit logged by MedicalAuditLogger

@@ -124,6 +124,7 @@ final class ImageAnalysisService {
             depthMap: results.depthMap,
             structuredDescription: results.structuredDescription ?? .empty,
             layersExecuted: results.executedLayers,
+            failedLayers: results.failedLayers,
             layerTimings: results.timings,
             deviceThermalState: .init(from: thermalState)
         )
@@ -171,6 +172,7 @@ final class ImageAnalysisService {
         var depthMap: DepthMapResult?
         var structuredDescription: StructuredImageDescription?
         var executedLayers: [AnalysisLayerType] = []
+        var failedLayers: [AnalysisLayerType] = []
         var timings: [AnalysisLayerType: TimeInterval] = [:]
     }
 
@@ -259,6 +261,7 @@ final class ImageAnalysisService {
                 currentProgress = Float(completedCount) / totalLayers
 
             case .failed(let layer):
+                results.failedLayers.append(layer)
                 completedCount += 1
                 currentProgress = Float(completedCount) / totalLayers
                 logger.warning("[ImageAnalysis] Layer \(layer.rawValue) failed, continuing")
@@ -279,6 +282,7 @@ final class ImageAnalysisService {
                 results.executedLayers.append(.segmentation)
                 results.timings[.segmentation] = Date().timeIntervalSince(start)
             } catch {
+                results.failedLayers.append(.segmentation)
                 logger.error("[ImageAnalysis] Segmentation failed: \(error.localizedDescription)")
             }
 
@@ -296,6 +300,7 @@ final class ImageAnalysisService {
                 results.executedLayers.append(.depth)
                 results.timings[.depth] = Date().timeIntervalSince(start)
             } catch {
+                results.failedLayers.append(.depth)
                 logger.error("[ImageAnalysis] Depth estimation failed: \(error.localizedDescription)")
             }
 
@@ -320,6 +325,7 @@ final class ImageAnalysisService {
                 results.executedLayers.append(.structuredOutput)
                 results.timings[.structuredOutput] = Date().timeIntervalSince(start)
             } catch {
+                results.failedLayers.append(.structuredOutput)
                 logger.error("[ImageAnalysis] Structured output failed: \(error.localizedDescription)")
             }
 

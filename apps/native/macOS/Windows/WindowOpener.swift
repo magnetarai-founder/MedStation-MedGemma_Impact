@@ -27,11 +27,3 @@ final class WindowOpener {
         }
     }
 }
-
-// MARK: - WindowGroup Opener Modifier
-
-extension View {
-    func windowOpenerConfigurator() -> some View {
-        self
-    }
-}

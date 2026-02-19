@@ -32,11 +32,6 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
             await MedicalAIService.shared.ensureModelReady()
             logger.info("MedicalAIService initialized (MLX native)")
         }
-
-        // Auto-start Ollama if enabled in settings
-        Task {
-            await autoStartOllama()
-        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -56,29 +51,4 @@ class AppLifecycleManager: NSObject, NSApplicationDelegate {
         // Future: handle deep links
     }
 
-    // MARK: - Ollama Auto-start
-
-    @MainActor
-    private func autoStartOllama() async {
-        let settings = SettingsStore.shared.appSettings
-        guard settings.ollamaAutoStart else {
-            logger.debug("Ollama auto-start disabled in settings")
-            return
-        }
-
-        let ollamaService = OllamaService.shared
-        let isRunning = await ollamaService.checkStatus()
-
-        if !isRunning {
-            do {
-                logger.info("Starting Ollama server (auto-start enabled)...")
-                try await ollamaService.start()
-                logger.info("Ollama server started successfully")
-            } catch {
-                logger.error("Failed to auto-start Ollama: \(error)")
-            }
-        } else {
-            logger.debug("Ollama server already running")
-        }
-    }
 }

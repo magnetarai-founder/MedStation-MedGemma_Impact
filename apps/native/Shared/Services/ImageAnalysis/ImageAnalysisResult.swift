@@ -75,6 +75,7 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
 
     // Processing metadata
     let layersExecuted: [AnalysisLayerType]
+    let failedLayers: [AnalysisLayerType]
     let layerTimings: [AnalysisLayerType: TimeInterval]
     let deviceThermalState: ThermalState
 
@@ -112,6 +113,7 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
         tags: [String] = [],
         semanticEmbedding: [Float]? = nil,
         layersExecuted: [AnalysisLayerType] = [],
+        failedLayers: [AnalysisLayerType] = [],
         layerTimings: [AnalysisLayerType: TimeInterval] = [:],
         deviceThermalState: ThermalState = .nominal
     ) {
@@ -130,6 +132,7 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
         self.tags = tags
         self.semanticEmbedding = semanticEmbedding
         self.layersExecuted = layersExecuted
+        self.failedLayers = failedLayers
         self.layerTimings = layerTimings
         self.deviceThermalState = deviceThermalState
     }
@@ -208,6 +211,7 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
             tags: tags,
             semanticEmbedding: semanticEmbedding,
             layersExecuted: layersExecuted,
+            failedLayers: failedLayers,
             layerTimings: layerTimings,
             deviceThermalState: deviceThermalState
         )
@@ -231,6 +235,7 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
             tags: newTags,
             semanticEmbedding: semanticEmbedding,
             layersExecuted: layersExecuted,
+            failedLayers: failedLayers,
             layerTimings: layerTimings,
             deviceThermalState: deviceThermalState
         )
@@ -254,6 +259,7 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
             tags: tags,
             semanticEmbedding: embedding,
             layersExecuted: layersExecuted,
+            failedLayers: failedLayers,
             layerTimings: layerTimings,
             deviceThermalState: deviceThermalState
         )
@@ -287,6 +293,11 @@ struct ImageAnalysisResult: Codable, Identifiable, Sendable {
             context += "- Scene: \(structuredDescription.scenes.joined(separator: ", "))\n"
         }
 
+        if !failedLayers.isEmpty {
+            let names = failedLayers.map(\.displayName).joined(separator: ", ")
+            context += "- WARNING: Analysis incomplete — failed layers: \(names)\n"
+        }
+
         return context
     }
 }
@@ -299,7 +310,7 @@ extension ImageAnalysisResult {
         case documentContent, recognizedText, detectedBarcodes
         case detectedObjects, segmentationMasks, depthMap
         case structuredDescription, searchableText, tags, semanticEmbedding
-        case layersExecuted, layerTimings, deviceThermalState
+        case layersExecuted, failedLayers, layerTimings, deviceThermalState
     }
 
     init(from decoder: Decoder) throws {
@@ -320,6 +331,7 @@ extension ImageAnalysisResult {
         tags = try container.decode([String].self, forKey: .tags)
         semanticEmbedding = try container.decodeIfPresent([Float].self, forKey: .semanticEmbedding)
         layersExecuted = try container.decode([AnalysisLayerType].self, forKey: .layersExecuted)
+        failedLayers = try container.decodeIfPresent([AnalysisLayerType].self, forKey: .failedLayers) ?? []
         deviceThermalState = try container.decode(ThermalState.self, forKey: .deviceThermalState)
 
         // Decode layerTimings as dictionary with string keys
@@ -351,6 +363,7 @@ extension ImageAnalysisResult {
         try container.encode(tags, forKey: .tags)
         try container.encodeIfPresent(semanticEmbedding, forKey: .semanticEmbedding)
         try container.encode(layersExecuted, forKey: .layersExecuted)
+        try container.encode(failedLayers, forKey: .failedLayers)
         try container.encode(deviceThermalState, forKey: .deviceThermalState)
 
         // Encode layerTimings as dictionary with string keys

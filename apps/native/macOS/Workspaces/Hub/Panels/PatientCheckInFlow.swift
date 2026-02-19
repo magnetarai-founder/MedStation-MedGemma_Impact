@@ -811,6 +811,10 @@ struct PatientCheckInFlow: View {
                 editableActions = result.recommendedActions
                 isRunningWorkflow = false
 
+                if result.isPartial {
+                    workflowError = "Partial results: \(result.incompleteReason ?? "Some steps could not complete.")"
+                }
+
                 withAnimation(.easeInOut(duration: 0.3)) {
                     currentStep = .results
                 }

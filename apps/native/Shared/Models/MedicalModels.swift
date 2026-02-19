@@ -102,6 +102,8 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
     var safetyAlerts: [SafetyAlert]
     var disclaimer: String
     var generatedAt: Date
+    var isPartial: Bool
+    var incompleteReason: String?
 
     enum TriageLevel: String, Codable, CaseIterable, Sendable {
         case emergency = "Emergency (Call 911)"
@@ -122,7 +124,9 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         performanceMetrics: PerformanceMetrics? = nil,
         safetyAlerts: [SafetyAlert] = [],
         disclaimer: String = "",
-        generatedAt: Date = Date()
+        generatedAt: Date = Date(),
+        isPartial: Bool = false,
+        incompleteReason: String? = nil
     ) {
         self.id = id
         self.intakeId = intakeId
@@ -134,6 +138,8 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         self.safetyAlerts = safetyAlerts
         self.disclaimer = disclaimer
         self.generatedAt = generatedAt
+        self.isPartial = isPartial
+        self.incompleteReason = incompleteReason
     }
 }
 

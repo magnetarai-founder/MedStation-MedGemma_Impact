@@ -58,7 +58,40 @@ struct MedicalWorkflowEngine {
             }
         }
 
-        // Step 1: Symptom Analysis
+        // Track parsed outputs as we go — later steps depend on earlier ones
+        var triageLevel: MedicalWorkflowResult.TriageLevel = .undetermined
+        var diagnoses: [Diagnosis] = []
+        var actions: [RecommendedAction] = []
+        var incompleteReason: String?
+
+        // Helper: build partial result from whatever we have so far
+        func buildResult(partial: Bool) -> MedicalWorkflowResult {
+            for step in reasoningSteps { stepDurations[step.title] = step.durationMs }
+            let elapsed = workflowStart.duration(to: .now)
+            let totalMs = Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000
+            let metrics = PerformanceMetrics(
+                totalWorkflowMs: totalMs,
+                stepDurations: stepDurations,
+                modelName: "google/medgemma-1.5-4b-it",
+                modelParameterCount: "4B",
+                deviceThermalState: .init(from: ProcessInfo.processInfo),
+                imageAnalysisMs: imageAnalysisMs
+            )
+            return MedicalWorkflowResult(
+                intakeId: intake.id,
+                triageLevel: triageLevel,
+                differentialDiagnoses: diagnoses,
+                recommendedActions: actions,
+                reasoning: reasoningSteps,
+                performanceMetrics: metrics,
+                disclaimer: standardDisclaimer,
+                generatedAt: Date(),
+                isPartial: partial,
+                incompleteReason: incompleteReason
+            )
+        }
+
+        // Step 1: Symptom Analysis — must succeed (no useful data without it)
         let symptomAnalysis = try await executeStep(
             stepNumber: 1,
             title: "Symptom Analysis",
@@ -77,111 +110,108 @@ struct MedicalWorkflowEngine {
         reasoningSteps.append(symptomAnalysis)
         onProgress(symptomAnalysis)
 
-        // Step 2: Triage Assessment (context: symptoms analysis)
-        let triageAssessment = try await executeStep(
-            stepNumber: 2,
-            title: "Triage Assessment",
-            prompt: """
-            Your FIRST line must be exactly one of these (copy it verbatim):
-            TRIAGE: Emergency
-            TRIAGE: Urgent
-            TRIAGE: Semi-Urgent
-            TRIAGE: Non-Urgent
-            TRIAGE: Self-Care
+        // Steps 2-5: each wrapped for graceful degradation
+        do {
+            let triageAssessment = try await executeStep(
+                stepNumber: 2,
+                title: "Triage Assessment",
+                prompt: """
+                Your FIRST line must be exactly one of these (copy it verbatim):
+                TRIAGE: Emergency
+                TRIAGE: Urgent
+                TRIAGE: Semi-Urgent
+                TRIAGE: Non-Urgent
+                TRIAGE: Self-Care
 
-            Then justify in 2-3 sentences. Only classify as Emergency if immediately life-threatening RIGHT NOW.
-            """,
-            patientContext: patientContext + "\n\nSymptom Analysis:\n\(symptomAnalysis.content)",
-            service: service
-        )
-        reasoningSteps.append(triageAssessment)
-        onProgress(triageAssessment)
-
-        let triageLevel = extractTriageLevel(from: triageAssessment.content)
-
-        // Step 3: Differential Diagnosis (context: triage + symptoms)
-        let differentialDx = try await executeStep(
-            stepNumber: 3,
-            title: "Differential Diagnosis",
-            prompt: """
-            List top 3 most likely diagnoses. For each, one line:
-            [Number]. [Condition] (high/medium/low likelihood) — [1 sentence reasoning]
-
-            Be concise. No more than 3 conditions.
-            """,
-            patientContext: patientContext + "\n\nTriage: \(triageLevel.rawValue)\n\nSymptom Analysis:\n\(symptomAnalysis.content.prefix(500))",
-            service: service
-        )
-        reasoningSteps.append(differentialDx)
-        onProgress(differentialDx)
-
-        let diagnoses = parseDifferentialDiagnoses(from: differentialDx.content)
-
-        // Step 4: Risk Stratification (context: diagnoses + triage)
-        let riskAssessment = try await executeStep(
-            stepNumber: 4,
-            title: "Risk Stratification",
-            prompt: """
-            List key risk factors as bullet points (1 sentence each):
-            - Patient-specific risk factors
-            - Warning signs requiring immediate care
-            - Complications to monitor
-
-            Be concise. Max 5 bullet points.
-            """,
-            patientContext: patientContext + "\n\nDifferential: \(diagnoses.map(\.condition).joined(separator: ", "))",
-            service: service
-        )
-        reasoningSteps.append(riskAssessment)
-        onProgress(riskAssessment)
-
-        // Step 5: Recommendations (context: everything)
-        let recommendations = try await executeStep(
-            stepNumber: 5,
-            title: "Recommended Actions",
-            prompt: """
-            List 3-5 actionable recommendations, numbered by priority:
-            1. Most urgent action first
-            2. When/where to seek care
-            3. Key diagnostic tests
-            4. Red flags requiring emergency care
-
-            One sentence per recommendation.
-            """,
-            patientContext: patientContext + "\n\nTriage: \(triageLevel.rawValue)\n\nRisk Factors:\n\(riskAssessment.content.prefix(300))",
-            service: service
-        )
-        reasoningSteps.append(recommendations)
-        onProgress(recommendations)
-
-        let actions = parseRecommendedActions(from: recommendations.content, triageLevel: triageLevel)
-
-        // Capture step durations from timing data
-        for step in reasoningSteps {
-            stepDurations[step.title] = step.durationMs
+                Then justify in 2-3 sentences. Only classify as Emergency if immediately life-threatening RIGHT NOW.
+                """,
+                patientContext: patientContext + "\n\nSymptom Analysis:\n\(symptomAnalysis.content)",
+                service: service
+            )
+            reasoningSteps.append(triageAssessment)
+            onProgress(triageAssessment)
+            triageLevel = extractTriageLevel(from: triageAssessment.content)
+        } catch {
+            logger.error("Triage step failed, returning partial results: \(error)")
+            incompleteReason = "Triage assessment failed: \(error.localizedDescription)"
         }
 
-        let elapsed = workflowStart.duration(to: .now)
-        let totalMs = Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000
-        let metrics = PerformanceMetrics(
-            totalWorkflowMs: totalMs,
-            stepDurations: stepDurations,
-            modelName: "google/medgemma-1.5-4b-it",
-            modelParameterCount: "4B",
-            deviceThermalState: .init(from: ProcessInfo.processInfo),
-            imageAnalysisMs: imageAnalysisMs
-        )
+        if incompleteReason == nil {
+            do {
+                let differentialDx = try await executeStep(
+                    stepNumber: 3,
+                    title: "Differential Diagnosis",
+                    prompt: """
+                    List top 3 most likely diagnoses. For each, one line:
+                    [Number]. [Condition] (high/medium/low likelihood) — [1 sentence reasoning]
 
-        var result = MedicalWorkflowResult(
-            intakeId: intake.id,
-            triageLevel: triageLevel,
-            differentialDiagnoses: diagnoses,
-            recommendedActions: actions,
-            reasoning: reasoningSteps,
-            performanceMetrics: metrics,
-            disclaimer: standardDisclaimer,
-            generatedAt: Date()
-        )
+                    Be concise. No more than 3 conditions.
+                    """,
+                    patientContext: patientContext + "\n\nTriage: \(triageLevel.rawValue)\n\nSymptom Analysis:\n\(symptomAnalysis.content.prefix(500))",
+                    service: service
+                )
+                reasoningSteps.append(differentialDx)
+                onProgress(differentialDx)
+                diagnoses = parseDifferentialDiagnoses(from: differentialDx.content)
+            } catch {
+                logger.error("Differential diagnosis step failed: \(error)")
+                incompleteReason = "Differential diagnosis failed: \(error.localizedDescription)"
+            }
+        }
+
+        if incompleteReason == nil {
+            do {
+                let riskAssessment = try await executeStep(
+                    stepNumber: 4,
+                    title: "Risk Stratification",
+                    prompt: """
+                    List key risk factors as bullet points (1 sentence each):
+                    - Patient-specific risk factors
+                    - Warning signs requiring immediate care
+                    - Complications to monitor
+
+                    Be concise. Max 5 bullet points.
+                    """,
+                    patientContext: patientContext + "\n\nDifferential: \(diagnoses.map(\.condition).joined(separator: ", "))",
+                    service: service
+                )
+                reasoningSteps.append(riskAssessment)
+                onProgress(riskAssessment)
+            } catch {
+                logger.error("Risk stratification step failed: \(error)")
+                incompleteReason = "Risk stratification failed: \(error.localizedDescription)"
+            }
+        }
+
+        if incompleteReason == nil {
+            do {
+                let riskContent = reasoningSteps.last(where: { $0.title == "Risk Stratification" })?.content ?? ""
+                let recommendations = try await executeStep(
+                    stepNumber: 5,
+                    title: "Recommended Actions",
+                    prompt: """
+                    List 3-5 actionable recommendations, numbered by priority:
+                    1. Most urgent action first
+                    2. When/where to seek care
+                    3. Key diagnostic tests
+                    4. Red flags requiring emergency care
+
+                    One sentence per recommendation.
+                    """,
+                    patientContext: patientContext + "\n\nTriage: \(triageLevel.rawValue)\n\nRisk Factors:\n\(riskContent.prefix(300))",
+                    service: service
+                )
+                reasoningSteps.append(recommendations)
+                onProgress(recommendations)
+                actions = parseRecommendedActions(from: recommendations.content, triageLevel: triageLevel)
+            } catch {
+                logger.error("Recommendations step failed: \(error)")
+                incompleteReason = "Recommendations failed: \(error.localizedDescription)"
+            }
+        }
+
+        let isPartial = incompleteReason != nil
+        var result = buildResult(partial: isPartial)
 
         // Post-processing: HAI-DEF safety validation
         result.safetyAlerts = MedicalSafetyGuard.validate(result, intake: intake)
@@ -194,7 +224,12 @@ struct MedicalWorkflowEngine {
             disclaimerConfirmed: disclaimerConfirmed
         )
 
-        logger.info("Medical workflow completed in \(String(format: "%.0f", totalMs))ms: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")
+        let totalMs = result.performanceMetrics?.totalWorkflowMs ?? 0
+        if isPartial {
+            logger.warning("Workflow completed PARTIALLY (\(reasoningSteps.count)/5 steps) in \(String(format: "%.0f", totalMs))ms: \(incompleteReason ?? "")")
+        } else {
+            logger.info("Medical workflow completed in \(String(format: "%.0f", totalMs))ms: \(triageLevel.rawValue), \(diagnoses.count) diagnoses, \(actions.count) actions")
+        }
         return result
     }
 
