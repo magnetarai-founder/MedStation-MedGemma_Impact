@@ -184,17 +184,9 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0044C8191B192B95A58A7ED8 /* Team */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Team;
-			sourceTree = "<group>";
-		};
 		00C80C694431557AAC1D0B1A /* Kanban */ = {
 			isa = PBXGroup;
 			children = (
-				A00C370AD157BDF82BA4C399 /* Components */,
 			);
 			path = Kanban;
 			sourceTree = "<group>";
@@ -206,10 +198,8 @@
 				758F62B637F9DF75E26BAB65 /* Info.plist */,
 				0369ADDFF9623D901CC8207E /* MedStationApp.swift */,
 				0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */,
-				DE864A74EECDECCCA82BDBF0 /* CommandPalette */,
 				4CE16795DA2E305E75B5ABF8 /* Commands */,
 				FC3E8360DA93614A6D4A9EE2 /* Components */,
-				4E7F46FFFF635A3E6FEF761E /* Dialogs */,
 				335460DDCDF1CC1C27204DE6 /* Managers */,
 				D55288C753296BE0079647BC /* Panels */,
 				AF3FD21B5F1D2E6BB84C69F3 /* Settings */,
@@ -218,13 +208,6 @@
 				8B619E4AE4B641261F346C7F /* Assets.xcassets */,
 			);
 			path = macOS;
-			sourceTree = "<group>";
-		};
-		074C896ECE11C240C628F751 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Components;
 			sourceTree = "<group>";
 		};
 		0AE9F461152E58D5D4237DD2 /* Models */ = {
@@ -239,13 +222,6 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		0B207136BF7BCFADBC0E97CF /* Integration */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Integration;
-			sourceTree = "<group>";
-		};
 		0CBF91A9C082C90D7E79AF46 = {
 			isa = PBXGroup;
 			children = (
@@ -255,34 +231,6 @@
 				68FD2190DA1234333DABB53B /* Tests */,
 				5ED08269B23D52171D57901F /* Resources */,
 			);
-			sourceTree = "<group>";
-		};
-		0FC2C1963B9C03BB500F086E /* InsightsWorkspace */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = InsightsWorkspace;
-			sourceTree = "<group>";
-		};
-		1384D42584B90EB75EB150D3 /* Vault */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Vault;
-			sourceTree = "<group>";
-		};
-		143C98105625FA0C0241AE47 /* VaultAdmin */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = VaultAdmin;
-			sourceTree = "<group>";
-		};
-		18CB7F0C680E53C1AA79BBE2 /* Code */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Code;
 			sourceTree = "<group>";
 		};
 		1916D34D25037E4285C2EC1D /* Utilities */ = {
@@ -298,23 +246,8 @@
 		193526CC27FADF97428DEBE4 /* Builder */ = {
 			isa = PBXGroup;
 			children = (
-				9933FD6851E1A99C270378A3 /* Components */,
 			);
 			path = Builder;
-			sourceTree = "<group>";
-		};
-		1DD5921037F4A2E6720DF6B3 /* Code */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Code;
-			sourceTree = "<group>";
-		};
-		1F34BDED038FD60DC9489ED8 /* ANE */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = ANE;
 			sourceTree = "<group>";
 		};
 		1FA7DF3E9F7625121A19BAA8 /* Layers */ = {
@@ -359,13 +292,6 @@
 			path = Auth;
 			sourceTree = "<group>";
 		};
-		2B96515AD1E3583E914C0D3F /* CrossConversationFiles */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = CrossConversationFiles;
-			sourceTree = "<group>";
-		};
 		335460DDCDF1CC1C27204DE6 /* Managers */ = {
 			isa = PBXGroup;
 			children = (
@@ -381,40 +307,11 @@
 			name = Terminal;
 			sourceTree = "<group>";
 		};
-		3B317015FA2EE0367B8186AC /* Designer */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Designer;
-			sourceTree = "<group>";
-		};
-		3E7B2BD75E750CDA43574A87 /* Team */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Team;
-			sourceTree = "<group>";
-		};
 		40B6DAB08F5BE1AB777E89EB /* Queue */ = {
 			isa = PBXGroup;
 			children = (
-				9B4F99CC282D3C36906993AE /* Components */,
 			);
 			path = Queue;
-			sourceTree = "<group>";
-		};
-		41F7E80E10FD9136EBD7B942 /* LSP */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = LSP;
-			sourceTree = "<group>";
-		};
-		455D0C5F691682972212683A /* Chat */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Chat;
 			sourceTree = "<group>";
 		};
 		4614B11049AFEF2FCCCA85D3 /* AI */ = {
@@ -431,20 +328,6 @@
 			path = AI;
 			sourceTree = "<group>";
 		};
-		46EB119BC774E9FEADE8A00F /* ModelDiscovery */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = ModelDiscovery;
-			sourceTree = "<group>";
-		};
-		4987B8C5B109FAE009AF2123 /* Intelligence */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Intelligence;
-			sourceTree = "<group>";
-		};
 		4CE16795DA2E305E75B5ABF8 /* Commands */ = {
 			isa = PBXGroup;
 			children = (
@@ -453,17 +336,9 @@
 			path = Commands;
 			sourceTree = "<group>";
 		};
-		4E7F46FFFF635A3E6FEF761E /* Dialogs */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Dialogs;
-			sourceTree = "<group>";
-		};
 		4F66D59A4670D649E57573FF /* Analytics */ = {
 			isa = PBXGroup;
 			children = (
-				9578F3187780F07C007A6BB4 /* Components */,
 			);
 			path = Analytics;
 			sourceTree = "<group>";
@@ -486,13 +361,6 @@
 			path = Panels;
 			sourceTree = "<group>";
 		};
-		5D60A07B8F5BB06197ADFA2C /* TeamChat */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = TeamChat;
-			sourceTree = "<group>";
-		};
 		5ED08269B23D52171D57901F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -508,34 +376,14 @@
 				A297483D4FC976FCBF15DA6D /* ModelEvictionDialog.swift */,
 				CD53880E5B027D1C96DC1015 /* ModelManagerWindow.swift */,
 				29A9544159CB164CEB95F6FB /* Auth */,
-				0044C8191B192B95A58A7ED8 /* Team */,
 			);
 			path = Views;
-			sourceTree = "<group>";
-		};
-		67A20FA240BE40A66D45A958 /* Docs */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Docs;
 			sourceTree = "<group>";
 		};
 		6878B112D67AE729936DE9D4 /* Workspaces */ = {
 			isa = PBXGroup;
 			children = (
-				455D0C5F691682972212683A /* Chat */,
-				1DD5921037F4A2E6720DF6B3 /* Code */,
-				744DAEEFB393935779D9E2EF /* Database */,
-				67A20FA240BE40A66D45A958 /* Docs */,
-				0FC2C1963B9C03BB500F086E /* InsightsWorkspace */,
 				00C80C694431557AAC1D0B1A /* Kanban */,
-				E7D23CAC9DCEAD3BDE610FC0 /* MagnetarHub */,
-				46EB119BC774E9FEADE8A00F /* ModelDiscovery */,
-				3E7B2BD75E750CDA43574A87 /* Team */,
-				5D60A07B8F5BB06197ADFA2C /* TeamChat */,
-				F5B437585A1CC18305FF848B /* Trust */,
-				1384D42584B90EB75EB150D3 /* Vault */,
-				18CB7F0C680E53C1AA79BBE2 /* Code */,
 				29A82DB58328E8119E5F484A /* Hub */,
 			);
 			path = Workspaces;
@@ -563,7 +411,6 @@
 		72CEC14D072C318D10DB3BD2 /* Dashboard */ = {
 			isa = PBXGroup;
 			children = (
-				074C896ECE11C240C628F751 /* Components */,
 			);
 			path = Dashboard;
 			sourceTree = "<group>";
@@ -574,20 +421,6 @@
 				2C969A3D6C92097E6DF1F837 /* MedStation.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		744DAEEFB393935779D9E2EF /* Database */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Database;
-			sourceTree = "<group>";
-		};
-		81800D0BD05398CD87512F0D /* Persistence */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Persistence;
 			sourceTree = "<group>";
 		};
 		8506EC80CCFFA93FBD45D007 /* ImageAnalysis */ = {
@@ -606,13 +439,6 @@
 			path = ImageAnalysis;
 			sourceTree = "<group>";
 		};
-		85EB4435D72055EFF970CCD8 /* Core */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Core;
-			sourceTree = "<group>";
-		};
 		91EAD9BF8EC7E79814E2DAE7 /* Networking */ = {
 			isa = PBXGroup;
 			children = (
@@ -621,41 +447,6 @@
 				BBFA6866C6061CC11493D8B3 /* APIConfiguration.swift */,
 			);
 			path = Networking;
-			sourceTree = "<group>";
-		};
-		9578F3187780F07C007A6BB4 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		986D37D03C8D91C9D85D18A7 /* Context */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Context;
-			sourceTree = "<group>";
-		};
-		9933FD6851E1A99C270378A3 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		9B4F99CC282D3C36906993AE /* Components */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		A00C370AD157BDF82BA4C399 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Components;
 			sourceTree = "<group>";
 		};
 		A29C597DFE5C166E4E2F53E9 /* Models */ = {
@@ -669,13 +460,6 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		A3E99CC2D82CF1C1FC09A273 /* ConversationStorage */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = ConversationStorage;
-			sourceTree = "<group>";
-		};
 		AF3FD21B5F1D2E6BB84C69F3 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
@@ -687,13 +471,6 @@
 				283A8238A24AA77FAD197EF3 /* SettingsHelpers.swift */,
 			);
 			path = Settings;
-			sourceTree = "<group>";
-		};
-		AF65F5CACDE4DC3468474473 /* RAG */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = RAG;
 			sourceTree = "<group>";
 		};
 		B8C234D85AAB74A8DE6CC886 /* Stores */ = {
@@ -721,33 +498,15 @@
 			children = (
 				E7706D1DFC5EFCB8AE355AEA /* AuthService.swift */,
 				9EADD445CBEADCED36E0BFC8 /* ModelMemoryTracker.swift */,
-				1F34BDED038FD60DC9489ED8 /* ANE */,
-				986D37D03C8D91C9D85D18A7 /* Context */,
-				DD0E02645B8BD7968A9C1A48 /* ContextOptimizer */,
-				A3E99CC2D82CF1C1FC09A273 /* ConversationStorage */,
-				2B96515AD1E3583E914C0D3F /* CrossConversationFiles */,
 				8506EC80CCFFA93FBD45D007 /* ImageAnalysis */,
-				0B207136BF7BCFADBC0E97CF /* Integration */,
-				AF65F5CACDE4DC3468474473 /* RAG */,
-				C2E4A921691BE02B13D6007B /* Trust */,
 				37899590768C7A760A18272F /* Terminal */,
-				41F7E80E10FD9136EBD7B942 /* LSP */,
-				81800D0BD05398CD87512F0D /* Persistence */,
 				4614B11049AFEF2FCCCA85D3 /* AI */,
-				4987B8C5B109FAE009AF2123 /* Intelligence */,
 				D99439F7A48F2C5BA715DF13 /* Export */,
 				52B99B244A9C019D32203E53 /* Charts */,
 				DCF6753A6E713E1EA821B20F /* Automation */,
 				FF8FF8C1A480513ED66E2295 /* Plugins */,
 			);
 			path = Services;
-			sourceTree = "<group>";
-		};
-		C2E4A921691BE02B13D6007B /* Trust */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Trust;
 			sourceTree = "<group>";
 		};
 		C819DDE2D3F5F98EE85FC3CB /* DesignSystem */ = {
@@ -774,7 +533,6 @@
 		D55288C753296BE0079647BC /* Panels */ = {
 			isa = PBXGroup;
 			children = (
-				143C98105625FA0C0241AE47 /* VaultAdmin */,
 			);
 			path = Panels;
 			sourceTree = "<group>";
@@ -803,20 +561,6 @@
 			path = Automation;
 			sourceTree = "<group>";
 		};
-		DD0E02645B8BD7968A9C1A48 /* ContextOptimizer */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = ContextOptimizer;
-			sourceTree = "<group>";
-		};
-		DE864A74EECDECCCA82BDBF0 /* CommandPalette */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = CommandPalette;
-			sourceTree = "<group>";
-		};
 		E18C80C7AB68D88D33E928A3 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
@@ -838,26 +582,10 @@
 			children = (
 				4F66D59A4670D649E57573FF /* Analytics */,
 				193526CC27FADF97428DEBE4 /* Builder */,
-				85EB4435D72055EFF970CCD8 /* Core */,
 				72CEC14D072C318D10DB3BD2 /* Dashboard */,
-				3B317015FA2EE0367B8186AC /* Designer */,
 				40B6DAB08F5BE1AB777E89EB /* Queue */,
 			);
 			path = AutomationWorkspace;
-			sourceTree = "<group>";
-		};
-		E7D23CAC9DCEAD3BDE610FC0 /* MagnetarHub */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = MagnetarHub;
-			sourceTree = "<group>";
-		};
-		F5B437585A1CC18305FF848B /* Trust */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Trust;
 			sourceTree = "<group>";
 		};
 		FC3E8360DA93614A6D4A9EE2 /* Components */ = {
