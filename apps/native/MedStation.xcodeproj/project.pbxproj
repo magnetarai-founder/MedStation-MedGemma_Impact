@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BA01CA7E2F3D8A1B00BFAA01 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA01CA7E2F3D8A1B00BFAA02 /* BiometricAuthService.swift */; };
 		035AE05ACD80429F80EE9FCF /* ImageAnalysisError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D8B193A40F2C6B86544A40 /* ImageAnalysisError.swift */; };
 		07F1D902037AAFE4BB7CF03F /* ImageAnalysisConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5304B73481AD7AAA4CBEFB5E /* ImageAnalysisConfiguration.swift */; };
 		12FE633F4194A00E065F075B /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = 72D2761A7056D9B5D2DD38AF /* MLXVLM */; };
@@ -30,6 +31,7 @@
 		4BC3E1959C0CC170CB5D2AED /* HubConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6675168F14B4574BC50E9638 /* HubConstants.swift */; };
 		5117EAC0730703035BC87B9F /* FeaturesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14B1FC01816EAF1179D497CF /* FeaturesSettingsView.swift */; };
 		70250E6DFA91423A9D8A0E80 /* MedicalSafetyGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C948AB23F32185398E0FB5 /* MedicalSafetyGuard.swift */; };
+		BA02CB8F2F3D9B2C00CFBB03 /* MedicalAuditLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA02CB8F2F3D9B2C00CFBB04 /* MedicalAuditLogger.swift */; };
 		723EA8847690343D436A11CF /* AppLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF3C0125AA1DE37D2709113 /* AppLifecycleManager.swift */; };
 		72AA3D2A40E9B40B097A5B0E /* DetachedAIWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D16B61C27F2D999C363C5D5 /* DetachedAIWindow.swift */; };
 		7DD806863CE1FDE54E7AEB5F /* VisionAnalysisLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0912AABA2B90345CC4DAA279 /* VisionAnalysisLayer.swift */; };
@@ -69,6 +71,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BA01CA7E2F3D8A1B00BFAA02 /* BiometricAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		0369ADDFF9623D901CC8207E /* MedStationApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedStationApp.swift; sourceTree = "<group>"; };
 		0534CF9C6D5527CC769697C8 /* WindowOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowOpener.swift; sourceTree = "<group>"; };
 		0555CDE5ACABDDEA3DA1834D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -109,6 +112,7 @@
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* MLXInferenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXInferenceEngine.swift; sourceTree = "<group>"; };
 		AA1DDA992AB0F3882DB8A414 /* SegmentationLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentationLayer.swift; sourceTree = "<group>"; };
 		AB990A211FDCAE2F529C5649 /* ImageAnalysisCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAnalysisCache.swift; sourceTree = "<group>"; };
+		BA02CB8F2F3D9B2C00CFBB04 /* MedicalAuditLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicalAuditLogger.swift; sourceTree = "<group>"; };
 		C4C948AB23F32185398E0FB5 /* MedicalSafetyGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalSafetyGuard.swift; sourceTree = "<group>"; };
 		C60376A5D97663F9350DE53C /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		CAF3C0125AA1DE37D2709113 /* AppLifecycleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLifecycleManager.swift; sourceTree = "<group>"; };
@@ -208,6 +212,7 @@
 		23C530D571A54A0F4DB28FB5 /* Security */ = {
 			isa = PBXGroup;
 			children = (
+				BA01CA7E2F3D8A1B00BFAA02 /* BiometricAuthService.swift */,
 				52C76141562CFC92FAE8DCBC /* KeychainService.swift */,
 			);
 			path = Security;
@@ -241,6 +246,7 @@
 				CB7EE6AB926CC9931B4A3194 /* MedicalWorkflowEngine.swift */,
 				C4C948AB23F32185398E0FB5 /* MedicalSafetyGuard.swift */,
 				D54F86CA1675C85DFD119DAC /* MedicalBenchmarkHarness.swift */,
+				BA02CB8F2F3D9B2C00CFBB04 /* MedicalAuditLogger.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -513,6 +519,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BA01CA7E2F3D8A1B00BFAA01 /* BiometricAuthService.swift in Sources */,
 				37B821D5B8B4119547475D39 /* MedStationMenuCommands.swift in Sources */,
 				B743154E3A55B63A0611D389 /* WindowOpener.swift in Sources */,
 				F126A782250464F48C683AE2 /* SecurityManager.swift in Sources */,
@@ -568,6 +575,7 @@
 				1F6EAB9F28E04038A882AD5B /* MedicalPanel.swift in Sources */,
 				C6020378836FDF9D943074EB /* PatientCheckInFlow.swift in Sources */,
 				31348DC1F126C1731C7ABB0D /* MedicalBenchmarkHarness.swift in Sources */,
+				BA02CB8F2F3D9B2C00CFBB03 /* MedicalAuditLogger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
