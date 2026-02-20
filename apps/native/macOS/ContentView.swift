@@ -17,7 +17,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             switch authStore.authState {
-            case .checking, .welcome, .setupNeeded:
+            case .checking:
                 ProgressView("Loading...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 

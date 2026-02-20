@@ -41,13 +41,11 @@ final class ChatMessage: Identifiable {
 enum MessageRole: String, Codable, Sendable {
     case user
     case assistant
-    case system
 
     var displayName: String {
         switch self {
         case .user: return "You"
         case .assistant: return "AI"
-        case .system: return "System"
         }
     }
 }
@@ -106,81 +104,3 @@ final class ChatSession: Identifiable {
     }
 }
 
-// MARK: - API DTOs (Data Transfer Objects)
-
-/// Codable representation of ChatMessage for API
-struct ChatMessageDTO: Codable, Sendable {
-    let id: UUID
-    let role: MessageRole
-    let content: String
-    let createdAt: Date
-    let sessionId: UUID
-
-    enum CodingKeys: String, CodingKey {
-        case id, role, content
-        case createdAt = "created_at"
-        case sessionId = "session_id"
-    }
-
-    func toModel() -> ChatMessage {
-        return ChatMessage(
-            id: id,
-            role: role,
-            content: content,
-            sessionId: sessionId,
-            createdAt: createdAt
-        )
-    }
-}
-
-/// Codable representation of ChatSession for API
-struct ChatSessionDTO: Codable, Sendable {
-    let id: UUID
-    let title: String
-    let model: String?  // Optional - sessions don't require a fixed model
-    let createdAt: Date
-    let updatedAt: Date
-    let status: ConversationState?
-
-    enum CodingKeys: String, CodingKey {
-        case id, title, model, status
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
-
-    func toModel() -> ChatSession {
-        return ChatSession(
-            id: id,
-            title: title,
-            model: model,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            status: status ?? .active
-        )
-    }
-}
-
-extension ChatMessage {
-    func toDTO() -> ChatMessageDTO {
-        return ChatMessageDTO(
-            id: id,
-            role: role,
-            content: content,
-            createdAt: createdAt,
-            sessionId: sessionId
-        )
-    }
-}
-
-extension ChatSession {
-    func toDTO() -> ChatSessionDTO {
-        return ChatSessionDTO(
-            id: id,
-            title: title,
-            model: model,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            status: status
-        )
-    }
-}

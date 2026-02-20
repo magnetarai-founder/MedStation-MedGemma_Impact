@@ -31,8 +31,6 @@ final class ChatStore {
     var isLoading: Bool = false
     var isLoadingSessions: Bool = false
     var error: ChatError?
-    var selectedModel: String = "google/medgemma-1.5-4b-it"
-    var contextTokensUsed: Int { 0 }
 
     // MARK: - Per-Session State
 
@@ -53,10 +51,9 @@ final class ChatStore {
 
     // MARK: - Session Management
 
-    func createSession(title: String = "New Chat", model: String? = nil) async {
+    func createSession(title: String = "New Chat") async {
         let session = ChatSession(
             title: title,
-            model: model ?? selectedModel,
             createdAt: Date(),
             updatedAt: Date()
         )

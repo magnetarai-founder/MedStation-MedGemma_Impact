@@ -20,19 +20,7 @@ extension Color {
     /// MedStation Secondary - Purple (#A855F7)
     static let medstationSecondary = Color(red: 0.659, green: 0.333, blue: 0.969)
 
-    /// MedStation Accent - Cyan (#06B6D4)
-    static let medstationAccent = Color(red: 0.024, green: 0.714, blue: 0.831)
-
     // MARK: - Liquid Glass Materials
-
-    /// Ultra-thin glass material (most transparent)
-    static let glassUltraThin: Color = {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor).opacity(0.3)
-        #else
-        return Color(.systemBackground).opacity(0.3)
-        #endif
-    }()
 
     /// Regular glass material (balanced transparency)
     static let glassRegular: Color = {
@@ -43,26 +31,10 @@ extension Color {
         #endif
     }()
 
-    /// Thick glass material (more opaque)
-    static let glassThick: Color = {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor).opacity(0.7)
-        #else
-        return Color(.systemBackground).opacity(0.7)
-        #endif
-    }()
-
     // MARK: - Semantic Colors
 
     static let textPrimary = Color.primary
     static let textSecondary = Color.secondary
-    static let textTertiary: Color = {
-        #if os(macOS)
-        return Color(nsColor: .tertiaryLabelColor)
-        #else
-        return Color(.tertiaryLabel)
-        #endif
-    }()
 
     static let success = Color.green
     static let error = Color.red
@@ -105,54 +77,11 @@ extension LinearGradient {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
-
-    /// Glass shimmer effect
-    static let glassShimmer = LinearGradient(
-        colors: [
-            Color.white.opacity(0.2),
-            Color.white.opacity(0.1),
-            Color.white.opacity(0.2)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
 }
 
 // MARK: - Animation Constants
 
 extension Animation {
-    /// Quick animation for UI state changes (150ms)
-    static let medstationQuick = Animation.easeInOut(duration: 0.15)
-
-    /// Standard animation for most UI transitions (200ms)
-    static let medstationStandard = Animation.easeInOut(duration: 0.2)
-
-    /// Smooth animation for larger transitions (300ms)
-    static let medstationSmooth = Animation.easeInOut(duration: 0.3)
-
     /// Spring animation for interactive elements (hover, press)
     static let medstationSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
-
-    /// Gentle spring for subtle interactive feedback
-    static let medstationGentleSpring = Animation.spring(response: 0.25, dampingFraction: 0.8)
-}
-
-extension AnyTransition {
-    /// Standard fade transition
-    static let medstationFade = AnyTransition.opacity.animation(.medstationQuick)
-
-    /// Slide from trailing edge
-    static let medstationSlideTrailing = AnyTransition.move(edge: .trailing)
-        .combined(with: .opacity)
-        .animation(.medstationStandard)
-
-    /// Slide from bottom edge
-    static let medstationSlideBottom = AnyTransition.move(edge: .bottom)
-        .combined(with: .opacity)
-        .animation(.medstationStandard)
-
-    /// Scale and fade
-    static let medstationScale = AnyTransition.scale(scale: 0.95)
-        .combined(with: .opacity)
-        .animation(.medstationSmooth)
 }

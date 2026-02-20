@@ -190,14 +190,11 @@ final class MedicalAIService {
 
 enum MedicalAIError: LocalizedError {
     case modelNotReady
-    case inferenceFailed(String)
 
     var errorDescription: String? {
         switch self {
         case .modelNotReady:
             return "MedGemma model is not ready. Please wait for it to load."
-        case .inferenceFailed(let msg):
-            return "Medical inference failed: \(msg)"
         }
     }
 }

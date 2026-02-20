@@ -39,13 +39,6 @@ struct MedStationMenuCommands: Commands {
                 navigationStore.navigate(to: .workspace)
             }
             .keyboardShortcut("1", modifiers: .command)
-
-            Divider()
-
-            Button("Toggle Sidebar") {
-                navigationStore.toggleSidebar()
-            }
-            .keyboardShortcut("\\", modifiers: .command)
         }
 
         // Window menu

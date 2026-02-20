@@ -18,11 +18,6 @@ struct MedStationApp: App {
 
     init() {
         UserDefaults.standard.register(defaults: [
-            "enableAppleFM": true,
-            "defaultTemperature": 0.7,
-            "defaultTopP": 0.9,
-            "defaultTopK": 40,
-            "defaultRepeatPenalty": 1.1,
             "enableBlurEffects": true,
             "autoLockEnabled": true,
             "autoLockTimeout": 15,

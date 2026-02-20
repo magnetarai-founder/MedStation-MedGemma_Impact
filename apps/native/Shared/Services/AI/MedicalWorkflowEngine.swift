@@ -78,7 +78,7 @@ struct MedicalWorkflowEngine {
             let metrics = PerformanceMetrics(
                 totalWorkflowMs: totalMs,
                 stepDurations: stepDurations,
-                modelName: "google/medgemma-1.5-4b-it",
+                modelName: "mlx-community/medgemma-4b-it-4bit",
                 modelParameterCount: "4B",
                 deviceThermalState: .init(from: ProcessInfo.processInfo),
                 imageAnalysisMs: imageAnalysisMs

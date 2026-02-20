@@ -42,13 +42,6 @@ final class AuthStore {
         Task { await bootstrap() }
     }
 
-    /// Logout: reset and re-bootstrap
-    func logout() async {
-        user = nil
-        authState = .checking
-        await bootstrap()
-    }
-
 }
 
 // MARK: - Auth State
@@ -56,6 +49,4 @@ final class AuthStore {
 enum AuthState: Equatable {
     case checking       // Loading / bootstrapping
     case authenticated  // Ready
-    case welcome        // Legacy (unused)
-    case setupNeeded    // Legacy (unused)
 }

@@ -809,7 +809,7 @@ private struct MedicalCaseDetailView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Loading MedGemma 1.5 4B into memory...")
+                    Text("Loading MedGemma 4B into memory...")
                         .font(.caption)
                 }
                 .padding(8)
@@ -828,14 +828,14 @@ private struct MedicalCaseDetailView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Troubleshooting")
                             .font(.caption.weight(.semibold))
-                        Text("MedGemma 1.5 4B runs locally via HuggingFace Transformers:")
+                        Text("MedGemma 4B runs locally via MLX Swift on Apple Silicon:")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
 
                         VStack(alignment: .leading, spacing: 3) {
-                            setupStep("1", "Ensure the backend is running (auto-starts with app)")
-                            setupStep("2", "Model weights must be in .models/medgemma-1.5-4b-it/")
-                            setupStep("3", "Requires 16 GB RAM (bfloat16 on Apple Silicon)")
+                            setupStep("1", "Model downloads automatically from HuggingFace (~3 GB)")
+                            setupStep("2", "Requires ~4 GB RAM (4-bit quantized)")
+                            setupStep("3", "Click Retry to re-attempt model loading")
                         }
 
                         Button {
@@ -859,10 +859,10 @@ private struct MedicalCaseDetailView: View {
                         Image(systemName: "brain")
                             .foregroundStyle(.blue)
                             .accessibilityHidden(true)
-                        Text("MedGemma 1.5 4B — on-device medical AI")
+                        Text("MedGemma 4B — on-device medical AI")
                             .font(.caption)
                     }
-                    Text("Click 'Run Medical Analysis' to load the model and start inference (~8 GB, Apple Silicon MPS).")
+                    Text("Click 'Run Medical Analysis' to load the model and start inference (~3 GB, Apple Silicon MLX).")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -1824,7 +1824,7 @@ private struct MedicalCaseDetailView: View {
     private var modelCardSection: some View {
         DisclosureGroup("MedGemma Model Card") {
             VStack(alignment: .leading, spacing: 10) {
-                modelCardRow("Model", "MedGemma 1.5 4B (mlx-community/medgemma-4b-it-4bit)")
+                modelCardRow("Model", "MedGemma 4B (mlx-community/medgemma-4b-it-4bit)")
                 modelCardRow("Architecture", "Gemma 3 fine-tuned on medical corpora (VLM)")
                 modelCardRow("Parameters", "4 billion")
                 modelCardRow("Inference", "100% on-device via MLX Swift (no cloud)")

@@ -1,6 +1,5 @@
 import Foundation
 import Security
-import LocalAuthentication
 
 /// Secure storage for auth tokens using Keychain
 /// Note: Always uses real Keychain - no DEBUG bypass for security
@@ -10,9 +9,6 @@ final class KeychainService {
     private let service = "com.medstation.app"
     private let tokenKey = "auth_token"
     private let credentialsKey = "biometric_credentials"
-
-    // Vault session key - cleared on lock, never persisted long-term
-    static let vaultSessionKey = "vault_session_passphrase"
 
     private init() {}
 
@@ -79,63 +75,7 @@ final class KeychainService {
         }
     }
 
-    // MARK: - Biometric Credentials Storage
-
-    /// Save username/password with biometric protection
-    func saveBiometricCredentials(username: String, password: String) throws {
-        let credentials = BiometricCredentials(username: username, password: password)
-        let data = try JSONEncoder().encode(credentials)
-
-        // Delete existing item first
-        try? deleteBiometricCredentials()
-
-        // Create access control for biometric authentication
-        var error: Unmanaged<CFError>?
-        guard let accessControl = SecAccessControlCreateWithFlags(
-            nil,
-            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
-            .biometryCurrentSet,
-            &error
-        ) else {
-            throw KeychainServiceError.accessControlFailed
-        }
-
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: credentialsKey,
-            kSecValueData as String: data,
-            kSecAttrAccessControl as String: accessControl
-        ]
-
-        let status = SecItemAdd(query as CFDictionary, nil)
-
-        guard status == errSecSuccess else {
-            throw KeychainServiceError.saveFailed(status)
-        }
-    }
-
-    /// Load username/password with biometric authentication
-    func loadBiometricCredentials(context: LAContext) throws -> BiometricCredentials {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: credentialsKey,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseAuthenticationContext as String: context
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let data = result as? Data else {
-            throw KeychainServiceError.loadFailed(status)
-        }
-
-        return try JSONDecoder().decode(BiometricCredentials.self, from: data)
-    }
+    // MARK: - Biometric Credentials
 
     /// Check if biometric credentials are stored
     func hasBiometricCredentials() -> Bool {
@@ -167,20 +107,12 @@ final class KeychainService {
     }
 }
 
-// MARK: - Models
-
-struct BiometricCredentials: Codable, Sendable {
-    let username: String
-    let password: String
-}
-
 // MARK: - Errors
 
 enum KeychainServiceError: LocalizedError {
     case saveFailed(OSStatus)
     case deleteFailed(OSStatus)
     case loadFailed(OSStatus)
-    case accessControlFailed
 
     var errorDescription: String? {
         switch self {
@@ -190,8 +122,6 @@ enum KeychainServiceError: LocalizedError {
             return "Failed to delete from Keychain (status: \(status))"
         case .loadFailed(let status):
             return "Failed to load from Keychain (status: \(status))"
-        case .accessControlFailed:
-            return "Failed to create biometric access control"
         }
     }
 }

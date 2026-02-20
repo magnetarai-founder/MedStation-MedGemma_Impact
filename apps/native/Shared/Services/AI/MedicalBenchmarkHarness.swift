@@ -146,7 +146,7 @@ struct BenchmarkReport: Identifiable, Codable, Sendable {
     init(
         id: UUID = UUID(),
         timestamp: Date = Date(),
-        modelName: String = "google/medgemma-1.5-4b-it",
+        modelName: String = "mlx-community/medgemma-4b-it-4bit",
         results: [BenchmarkVignetteResult],
         totalDurationMs: Double,
         triageConfusion: [String: [String: Int]]

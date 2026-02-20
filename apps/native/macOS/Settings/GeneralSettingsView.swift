@@ -11,9 +11,6 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @State private var settingsManager = SettingsManager.shared
-    @AppStorage("autoSaveChatSessions") private var autoSaveChatSessions = true
-    @AppStorage("showLineNumbers") private var showLineNumbers = true
-    @AppStorage("wordWrap") private var wordWrap = false
 
     var body: some View {
         Form {
@@ -38,13 +35,6 @@ struct GeneralSettingsView: View {
 
                     statusLabel(settingsManager.notificationsStatus)
                 }
-            }
-
-
-            Section("Editor") {
-                Toggle("Auto-save Chat Sessions", isOn: $autoSaveChatSessions)
-                Toggle("Show Line Numbers", isOn: $showLineNumbers)
-                Toggle("Word Wrap", isOn: $wordWrap)
             }
         }
         .formStyle(.grouped)

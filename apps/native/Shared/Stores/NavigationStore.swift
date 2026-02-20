@@ -17,10 +17,6 @@ final class NavigationStore {
     func navigate(to workspace: Workspace) {
         activeWorkspace = workspace
     }
-
-    func toggleSidebar() {
-        // No-op — MedStation uses a single-panel layout
-    }
 }
 
 enum Workspace: String, CaseIterable, Identifiable, Hashable {
