@@ -144,12 +144,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-			isa = PBXGroup;
-			children = (
-			);
-			path = Kanban;
-			sourceTree = "<group>";
-		};
 		05E0510F1772E020FA2158F3 /* macOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -199,12 +193,6 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
-			isa = PBXGroup;
-			children = (
-			);
-			path = Builder;
-			sourceTree = "<group>";
-		};
 		1FA7DF3E9F7625121A19BAA8 /* Layers */ = {
 			isa = PBXGroup;
 			children = (
@@ -236,30 +224,12 @@
 			path = Hub;
 			sourceTree = "<group>";
 		};
-			isa = PBXGroup;
-			children = (
-			);
-			path = Auth;
-			sourceTree = "<group>";
-		};
 		335460DDCDF1CC1C27204DE6 /* Managers */ = {
 			isa = PBXGroup;
 			children = (
 				CAF3C0125AA1DE37D2709113 /* AppLifecycleManager.swift */,
 			);
 			path = Managers;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			name = Terminal;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			path = Queue;
 			sourceTree = "<group>";
 		};
 		4614B11049AFEF2FCCCA85D3 /* AI */ = {
@@ -281,19 +251,6 @@
 				11970ED33E68EE3B1CB4A95B /* MedStationMenuCommands.swift */,
 			);
 			path = Commands;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			path = Analytics;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			name = Charts;
-			path = Charts;
 			sourceTree = "<group>";
 		};
 		550E88785D97FF4FFC35C0FD /* Panels */ = {
@@ -345,12 +302,6 @@
 				D8870EF010B17768C0B5C376 /* Header */,
 			);
 			path = Components;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			path = Dashboard;
 			sourceTree = "<group>";
 		};
 		734503D79C8E69B6DEAEC3C5 /* Products */ = {
@@ -420,13 +371,6 @@
 			path = Stores;
 			sourceTree = "<group>";
 		};
-			isa = PBXGroup;
-			children = (
-			);
-			name = Templates;
-			path = Templates;
-			sourceTree = "<group>";
-		};
 		BEFBAEED4D15BB16D7CB66FE /* Services */ = {
 			isa = PBXGroup;
 			children = (
@@ -455,31 +399,11 @@
 			path = Windows;
 			sourceTree = "<group>";
 		};
-			isa = PBXGroup;
-			children = (
-			);
-			path = Panels;
-			sourceTree = "<group>";
-		};
 		D8870EF010B17768C0B5C376 /* Header */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = Header;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			name = Export;
-			path = Export;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			name = Automation;
-			path = Automation;
 			sourceTree = "<group>";
 		};
 		E18C80C7AB68D88D33E928A3 /* Shared */ = {
@@ -510,13 +434,6 @@
 			children = (
 			);
 			path = Components;
-			sourceTree = "<group>";
-		};
-			isa = PBXGroup;
-			children = (
-			);
-			name = Plugins;
-			path = Plugins;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
