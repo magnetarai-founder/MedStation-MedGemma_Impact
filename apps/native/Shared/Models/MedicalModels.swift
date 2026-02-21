@@ -141,6 +141,23 @@ struct MedicalWorkflowResult: Identifiable, Codable, Equatable, Sendable {
         self.isPartial = isPartial
         self.incompleteReason = incompleteReason
     }
+
+    // Custom decoder: older JSON files on disk lack isPartial/incompleteReason.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        intakeId = try c.decode(UUID.self, forKey: .intakeId)
+        triageLevel = try c.decode(TriageLevel.self, forKey: .triageLevel)
+        differentialDiagnoses = try c.decode([Diagnosis].self, forKey: .differentialDiagnoses)
+        recommendedActions = try c.decode([RecommendedAction].self, forKey: .recommendedActions)
+        reasoning = try c.decode([ReasoningStep].self, forKey: .reasoning)
+        performanceMetrics = try c.decodeIfPresent(PerformanceMetrics.self, forKey: .performanceMetrics)
+        safetyAlerts = try c.decode([SafetyAlert].self, forKey: .safetyAlerts)
+        disclaimer = try c.decode(String.self, forKey: .disclaimer)
+        generatedAt = try c.decode(Date.self, forKey: .generatedAt)
+        isPartial = try c.decodeIfPresent(Bool.self, forKey: .isPartial) ?? false
+        incompleteReason = try c.decodeIfPresent(String.self, forKey: .incompleteReason)
+    }
 }
 
 // MARK: - Diagnosis
